@@ -1,0 +1,27 @@
+Package: Legend
+Title: Large-Scale Evidence Generation and Evaluation in a Network of Databases
+Version: 0.0.1
+Author: Martijn J. Schuemie [aut, cre],
+    Patrick B. Ryan [aut]
+Maintainer: Martijn J. Schuemie <schuemie@ohdsi.org>
+Description: Large-Scale Evidence Generation and Evaluation in a Network of Databases.
+Depends:
+    R (>= 3.1),
+    DatabaseConnector
+Imports:
+    Cyclops,
+    ff,
+    ffbase,
+	SqlRender,
+    FeatureExtraction,
+    CohortMethod,
+    EmpiricalCalibration,
+	MethodEvaluation,
+    OhdsiSharing
+Suggests:
+    testthat,
+    meta,
+    ggplot2
+License: Apache License 2.0
+LazyData: true
+RoxygenNote: 6.0.1
