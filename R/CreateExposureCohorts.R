@@ -17,7 +17,7 @@
 #' Create the exposure cohorts
 #'
 #' @details
-#' This function will create the exposure and outcome cohorts following the definitions included in
+#' This function will create the exposure cohorts following the definitions included in
 #' this package.
 #'
 #' @param connectionDetails    An object of type \code{connectionDetails} as created using the
@@ -38,21 +38,25 @@
 #'
 #' @export
 createExposureCohorts <- function(connectionDetails,
-                          cdmDatabaseSchema,
-                          cohortDatabaseSchema,
-                          tablePrefix = "legend",
-                          indication = "Depression",
-                          oracleTempSchema,
-                          outputFolder) {
+                                  cdmDatabaseSchema,
+                                  cohortDatabaseSchema,
+                                  tablePrefix = "legend",
+                                  indication = "Depression",
+                                  oracleTempSchema,
+                                  outputFolder) {
     OhdsiRTools::logInfo("Creating exposure cohorts for indication: ", indication)
 
     indicationFolder <- file.path(outputFolder, indication)
-    exposureEraTable <- paste(tablePrefix, tolower(indication), "exposure_era", sep = "_")
-    exposureCohortTable <- paste(tablePrefix, tolower(indication), "exposure_cohort", sep = "_")
+    exposureEraTable <- paste(tablePrefix, tolower(indication), "exp_era", sep = "_")
+    exposureCohortTable <- paste(tablePrefix, tolower(indication), "exp_cohort", sep = "_")
+    pairedCohortTable <- paste(tablePrefix, tolower(indication), "pair_cohort", sep = "_")
+    pairedCohortSummaryTable <- paste(tablePrefix, tolower(indication), "pair_sum", sep = "_")
+
     if (!file.exists(indicationFolder)) {
         dir.create(indicationFolder, recursive = TRUE)
     }
     conn <- DatabaseConnector::connect(connectionDetails)
+    on.exit(DatabaseConnector::disconnect(conn))
 
     # Create empty cohort table ----------------------------------------------------------------------
     sql <- SqlRender::loadRenderTranslateSql("CreateCohortTable.sql",
@@ -108,7 +112,6 @@ createExposureCohorts <- function(connectionDetails,
 
     # Create nesting cohort table ------------------------------------------------------------------------
     OhdsiRTools::logInfo("- Creating nesting cohort")
-    pathToSql <- system.file("sql", "sql_server", sprintf("NestingCohort%s.sql", indication), package = "Legend")
     sql <- SqlRender::loadRenderTranslateSql(sprintf("NestingCohort%s.sql", indication),
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -132,6 +135,7 @@ createExposureCohorts <- function(connectionDetails,
                                              include_procedures = TRUE,
                                              procedure_ancestor_table = "#procedure_ancestor",
                                              procedure_duration = 30,
+                                             max_gap = 30,
                                              exposure_combi_table = "#exposure_combi",
                                              nesting_cohort_table = "#nesting_cohort",
                                              washout_period = 365)
@@ -160,11 +164,35 @@ createExposureCohorts <- function(connectionDetails,
     counts <- DatabaseConnector::querySql(conn, sql)
     names(counts) <- SqlRender::snakeCaseToCamelCase(names(counts))
     countsSingleExposures <- merge(counts, data.frame(cohortDefinitionId = exposuresOfInterest$conceptId,
-                                                     cohortName = exposuresOfInterest$name))
+                                                      cohortName = exposuresOfInterest$name))
     countsCombiExposures <- merge(counts, data.frame(cohortDefinitionId = namedExposureCombis$cohortDefinitionId,
                                                      cohortName = namedExposureCombis$cohortName))
     counts <- rbind(countsSingleExposures, countsCombiExposures)
     write.csv(counts, file.path(indicationFolder, "exposureCohortCounts.csv"), row.names = FALSE)
 
-    DatabaseConnector::disconnect(conn)
+    # Create cohort pairs ----------------------------------------------------------------------
+    OhdsiRTools::logInfo("- Pairing exposure cohorts")
+    sql <- SqlRender::loadRenderTranslateSql("CreateCohortPairs.sql",
+                                             "Legend",
+                                             dbms = connectionDetails$dbms,
+                                             oracleTempSchema = oracleTempSchema,
+                                             cdm_database_schema = cdmDatabaseSchema,
+                                             cohort_database_schema = cohortDatabaseSchema,
+                                             exposure_cohort_table = exposureCohortTable,
+                                             paired_cohort_table = pairedCohortTable,
+                                             paired_cohort_summary_table = pairedCohortSummaryTable)
+    DatabaseConnector::executeSql(conn, sql)
+
+    sql <- "SELECT * FROM @cohort_database_schema.@paired_cohort_summary_table"
+    sql <- SqlRender::renderSql(sql = sql,
+                                cohort_database_schema = cohortDatabaseSchema,
+                                paired_cohort_summary_table = pairedCohortSummaryTable)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+    pairedExposureSummary <- DatabaseConnector::querySql(conn, sql)
+    colnames(pairedExposureSummary) <- SqlRender::snakeCaseToCamelCase(colnames(pairedExposureSummary))
+    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(tCohortDefinitionId = counts$cohortDefinitionId,
+                                                                     tName = counts$cohortName))
+    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(cCohortDefinitionId = counts$cohortDefinitionId,
+                                                                     cName = counts$cohortName))
+    write.csv(pairedExposureSummary, file.path(indicationFolder, "pairedExposureSummary.csv"), row.names = FALSE)
 }

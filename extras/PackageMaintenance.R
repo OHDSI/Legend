@@ -24,12 +24,12 @@ shell("rm extras//Legend.pdf")
 shell("R CMD Rd2pdf ./ --output=extras/Legend.pdf")
 
 # Import outcome definitions
-pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
-outcomes <- read.csv(pathToCsv)
-for (i in 1:nrow(outcomes)) {
-  writeLines(paste0("Inserting HOI: ", outcomes$name[i]))
-  OhdsiRTools::insertCohortDefinitionInPackage(outcomes$cohortDefinitionId[i], outcomes$name[i])
-}
+OhdsiRTools::insertCohortDefinitionSetInPackage(fileName = "OutcomesOfInterest.csv",
+                                                baseUrl = Sys.getenv("baseUrl"),
+                                                insertTableSql = TRUE,
+                                                insertCohortCreationR = TRUE,
+                                                generateStats = FALSE,
+                                                packageName = "Legend")
 
 # Create analysis details
 createAnalysesDetails("inst/settings/")

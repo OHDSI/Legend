@@ -15,10 +15,10 @@
 # limitations under the License.
 
 library(Legend)
-options(fftempdir = "c:/fftemp")
+options(fftempdir = "r:/fftemp")
 # options('fftempdir' = 'S:/fftemp')
 maxCores <- 30
-studyFolder <- "c:/Legend"
+studyFolder <- "r:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -39,7 +39,7 @@ databaseName <- "CCAE"
 outputFolder <- file.path(studyFolder, "ccae")
 
 # MDCD settings ----------------------------------------------------------------
-cdmDatabaseSchema <- "CDM_Truven_MDCD_V699.dbo"
+cdmDatabaseSchema <- "cdm_truven_mdcd_v699.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_mdcd"
 databaseName <- "MDCD"
@@ -68,4 +68,20 @@ outputFolder <- file.path(studyFolder, "synpuf")
 
 
 indication <- "Depression"
+createExposureCohorts(connectionDetails = connectionDetails,
+                      cdmDatabaseSchema = cdmDatabaseSchema,
+                      cohortDatabaseSchema = cohortDatabaseSchema,
+                      tablePrefix = tablePrefix,
+                      indication = indication,
+                      oracleTempSchema = oracleTempSchema,
+                      outputFolder = outputFolder)
+
+createOutcomeCohorts(connectionDetails = connectionDetails,
+                      cdmDatabaseSchema = cdmDatabaseSchema,
+                      cohortDatabaseSchema = cohortDatabaseSchema,
+                      tablePrefix = tablePrefix,
+                      indication = indication,
+                      oracleTempSchema = oracleTempSchema,
+                      outputFolder = outputFolder)
+
 
