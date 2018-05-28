@@ -4,9 +4,9 @@
 \alias{injectSignals}
 \title{Inject outcomes on top of negative controls}
 \usage{
-injectSignals(connectionDetails, cdmDatabaseSchema, workDatabaseSchema,
-  studyCohortTable = "ohdsi_cohorts", oracleTempSchema, workFolder,
-  exposureOutcomePairs = NULL, maxCores = 4)
+injectSignals(connectionDetails, cdmDatabaseSchema, cohortDatabaseSchema,
+  tablePrefix = "legend", indication = "Depression", oracleTempSchema,
+  outputFolder, maxCores = 4)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -17,22 +17,22 @@ DatabaseConnector package.}
 Note that for SQL Server, this should include both the database and
 schema name, for example 'cdm_data.dbo'.}
 
-\item{workDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
+\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
 write priviliges in this schema. Note that for SQL Server, this should
 include both the database and schema name, for example 'cdm_data.dbo'.}
 
-\item{studyCohortTable}{The name of the study cohort table  in the work database schema.}
+\item{tablePrefix}{A prefix to be used for all table names created for this study.}
+
+\item{indication}{A string denoting the indication for which the exposure cohorts should be created.}
 
 \item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
 priviliges for storing temporary tables.}
 
-\item{workFolder}{Name of local folder to place results; make sure to use forward slashes
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
-
-\item{exposureCohortSummaryTable}{The name of the exposure summary table in the work database schema.}
 }
 \description{
 Inject outcomes on top of negative controls

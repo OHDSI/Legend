@@ -25,7 +25,7 @@
 #' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'cdm_data.dbo'.
-#' @param workDatabaseSchema   Schema name where intermediate data can be stored. You will need to have
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to have
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param studyCohortTable     The name of the table that will be created in the work database schema.
@@ -36,7 +36,7 @@
 #'                             study.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
-#' @param workFolder         Name of local folder to place results; make sure to use forward slashes
+#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/). Do not use a folder on a network drive since this greatly impacts
 #'                             performance.
 #' @param createCohorts        Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?
@@ -51,48 +51,61 @@
 execute <- function(connectionDetails,
                     cdmDatabaseSchema,
                     oracleTempSchema,
-                    workDatabaseSchema,
+                    cohortDatabaseSchema,
                     studyCohortTable,
                     exposureCohortSummaryTable,
-                    workFolder,
+                    outputFolder,
                     maxCores,
-                    createCohorts = TRUE,
+                    indication = "Depression",
+                    createExposureCohorts = TRUE,
+                    createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
                     injectSignals = TRUE,
                     generateAllCohortMethodDataObjects = TRUE,
                     runCohortMethod = TRUE) {
-    if (createCohorts) {
-        createCohorts(connectionDetails = connectionDetails,
-                      cdmDatabaseSchema = cdmDatabaseSchema,
-                      oracleTempSchema = oracleTempSchema,
-                      workDatabaseSchema = workDatabaseSchema,
-                      studyCohortTable = studyCohortTable,
-                      exposureCohortSummaryTable = exposureCohortSummaryTable,
-                      workFolder = workFolder)
+    if (createExposureCohorts) {
+        createExposureCohorts(connectionDetails = connectionDetails,
+                              cdmDatabaseSchema = cdmDatabaseSchema,
+                              cohortDatabaseSchema = cohortDatabaseSchema,
+                              tablePrefix = tablePrefix,
+                              indication = indication,
+                              oracleTempSchema = oracleTempSchema,
+                              outputFolder = outputFolder)
 
-        filterByExposureCohortsSize(workFolder = workFolder)
+        filterByExposureCohortsSize(outputFolder = outputFolder,
+                                    indication = indication)
+    }
+    if (createOutcomeCohorts) {
+        createOutcomeCohorts(connectionDetails = connectionDetails,
+                              cdmDatabaseSchema = cdmDatabaseSchema,
+                              cohortDatabaseSchema = cohortDatabaseSchema,
+                              tablePrefix = tablePrefix,
+                              indication = indication,
+                              oracleTempSchema = oracleTempSchema,
+                              outputFolder = outputFolder)
     }
     if (fetchAllDataFromServer) {
         fetchAllDataFromServer(connectionDetails = connectionDetails,
                                cdmDatabaseSchema = cdmDatabaseSchema,
                                oracleTempSchema = oracleTempSchema,
-                               workDatabaseSchema = workDatabaseSchema,
-                               studyCohortTable = studyCohortTable,
-                               workFolder = workFolder)
+                               cohortDatabaseSchema = cohortDatabaseSchema,
+                               tablePrefix = tablePrefix,
+                               indication = indication,
+                               outputFolder = outputFolder)
     }
     if (injectSignals) {
         injectSignals(connectionDetails = connectionDetails,
                       cdmDatabaseSchema = cdmDatabaseSchema,
-                      workDatabaseSchema = workDatabaseSchema,
+                      cohortDatabaseSchema = cohortDatabaseSchema,
                       studyCohortTable = studyCohortTable,
                       oracleTempSchema = oracleTempSchema,
-                      workFolder = workFolder,
+                      outputFolder = outputFolder,
                       maxCores = maxCores)
     }
     if (generateAllCohortMethodDataObjects) {
-        generateAllCohortMethodDataObjects(workFolder)
+        generateAllCohortMethodDataObjects(outputFolder)
     }
     if (runCohortMethod) {
-        runCohortMethod(workFolder, maxCores = maxCores)
+        runCohortMethod(outputFolder, maxCores = maxCores)
     }
 }

@@ -40,8 +40,8 @@ IF OBJECT_ID('tempdb..#ec_pairs', 'U') IS NOT NULL
 SELECT pair_id,
 	t_cohort_definition_id,
 	c_cohort_definition_id,
-	t_cohort_definition_id * 1000 + pair_id AS tprime_cohort_definition_id,
-	c_cohort_definition_id * 1000 + pair_id AS cprime_cohort_definition_id,
+	t_cohort_definition_id * 10000 + pair_id AS tprime_cohort_definition_id,
+	c_cohort_definition_id * 10000 + pair_id AS cprime_cohort_definition_id,
 	min_cohort_date,
 	max_cohort_date
 INTO #ec_pairs
@@ -88,10 +88,6 @@ FROM (
 		ON cp1.t_cohort_definition_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
-	LEFT JOIN @cohort_database_schema.@exposure_cohort_table ec2
-		ON cp1.c_cohort_definition_id = ec2.cohort_definition_id
-			AND ec1.subject_id = ec2.subject_id
-	WHERE ec2.subject_id IS NULL
 	
 	UNION ALL
 	
@@ -105,11 +101,8 @@ FROM (
 		ON cp1.c_cohort_definition_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
-	LEFT JOIN @cohort_database_schema.@exposure_cohort_table ec2
-		ON cp1.t_cohort_definition_id = ec2.cohort_definition_id
-			AND ec1.subject_id = ec2.subject_id
-	WHERE ec2.subject_id IS NULL
-	) TEMP;
+			
+	) tmp;
 
 
 -- Summarize cohort pairs

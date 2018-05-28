@@ -82,7 +82,7 @@ createExposureCohorts <- function(connectionDetails,
     namedExposureCombis$exposureName1 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId1, exposuresOfInterest$conceptId)]
     namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId2, exposuresOfInterest$conceptId)]
     namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1, namedExposureCombis$exposureName2, sep = " - ")
-    write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"))
+    write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)
 
     # Upload combis and procedure groups -----------------------------------------------------------
     colnames(exposureCombis) <- SqlRender::camelCaseToSnakeCase(colnames(exposureCombis))
@@ -97,7 +97,7 @@ createExposureCohorts <- function(connectionDetails,
     procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
     procedureAncestor <- data.frame()
     for (i in 1:nrow(procedures)) {
-        descendantConceptIds = as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
+        descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
         procedureAncestor <- rbind(procedureAncestor, data.frame(ancestorConceptId = procedures$conceptId[i],
                                                                  descendantConceptId = descendantConceptIds))
     }

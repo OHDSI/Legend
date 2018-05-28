@@ -25,14 +25,14 @@
 #' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'cdm_data.dbo'.
-#' @param workDatabaseSchema   Schema name where intermediate data can be stored. You will need to have
+#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param studyCohortTable     The name of the study cohort table  in the work database schema.
-#' @param exposureCohortSummaryTable     The name of the exposure summary table in the work database schema.
+#' @param tablePrefix          A prefix to be used for all table names created for this study.
+#' @param indication           A string denoting the indication for which the exposure cohorts should be created.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
-#' @param workFolder           Name of local folder to place results; make sure to use forward slashes
+#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
@@ -40,42 +40,58 @@
 #' @export
 injectSignals <- function(connectionDetails,
                           cdmDatabaseSchema,
-                          workDatabaseSchema,
-                          studyCohortTable = "ohdsi_cohorts",
+                          cohortDatabaseSchema,
+                          tablePrefix = "legend",
+                          indication = "Depression",
                           oracleTempSchema,
-                          workFolder,
-                          exposureOutcomePairs = NULL,
+                          outputFolder,
                           maxCores = 4) {
-    signalInjectionFolder <- file.path(workFolder, "signalInjection")
+    OhdsiRTools::logInfo("Synthesizing positive controls for: ", indication)
+
+    indicationFolder <- file.path(outputFolder, indication)
+    signalInjectionFolder <- file.path(indicationFolder, "signalInjection")
     if (!file.exists(signalInjectionFolder))
         dir.create(signalInjectionFolder)
+    outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
 
+    createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder)
 
-    createSignalInjectionDataFiles(workFolder, signalInjectionFolder)
-
-    exposureSummary <- read.csv(file.path(workFolder, "exposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 
     exposureCohortIds <- unique(c(exposureSummary$tCohortDefinitionId, exposureSummary$cCohortDefinitionId))
 
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControlIds <- negativeControls$conceptId
-    if (is.null(exposureOutcomePairs)) {
-        exposureOutcomePairs <- data.frame(exposureId = rep(exposureCohortIds, each = length(negativeControlIds)),
-                                           outcomeId = rep(negativeControlIds, length(exposureCohortIds)))
-    }
+    exposureOutcomePairs <- data.frame(exposureId = rep(exposureCohortIds, each = length(negativeControlIds)),
+                                       outcomeId = rep(negativeControlIds, length(exposureCohortIds)))
+
+    # Create a dummy exposure table:
+    OhdsiRTools::logTrace("Create a dummy exposure table")
+    conn <- DatabaseConnector::connect(connectionDetails)
+    sql <- "IF OBJECT_ID('@cohort_database_schema.@table_prefix_dummy', 'U') IS NOT NULL
+	DROP TABLE @cohort_database_schema.@table_prefix_dummy;
+    CREATE TABLE @cohort_database_schema.@table_prefix_dummy (cohort_definition_id BIGINT, subject_id BIGINT, cohort_start_date DATE, cohort_end_date DATE);"
+    sql <- SqlRender::renderSql(sql,
+                                cohort_database_schema = cohortDatabaseSchema,
+                                table_prefix = tablePrefix)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+    DatabaseConnector::executeSql(conn, sql)
+    DatabaseConnector::disconnect(conn)
+
+    OhdsiRTools::logTrace("Calling injectSignals function")
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
                                             oracleTempSchema = cdmDatabaseSchema,
-                                            outcomeDatabaseSchema = workDatabaseSchema,
-                                            outcomeTable = studyCohortTable,
-                                            outputDatabaseSchema = workDatabaseSchema,
-                                            outputTable = studyCohortTable,
+                                            outcomeDatabaseSchema = cohortDatabaseSchema,
+                                            outcomeTable = outcomeCohortTable,
+                                            exposureDatabaseSchema = cohortDatabaseSchema,
+                                            exposureTable = paste(tablePrefix, "dummy", sep = "_"),
+                                            outputDatabaseSchema = cohortDatabaseSchema,
+                                            outputTable = outcomeCohortTable,
                                             createOutputTable = FALSE,
                                             exposureOutcomePairs = exposureOutcomePairs,
                                             modelType = "survival",
-                                            buildOutcomeModel = TRUE,
-                                            buildModelPerExposure = FALSE,
                                             minOutcomeCountForModel = 100,
                                             minOutcomeCountForInjection = 25,
                                             prior = Cyclops::createPrior("laplace", exclude = 0, useCrossValidation = TRUE),
@@ -86,13 +102,13 @@ injectSignals <- function(connectionDetails,
                                                                              noiseLevel = "silent",
                                                                              threads = min(10, maxCores)),
                                             firstExposureOnly = TRUE,
-                                            washoutPeriod = 183,
+                                            washoutPeriod = 9999,
                                             riskWindowStart = 0,
                                             riskWindowEnd = 0,
-                                            addExposureDaysToEnd = TRUE,
+                                            addExposureDaysToEnd = FALSE,
                                             firstOutcomeOnly = TRUE,
                                             removePeopleWithPriorOutcomes = TRUE,
-                                            maxSubjectsForModel = 250000,
+                                            maxSubjectsForModel = 100000,
                                             effectSizes = c(1.5, 2, 4),
                                             precision = 0.01,
                                             outputIdOffset = 10000,
@@ -100,13 +116,20 @@ injectSignals <- function(connectionDetails,
                                             cdmVersion = "5",
                                             modelThreads = max(1, round(maxCores/10)),
                                             generationThreads = min(6, maxCores))
-    # summ <- readRDS(file.path(signalInjectionFolder, "summary.rds"))
-    write.csv(summ, file.path(workFolder, "signalInjectionSummary.csv"), row.names = FALSE)
+    # summ <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
+    write.csv(summ, file.path(indicationFolder, "signalInjectionSummary.csv"), row.names = FALSE)
 
-    ffbase::load.ffdf(dir = file.path(workFolder, "allCohorts"))
+    counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
+    if (any(counts$cohortDefinitionId >= min(summ$newOutcomeId) & counts$cohortDefinitionId <= max(summ$newOutcomeId))) {
+        stop("Collision between original outcome IDs and synthetic outcome IDs")
+    }
+    conn <- DatabaseConnector::connect(connectionDetails)
+
+    # Only fetch outcomes for subjects in the exposure cohorts, because
+    # only those are used in a cohort method design:
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
     subjectIds <- ffbase::unique.ff(cohorts$subjectId)
     subjectIds <- data.frame(subject_id = ff::as.ram(subjectIds))
-    conn <- DatabaseConnector::connect(connectionDetails)
     DatabaseConnector::insertTable(connection = conn,
                                    tableName = "#subjects",
                                    data = subjectIds,
@@ -117,53 +140,65 @@ injectSignals <- function(connectionDetails,
     sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
-                                             output_database_schema = workDatabaseSchema,
-                                             output_table = studyCohortTable,
+                                             output_database_schema = cohortDatabaseSchema,
+                                             output_table = outcomeCohortTable,
                                              min_id = min(summ$newOutcomeId),
                                              max_id = max(summ$newOutcomeId))
     injectedOutcomes <- DatabaseConnector::querySql.ffdf(conn, sql)
     colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
-    injectedOutcomesFolder <- file.path(workFolder, "injectedOutcomes")
+
+    injectedOutcomesFolder <- file.path(indicationFolder, "injectedOutcomes")
     if (file.exists(injectedOutcomesFolder)) {
         unlink(injectedOutcomesFolder, recursive = TRUE)
     }
     ffbase::save.ffdf(injectedOutcomes, dir = injectedOutcomesFolder)
+
+    # Drop dummy table:
+    sql <- "DROP TABLE @cohort_database_schema.@table_prefix_dummy;"
+    sql <- SqlRender::renderSql(sql,
+                                cohort_database_schema = cohortDatabaseSchema,
+                                table_prefix = tablePrefix)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+    DatabaseConnector::executeSql(conn, sql)
+
+    DatabaseConnector::disconnect(conn)
 }
 
-createSignalInjectionDataFiles <- function(workFolder, signalInjectionFolder) {
+createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
+    OhdsiRTools::logInfo("- Preparing data files")
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
-    exposureSummary <- read.csv(file.path(workFolder, "exposureSummaryFilteredBySize.csv"))
-    cohortDefinitionIdToConceptId <- rbind(data.frame(cohortDefinitionId = exposureSummary$tprimeCohortDefinitionId,
-                                                      conceptId = exposureSummary$tCohortDefinitionId),
-                                           data.frame(cohortDefinitionId = exposureSummary$cprimeCohortDefinitionId,
-                                                      conceptId = exposureSummary$cCohortDefinitionId))
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureIdToCohortId <- rbind(data.frame(cohortDefinitionId = exposureSummary$tprimeCohortDefinitionId,
+                                             cohortId = exposureSummary$tCohortDefinitionId),
+                                  data.frame(cohortDefinitionId = exposureSummary$cprimeCohortDefinitionId,
+                                             cohortId = exposureSummary$cCohortDefinitionId))
 
-
-
-    # Create exposures file:
-    ffbase::load.ffdf(dir = file.path(workFolder, "allCohorts"))
-    exposures <- merge(cohorts, ff::as.ffdf(cohortDefinitionIdToConceptId))
-    conceptIds <- unique(cohortDefinitionIdToConceptId$conceptId)
-    dedupe <- function(exposureId, data) {
-        data <- data[data$conceptId == exposureId,]
+    # Create exposures file ----------------------------------------------------------
+    OhdsiRTools::logTrace("Create exposures file")
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
+    exposures <- merge(cohorts, ff::as.ffdf(exposureIdToCohortId))
+    cohortIds <- unique(exposureIdToCohortId$cohortId)
+    dedupe <- function(cohortId, data) {
+        data <- data[data$cohortId == cohortId,]
         data <- ff::as.ram(data)
         data <- data[order(data$rowId), ]
         data <- data[!duplicated(data$rowId), ]
         return(data)
     }
-    exposures <- sapply(conceptIds, dedupe, data = exposures, simplify = FALSE)
+    exposures <- sapply(cohortIds, dedupe, data = exposures, simplify = FALSE)
     exposures <- do.call("rbind", exposures)
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
 
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
-    colnames(exposures)[colnames(exposures) == "conceptId"] <- "exposureId"
+    colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1
     exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "eraNumber")]
     saveRDS(exposures, file.path(signalInjectionFolder, "exposures.rds"))
 
-    # Create outcomes file:
-    ffbase::load.ffdf(dir = file.path(workFolder, "allOutcomes"))
+    # Create outcomes file ----------------------------------------------------------
+    OhdsiRTools::logTrace("Create outcomes file")
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes"))
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControlIds <- negativeControls$conceptId
@@ -204,15 +239,43 @@ createSignalInjectionDataFiles <- function(workFolder, signalInjectionFolder) {
     priorOutcomes <- do.call("rbind", priorOutcomes)
     saveRDS(priorOutcomes, file.path(signalInjectionFolder, "priorOutcomes.rds"))
 
-    # Clone covariate data:
-    covariatesFolder <- file.path(signalInjectionFolder, "covariates")
+    # Clone covariate data for prediction----------------------------------------------------
+    OhdsiRTools::logTrace("Clone covariate data for prediction")
+    covariatesFolder <- file.path(signalInjectionFolder, "covarsForPrediction_g1")
     if (file.exists(covariatesFolder)) {
         unlink(covariatesFolder, recursive = TRUE)
     }
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(workFolder, "allCovariates"))
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
     covariateDataClone <- list(covariates = ff::clone.ffdf(covariateData$covariates),
                                covariateRef = ff::clone.ffdf(covariateData$covariateRef),
+                               analysisRef = ff::clone.ffdf(covariateData$analysisRef),
                                metaData = covariateData$metaData)
     class(covariateDataClone) = class(covariateData)
     FeatureExtraction::saveCovariateData(covariateDataClone, covariatesFolder)
+
+    # Sample for model fitting --------------------------------------------------------------
+    OhdsiRTools::logTrace("Sample for model fitting")
+    #sampleSize = 10000
+    uniqueGroups <- list(unique(exposures$exposureId))
+    saveRDS(uniqueGroups, file.path(signalInjectionFolder, "uniqueGroups.rds"))
+
+    if (nrow(exposures) > sampleSize) {
+        sampledRowIds <- sample(exposures$rowId, sampleSize, replace = FALSE)
+    } else {
+        sampledRowIds <- exposures$rowId
+    }
+    saveRDS(sampledRowIds, file.path(signalInjectionFolder, "sampledRowIds_g1.rds"))
+    sampledRowIds <- ff::as.ff(sampledRowIds)
+
+    covariatesFolder <- file.path(signalInjectionFolder, "covarsForModel_g1")
+    if (file.exists(covariatesFolder)) {
+        unlink(covariatesFolder, recursive = TRUE)
+    }
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
+    covariateDataSample <- list(covariates = covariateData$covariates[ffbase::`%in%`(covariateData$covariates$rowId, sampledRowIds)],
+                                covariateRef = ff::clone.ffdf(covariateData$covariateRef),
+                                analysisRef = ff::clone.ffdf(covariateData$analysisRef),
+                                metaData = covariateData$metaData)
+    class(covariateDataSample) = class(covariateData)
+    FeatureExtraction::saveCovariateData(covariateDataSample, covariatesFolder)
 }

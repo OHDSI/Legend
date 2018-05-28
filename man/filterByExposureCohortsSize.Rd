@@ -4,10 +4,11 @@
 \alias{filterByExposureCohortsSize}
 \title{Filter exposure pairs by size of the cohorts}
 \usage{
-filterByExposureCohortsSize(workFolder, minCohortsSize = 2500)
+filterByExposureCohortsSize(outputFolder, indication = "Depression",
+  minCohortsSize = 2500)
 }
 \arguments{
-\item{workFolder}{Name of local folder to place results; make sure to use forward slashes
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
 
 \item{minCohortsSize}{Minimum number of people that have to be in each cohort to keep a pair of

@@ -5,10 +5,11 @@
 \title{Execute OHDSI Large-Scale Population-Level Evidence Generation study}
 \usage{
 execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
-  workDatabaseSchema, studyCohortTable, exposureCohortSummaryTable, workFolder,
-  maxCores, createCohorts = TRUE, fetchAllDataFromServer = TRUE,
-  injectSignals = TRUE, generateAllCohortMethodDataObjects = TRUE,
-  runCohortMethod = TRUE)
+  cohortDatabaseSchema, studyCohortTable, exposureCohortSummaryTable,
+  outputFolder, maxCores, indication = "Depression",
+  createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
+  fetchAllDataFromServer = TRUE, injectSignals = TRUE,
+  generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -22,7 +23,7 @@ schema name, for example 'cdm_data.dbo'.}
 \item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
 priviliges for storing temporary tables.}
 
-\item{workDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
+\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
 write priviliges in this schema. Note that for SQL Server, this should
 include both the database and schema name, for example 'cdm_data.dbo'.}
 
@@ -34,14 +35,12 @@ study.}
 This table will hold summary data on the  exposure cohorts used in this
 study.}
 
-\item{workFolder}{Name of local folder to place results; make sure to use forward slashes
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/). Do not use a folder on a network drive since this greatly impacts
 performance.}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
-
-\item{createCohorts}{Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?}
 
 \item{fetchAllDataFromServer}{Fetch all relevant data from the server?}
 
@@ -50,6 +49,8 @@ this can speed up the analyses.}
 \item{generateAllCohortMethodDataObjects}{Create the cohortMethodData objects from the fetched data and injected signals?}
 
 \item{runCohortMethod}{Run the CohortMethod package to produce the outcome models.}
+
+\item{createCohorts}{Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?}
 }
 \description{
 Execute OHDSI Large-Scale Population-Level Evidence Generation study

@@ -68,6 +68,16 @@ outputFolder <- file.path(studyFolder, "synpuf")
 
 
 indication <- "Depression"
+
+mailSettings <- list(from = Sys.getenv("mailAddress"),
+                     to = c(Sys.getenv("mailAddress")),
+                     smtp = list(host.name = "smtp.gmail.com", port = 465,
+                                 user.name = Sys.getenv("mailAddress"),
+                                 passwd = Sys.getenv("mailPassword"), ssl = TRUE),
+                     authenticate = TRUE,
+                     send = TRUE)
+
+
 createExposureCohorts(connectionDetails = connectionDetails,
                       cdmDatabaseSchema = cdmDatabaseSchema,
                       cohortDatabaseSchema = cohortDatabaseSchema,
@@ -77,11 +87,32 @@ createExposureCohorts(connectionDetails = connectionDetails,
                       outputFolder = outputFolder)
 
 createOutcomeCohorts(connectionDetails = connectionDetails,
-                      cdmDatabaseSchema = cdmDatabaseSchema,
-                      cohortDatabaseSchema = cohortDatabaseSchema,
-                      tablePrefix = tablePrefix,
-                      indication = indication,
-                      oracleTempSchema = oracleTempSchema,
-                      outputFolder = outputFolder)
+                     cdmDatabaseSchema = cdmDatabaseSchema,
+                     cohortDatabaseSchema = cohortDatabaseSchema,
+                     tablePrefix = tablePrefix,
+                     indication = indication,
+                     oracleTempSchema = oracleTempSchema,
+                     outputFolder = outputFolder)
+
+filterByExposureCohortsSize(outputFolder = outputFolder,
+                            indication = indication)
+
+fetchAllDataFromServer(connectionDetails = connectionDetails,
+                       cdmDatabaseSchema = cdmDatabaseSchema,
+                       oracleTempSchema = oracleTempSchema,
+                       cohortDatabaseSchema = cohortDatabaseSchema,
+                       tablePrefix = tablePrefix,
+                       indication = indication,
+                       outputFolder = outputFolder)
+
+OhdsiRTools::runAndNotify({
+    injectSignals(connectionDetails = connectionDetails,
+                  cdmDatabaseSchema = cdmDatabaseSchema,
+                  cohortDatabaseSchema = cohortDatabaseSchema,
+                  studyCohortTable = studyCohortTable,
+                  oracleTempSchema = oracleTempSchema,
+                  outputFolder = outputFolder,
+                  maxCores = maxCores)
 
 
+},  mailSettings = mailSettings, label = "Legend")

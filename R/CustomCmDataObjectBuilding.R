@@ -32,81 +32,59 @@
 #' @param exposureCohortSummaryTable     The name of the exposure summary table in the work database schema.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
-#' @param workFolder           Name of local folder to place results; make sure to use forward slashes
+#' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #'
 #' @export
 fetchAllDataFromServer <- function(connectionDetails,
                                    cdmDatabaseSchema,
-                                   workDatabaseSchema,
-                                   studyCohortTable = "ohdsi_cohorts",
+                                   cohortDatabaseSchema,
+                                   tablePrefix = "legend",
+                                   indication = "Depression",
                                    oracleTempSchema,
-                                   workFolder) {
-    exposureSummary <- read.csv(file.path(workFolder, "exposureSummaryFilteredBySize.csv"))
-    exposureIdToConceptId <- rbind(data.frame(exposureId = exposureSummary$tprimeCohortDefinitionId,
-                                              conceptId = exposureSummary$tCohortDefinitionId),
-                                   data.frame(exposureId = exposureSummary$cprimeCohortDefinitionId,
-                                              conceptId = exposureSummary$cCohortDefinitionId))
-    exposureIds <- exposureIdToConceptId$exposureId
-    exposureConceptIds <- unique(exposureIdToConceptId$conceptId)
+                                   outputFolder) {
+    # Some ad-hoc nomenclature:
+    #
+    # exposureId: Denotes a T or C in a specific TC combination, so filtered to common calendar time
+    # cohortId: Denotes a T or C independent of each other
+    # exposureConceptId: Denotes the main concept(s) for each cohort. For each combi treatments there are 2 of these.
+    # ancestorConceptId: a concept ID explicitly related to a cohort (eequivalent to xposureConceptId).
+    # descendantConceptId: a concept ID related to the ancestor concept ID through a custom ancestry
+    # filterConceptId: A concept ID that needs to be filtered when fitting propensity model.
 
-    cohortNames <- read.csv(file.path(workFolder, "cohortNames.csv"))
-    outcomeIds <- cohortNames$cohortDefinitionId[cohortNames$type == "outcome" | cohortNames$type == "negativeControl"]
+    OhdsiRTools::logInfo("Fetching all data from the server")
+    indicationFolder <- file.path(outputFolder, indication)
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureIdToCohortId <- rbind(data.frame(exposureId = exposureSummary$tprimeCohortDefinitionId,
+                                              cohortId = exposureSummary$tCohortDefinitionId),
+                                   data.frame(exposureId = exposureSummary$cprimeCohortDefinitionId,
+                                              cohortId = exposureSummary$cCohortDefinitionId))
+
+    counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
+    outcomeIds <- counts$cohortDefinitionId
 
     conn <- DatabaseConnector::connect(connectionDetails)
+    on.exit(DatabaseConnector::disconnect(conn))
 
-    # Lump persons of interest into one table:
+    # Lump persons of interest into one table -----------------------------------------------------
+    pairedCohortTable <- paste(tablePrefix, tolower(indication), "pair_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("UnionExposureCohorts.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
-                                             target_database_schema = workDatabaseSchema,
-                                             target_cohort_table = studyCohortTable,
-                                             exposure_ids = exposureIds)
+                                             cohort_database_schema = cohortDatabaseSchema,
+                                             paired_cohort_table = pairedCohortTable,
+                                             exposure_ids = exposureIdToCohortId$exposureId)
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-    # Note: removing concept counts because number of drugs is very predictive of drugs vs procedures
-    covariateSettings <- FeatureExtraction::createCovariateSettings(useCovariateDemographics = TRUE,
-                                                                    useCovariateDemographicsGender = TRUE,
-                                                                    useCovariateDemographicsRace = TRUE,
-                                                                    useCovariateDemographicsEthnicity = TRUE,
-                                                                    useCovariateDemographicsAge = TRUE,
-                                                                    useCovariateDemographicsYear = TRUE,
-                                                                    useCovariateDemographicsMonth = TRUE,
-                                                                    useCovariateConditionOccurrence = TRUE,
-                                                                    useCovariateConditionOccurrence365d = TRUE,
-                                                                    useCovariateConditionOccurrence30d = TRUE,
-                                                                    useCovariateConditionOccurrenceInpt180d = TRUE,
-                                                                    useCovariateConditionGroup = TRUE,
-                                                                    useCovariateConditionGroupMeddra = TRUE,
-                                                                    useCovariateConditionGroupSnomed = TRUE,
-                                                                    useCovariateDrugEra = TRUE,
-                                                                    useCovariateDrugEra365d = TRUE,
-                                                                    useCovariateDrugEra30d = TRUE,
-                                                                    useCovariateDrugEraOverlap = TRUE,
-                                                                    useCovariateDrugGroup = TRUE,
-                                                                    useCovariateProcedureOccurrence = TRUE,
-                                                                    useCovariateProcedureOccurrence365d = TRUE,
-                                                                    useCovariateProcedureOccurrence30d = TRUE,
-                                                                    useCovariateProcedureGroup = TRUE,
-                                                                    useCovariateObservation = TRUE,
-                                                                    useCovariateObservation365d = TRUE,
-                                                                    useCovariateObservation30d = TRUE,
-                                                                    useCovariateObservationCount365d = TRUE,
-                                                                    useCovariateMeasurement = TRUE,
-                                                                    useCovariateMeasurement365d = TRUE,
-                                                                    useCovariateMeasurement30d = TRUE,
-                                                                    useCovariateMeasurementCount365d = TRUE,
-                                                                    useCovariateMeasurementBelow = TRUE,
-                                                                    useCovariateMeasurementAbove = TRUE,
-                                                                    useCovariateConceptCounts = FALSE,
-                                                                    useCovariateRiskScores = TRUE,
-                                                                    useCovariateRiskScoresCharlson = TRUE,
-                                                                    useCovariateRiskScoresDCSI = TRUE,
-                                                                    useCovariateRiskScoresCHADS2 = TRUE,
-                                                                    useCovariateRiskScoresCHADS2VASc = TRUE,
-                                                                    excludedCovariateConceptIds = 900000010,
-                                                                    deleteCovariatesSmallCount = 100)
-     covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
+
+    # Construct covariates ---------------------------------------------------------------------
+    defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
+
+    exposureEraTable <- paste(tablePrefix, tolower(indication), "exp_era", sep = "_")
+    priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
+                                                                           exposureEraTable = exposureEraTable)
+    covariateSettings <- list(priorExposureCovariateSettings, defaultCovariateSettings)
+    covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
                                                         oracleTempSchema = oracleTempSchema,
                                                         cdmDatabaseSchema = cdmDatabaseSchema,
                                                         cdmVersion = 5,
@@ -114,59 +92,83 @@ fetchAllDataFromServer <- function(connectionDetails,
                                                         cohortTableIsTemp = TRUE,
                                                         rowIdField = "row_id",
                                                         covariateSettings = covariateSettings,
-                                                        normalize = TRUE)
-    FeatureExtraction::saveCovariateData(covariates, file.path(workFolder, "allCovariates"))
+                                                        aggregated = FALSE)
+    FeatureExtraction::saveCovariateData(covariates, file.path(indicationFolder, "allCovariates"))
 
-    writeLines("Retrieving cohorts")
+    # Retrieve cohorts -------------------------------------------------------------------------
+    OhdsiRTools::logInfo("Retrieving cohorts")
     sql <- SqlRender::loadRenderTranslateSql("GetExposureCohorts.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
                                              cdm_database_schema = cdmDatabaseSchema,
-                                             target_database_schema = workDatabaseSchema,
-                                             target_cohort_table = studyCohortTable)
+                                             cohort_database_schema = cohortDatabaseSchema,
+                                             paired_cohort_table = pairedCohortTable)
     cohorts <- DatabaseConnector::querySql.ffdf(conn, sql)
     colnames(cohorts) <- SqlRender::snakeCaseToCamelCase(colnames(cohorts))
-    ffbase::save.ffdf(cohorts, dir = file.path(workFolder, "allCohorts"))
+    ffbase::save.ffdf(cohorts, dir = file.path(indicationFolder, "allCohorts"))
     ff::close.ffdf(cohorts)
 
-    writeLines("Retrieving outcomes")
+    OhdsiRTools::logInfo("Retrieving outcomes")
+    outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("GetOutcomes.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
                                              cdm_database_schema = cdmDatabaseSchema,
-                                             outcome_database_schema = workDatabaseSchema,
-                                             outcome_table = studyCohortTable,
+                                             outcome_database_schema = cohortDatabaseSchema,
+                                             outcome_table = outcomeCohortTable,
                                              outcome_ids = outcomeIds)
     outcomes <- DatabaseConnector::querySql.ffdf(conn, sql)
     colnames(outcomes) <- SqlRender::snakeCaseToCamelCase(colnames(outcomes))
-    ffbase::save.ffdf(outcomes, dir = file.path(workFolder, "allOutcomes"))
+    ffbase::save.ffdf(outcomes, dir = file.path(indicationFolder, "allOutcomes"))
     ff::close.ffdf(outcomes)
 
-    writeLines("Retrieving filter concepts")
+    # Retrieve filter concepts ---------------------------------------------------------
+    OhdsiRTools::logInfo("Retrieving filter concepts")
+    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+    exposuresOfInterest <- read.csv(pathToCsv)
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indication == indication, ]
+    procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
+    ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$conceptId,
+                           descendantConceptId = exposuresOfInterest$conceptId)
+    for (i in 1:nrow(procedures)) {
+        descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
+        ancestor <- rbind(ancestor, data.frame(ancestorConceptId = procedures$conceptId[i],
+                                               descendantConceptId = descendantConceptIds))
+    }
     sql <- SqlRender::loadRenderTranslateSql("GetFilterConcepts.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
                                              cdm_database_schema = cdmDatabaseSchema,
-                                             exposure_concept_ids = exposureConceptIds)
+                                             exposure_concept_ids = unique(ancestor$descendantConceptId))
     filterConcepts <- DatabaseConnector::querySql(conn, sql)
     colnames(filterConcepts) <- SqlRender::snakeCaseToCamelCase(colnames(filterConcepts))
-    filterConcepts <- merge(filterConcepts, exposureIdToConceptId, by.x = "exposureConceptId", by.y = "conceptId")
-    filterConcepts$exposureConceptId <- NULL
-    saveRDS(filterConcepts, file.path(workFolder, "filterConceps.rds"))
+    filterConcepts <- merge(ancestor, data.frame(descendantConceptId = filterConcepts$conceptId,
+                                                 filterConceptId = filterConcepts$filterConceptId,
+                                                 filterConceptName = filterConcepts$filterConceptName))
+    exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
+    cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
+                                        ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
+    cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
+                                   data.frame(cohortId = exposuresOfInterest$conceptId,
+                                              ancestorConceptId = exposuresOfInterest$conceptId))
 
-    DBI::dbDisconnect(conn)
+    filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
+    counts <- read.csv(file.path(indicationFolder, "exposureCohortCounts.csv"))
+    filterConcepts <- merge(filterConcepts, data.frame(cohortId = counts$cohortDefinitionId,
+                                                       cohortName = counts$cohortName))
+    saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
 }
 
 constructCohortMethodDataObject <- function(targetId,
                                             comparatorId,
                                             targetConceptId,
                                             comparatorConceptId,
-                                            workFolder) {
+                                            outputFolder) {
     # Subsetting cohorts
-    ffbase::load.ffdf(dir = file.path(workFolder, "allCohorts"))
+    ffbase::load.ffdf(dir = file.path(outputFolder, "allCohorts"))
     ff::open.ffdf(cohorts, readonly = TRUE)
     idx <- cohorts$cohortDefinitionId == targetId | cohorts$cohortDefinitionId == comparatorId
     cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
@@ -188,7 +190,7 @@ constructCohortMethodDataObject <- function(targetId,
     attr(cohorts, "metaData") <- metaData
 
     # Subsetting outcomes
-    ffbase::load.ffdf(dir = file.path(workFolder, "allOutcomes"))
+    ffbase::load.ffdf(dir = file.path(outputFolder, "allOutcomes"))
     ff::open.ffdf(outcomes, readonly = TRUE)
     idx <- !is.na(ffbase::ffmatch(outcomes$rowId, ff::as.ff(cohorts$rowId)))
     if (ffbase::any.ff(idx)){
@@ -198,9 +200,9 @@ constructCohortMethodDataObject <- function(targetId,
         outcomes <- outcomes[T == F,]
     }
     # Add injected outcomes
-    ffbase::load.ffdf(dir = file.path(workFolder, "injectedOutcomes"))
+    ffbase::load.ffdf(dir = file.path(outputFolder, "injectedOutcomes"))
     ff::open.ffdf(injectedOutcomes, readonly = TRUE)
-    injectionSummary <- read.csv(file.path(workFolder, "signalInjectionSummary.csv"))
+    injectionSummary <- read.csv(file.path(outputFolder, "signalInjectionSummary.csv"))
     injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetConceptId, comparatorConceptId), ]
     idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
     idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
@@ -219,12 +221,12 @@ constructCohortMethodDataObject <- function(targetId,
     attr(outcomes, "metaData") <- metaData
 
     # Subsetting covariates
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(workFolder, "allCovariates"))
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(outputFolder, "allCovariates"))
     idx <- is.na(ffbase::ffmatch(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId)))
     covariates <- covariateData$covariates[ffbase::ffwhich(idx, idx == FALSE), ]
 
     # Filtering covariates
-    filterConcepts <- readRDS(file.path(workFolder, "filterConceps.rds"))
+    filterConcepts <- readRDS(file.path(outputFolder, "filterConceps.rds"))
     filterConcepts <- filterConcepts[filterConcepts$exposureId %in% c(targetId, comparatorId),]
     filterConceptIds <- unique(filterConcepts$filterConceptId)
     idx <- is.na(ffbase::ffmatch(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds)))
@@ -249,27 +251,27 @@ constructCohortMethodDataObject <- function(targetId,
 #' This function constructs all cohortMethodData objects using the data
 #' fetched earlier using the \code{\link{fetchAllDataFromServer}} function.
 #'
-#' @param workFolder           Name of local folder to place results; make sure to use forward slashes
+#' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #'
 #' @export
-generateAllCohortMethodDataObjects <- function(workFolder) {
+generateAllCohortMethodDataObjects <- function(outputFolder) {
     writeLines("Constructing cohortMethodData objects")
     start <- Sys.time()
-    exposureSummary <- read.csv(file.path(workFolder, "exposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(outputFolder, "exposureSummaryFilteredBySize.csv"))
     pb <- txtProgressBar(style = 3)
     for (i in 1:nrow(exposureSummary)) {
         targetId <- exposureSummary$tprimeCohortDefinitionId[i]
         comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
         targetConceptId <- exposureSummary$tCohortDefinitionId[i]
         comparatorConceptId <- exposureSummary$cCohortDefinitionId[i]
-        folderName <- file.path(workFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        folderName <- file.path(outputFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
         if (!file.exists(folderName)) {
             cmData <- constructCohortMethodDataObject(targetId = targetId,
                                                       comparatorId = comparatorId,
                                                       targetConceptId = targetConceptId,
                                                       comparatorConceptId = comparatorConceptId,
-                                                      workFolder = workFolder)
+                                                      outputFolder = outputFolder)
             CohortMethod::saveCohortMethodData(cmData, folderName)
         }
         setTxtProgressBar(pb, i/nrow(exposureSummary))

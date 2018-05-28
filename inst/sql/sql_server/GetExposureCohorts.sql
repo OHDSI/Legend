@@ -1,3 +1,23 @@
+/************************************************************************
+Copyright 2018 Observational Health Data Sciences and Informatics
+
+This file is part of Legend
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+************************************************************************/
+{DEFAULT @cohort_database_schema = 'scratch.dbo'}
+{DEFAULT @paired_cohort_table = 'cohort'}
+
 SELECT row_id,
 	e1.subject_id,
     e1.cohort_definition_id,
@@ -5,7 +25,7 @@ SELECT row_id,
 	DATEDIFF(DAY, observation_period_start_date, e1.cohort_start_date) AS days_from_obs_start,
 	DATEDIFF(DAY, e1.cohort_start_date, e1.cohort_end_date) AS days_to_cohort_end,
 	DATEDIFF(DAY, e1.cohort_start_date, observation_period_end_date) AS days_to_obs_end
-FROM @target_database_schema.@target_cohort_table e1
+FROM @cohort_database_schema.@paired_cohort_table e1
 INNER JOIN #exposure_cohorts e2
 ON e1.subject_id = e2.subject_id
 AND e1.cohort_start_date = e2.cohort_start_date

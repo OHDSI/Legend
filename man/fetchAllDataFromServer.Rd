@@ -4,8 +4,9 @@
 \alias{fetchAllDataFromServer}
 \title{Fetch all data on the cohorts for analysis}
 \usage{
-fetchAllDataFromServer(connectionDetails, cdmDatabaseSchema, workDatabaseSchema,
-  studyCohortTable = "ohdsi_cohorts", oracleTempSchema, workFolder)
+fetchAllDataFromServer(connectionDetails, cdmDatabaseSchema,
+  cohortDatabaseSchema, tablePrefix = "legend", indication = "Depression",
+  oracleTempSchema, outputFolder)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -16,17 +17,17 @@ DatabaseConnector package.}
 Note that for SQL Server, this should include both the database and
 schema name, for example 'cdm_data.dbo'.}
 
+\item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
+priviliges for storing temporary tables.}
+
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
+(/)}
+
 \item{workDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
 write priviliges in this schema. Note that for SQL Server, this should
 include both the database and schema name, for example 'cdm_data.dbo'.}
 
 \item{studyCohortTable}{The name of the study cohort table  in the work database schema.}
-
-\item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
-priviliges for storing temporary tables.}
-
-\item{workFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
 
 \item{exposureCohortSummaryTable}{The name of the exposure summary table in the work database schema.}
 }

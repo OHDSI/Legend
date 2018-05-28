@@ -214,8 +214,8 @@ FROM (
 	LEFT JOIN #exposures subsequent_exposure
 		ON overlapping_eras.subject_id = subsequent_exposure.person_id
 			AND overlapping_eras.first_exposure_id = subsequent_exposure.concept_id
-			AND overlapping_eras.cohort_start_date < subsequent_exposure.exposure_start_date
-			AND overlapping_eras.cohort_end_date > subsequent_exposure.exposure_start_date
+			AND overlapping_eras.cohort_start_date <= subsequent_exposure.exposure_start_date
+			AND overlapping_eras.cohort_end_date >= subsequent_exposure.exposure_start_date
 	WHERE simultaneous = 1
 		OR subsequent_exposure.person_id IS NOT NULL
 	GROUP BY overlapping_eras.subject_id,
@@ -256,7 +256,7 @@ FROM (
 		cohort_end_date
 	FROM #new_users_combi
 
-) temp;
+) tmp;
 
 -- Cleanup
 TRUNCATE TABLE #exposures;
