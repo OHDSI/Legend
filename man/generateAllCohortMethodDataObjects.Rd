@@ -4,7 +4,7 @@
 \alias{generateAllCohortMethodDataObjects}
 \title{Construct all cohortMethodData object}
 \usage{
-generateAllCohortMethodDataObjects(outputFolder)
+generateAllCohortMethodDataObjects(outputFolder, indication = "Depression")
 }
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes

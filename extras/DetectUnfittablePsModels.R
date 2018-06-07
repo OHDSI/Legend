@@ -1,3 +1,20 @@
+library(CohortMethod)
+
+indicationFolder <- file.path(outputFolder, indication)
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+row <- outcomeModelReference[outcomeModelReference$targetId == 7100625580 & outcomeModelReference$comparatorId == 43279415580 & outcomeModelReference$analysisId == 1, ][1, ]
+row <- outcomeModelReference[outcomeModelReference$targetId == 7391385651 & outcomeModelReference$comparatorId == 7436705651 & outcomeModelReference$analysisId == 1, ][1, ]
+
+
+ps <- readRDS(row$sharedPsFile)
+plotPs(ps)
+m <- attr(ps, "metaData")
+m$psHighCorrelation
+cmData <- loadCohortMethodData(row$cohortMethodDataFolder)
+model <- getPsModel(ps, cmData)
+
+
 # This code is used to find propensity models that are unfittable and currently take days to (try to) fit
 
 
@@ -76,7 +93,9 @@ workFolder <- "r:/PopEstDepression_Ccae"
 
 
 
-cmData <- CohortMethod::loadCohortMethodData("r:/PopEstDepression_Ccae/cmOutput/CmData_l1_t755695129_c4327941129")
+
+
+cmData <- CohortMethod::loadCohortMethodData("r:/PopEstDepression_Ccae/cmOutput/CmData_l1_t7100625580_c43279415580")
 studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
                                                 firstExposureOnly = FALSE,
                                                 washoutPeriod = 0,

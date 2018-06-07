@@ -39,12 +39,12 @@
 #'
 #' @export
 createOutcomeCohorts <- function(connectionDetails,
-                                  cdmDatabaseSchema,
-                                  cohortDatabaseSchema,
-                                  tablePrefix = "legend",
-                                  indication = "Depression",
-                                  oracleTempSchema,
-                                  outputFolder) {
+                                 cdmDatabaseSchema,
+                                 cohortDatabaseSchema,
+                                 tablePrefix = "legend",
+                                 indication = "Depression",
+                                 oracleTempSchema,
+                                 outputFolder) {
     OhdsiRTools::logInfo("Creating outcome cohorts for indication: ", indication)
 
     indicationFolder <- file.path(outputFolder, indication)

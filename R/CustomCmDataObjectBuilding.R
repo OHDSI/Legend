@@ -25,7 +25,7 @@
 #' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'cdm_data.dbo'.
-#' @param workDatabaseSchema   Schema name where intermediate data can be stored. You will need to have
+#' @param outputFolder         Schema name where intermediate data can be stored. You will need to have
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param studyCohortTable     The name of the study cohort table  in the work database schema.
@@ -166,23 +166,23 @@ constructCohortMethodDataObject <- function(targetId,
                                             comparatorId,
                                             targetConceptId,
                                             comparatorConceptId,
-                                            outputFolder) {
+                                            indicationFolder) {
     # Subsetting cohorts
-    ffbase::load.ffdf(dir = file.path(outputFolder, "allCohorts"))
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
     ff::open.ffdf(cohorts, readonly = TRUE)
     idx <- cohorts$cohortDefinitionId == targetId | cohorts$cohortDefinitionId == comparatorId
     cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
     cohorts$treatment <- 0
     cohorts$treatment[cohorts$cohortDefinitionId == targetId] <- 1
     cohorts$cohortDefinitionId <- NULL
-    treatedPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
+    targetPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
     comparatorPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 0]))
-    treatedExposures <- length(cohorts$subjectId[cohorts$treatment == 1])
+    targetExposures <- length(cohorts$subjectId[cohorts$treatment == 1])
     comparatorExposures <- length(cohorts$subjectId[cohorts$treatment == 0])
     counts <- data.frame(description = "Starting cohorts",
-                         treatedPersons = treatedPersons,
+                         targetPersons = targetPersons,
                          comparatorPersons = comparatorPersons,
-                         treatedExposures = treatedExposures,
+                         targetExposures = targetExposures,
                          comparatorExposures = comparatorExposures)
     metaData <- list(targetId = targetId,
                      comparatorId = comparatorId,
@@ -190,7 +190,7 @@ constructCohortMethodDataObject <- function(targetId,
     attr(cohorts, "metaData") <- metaData
 
     # Subsetting outcomes
-    ffbase::load.ffdf(dir = file.path(outputFolder, "allOutcomes"))
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes"))
     ff::open.ffdf(outcomes, readonly = TRUE)
     idx <- !is.na(ffbase::ffmatch(outcomes$rowId, ff::as.ff(cohorts$rowId)))
     if (ffbase::any.ff(idx)){
@@ -200,9 +200,9 @@ constructCohortMethodDataObject <- function(targetId,
         outcomes <- outcomes[T == F,]
     }
     # Add injected outcomes
-    ffbase::load.ffdf(dir = file.path(outputFolder, "injectedOutcomes"))
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes"))
     ff::open.ffdf(injectedOutcomes, readonly = TRUE)
-    injectionSummary <- read.csv(file.path(outputFolder, "signalInjectionSummary.csv"))
+    injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
     injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetConceptId, comparatorConceptId), ]
     idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
     idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
@@ -221,13 +221,13 @@ constructCohortMethodDataObject <- function(targetId,
     attr(outcomes, "metaData") <- metaData
 
     # Subsetting covariates
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(outputFolder, "allCovariates"))
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
     idx <- is.na(ffbase::ffmatch(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId)))
     covariates <- covariateData$covariates[ffbase::ffwhich(idx, idx == FALSE), ]
 
     # Filtering covariates
-    filterConcepts <- readRDS(file.path(outputFolder, "filterConceps.rds"))
-    filterConcepts <- filterConcepts[filterConcepts$exposureId %in% c(targetId, comparatorId),]
+    filterConcepts <- readRDS(file.path(indicationFolder, "filterConceps.rds"))
+    filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetConceptId, comparatorConceptId),]
     filterConceptIds <- unique(filterConcepts$filterConceptId)
     idx <- is.na(ffbase::ffmatch(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds)))
     covariateRef <- covariateData$covariateRef[ffbase::ffwhich(idx, idx == TRUE), ]
@@ -239,6 +239,7 @@ constructCohortMethodDataObject <- function(targetId,
                    outcomes = outcomes,
                    covariates = covariates,
                    covariateRef = covariateRef,
+                   analysisRef = ff::clone.ffdf(covariateData$analysisRef),
                    metaData = covariateData$metaData)
 
     class(result) <- "cohortMethodData"
@@ -255,28 +256,29 @@ constructCohortMethodDataObject <- function(targetId,
 #'                             (/)
 #'
 #' @export
-generateAllCohortMethodDataObjects <- function(outputFolder) {
-    writeLines("Constructing cohortMethodData objects")
+generateAllCohortMethodDataObjects <- function(outputFolder, indication = "Depression") {
+    OhdsiRTools::logInfo("Constructing CohortMethodData objects")
+    indicationFolder <- file.path(outputFolder, indication)
     start <- Sys.time()
-    exposureSummary <- read.csv(file.path(outputFolder, "exposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pb <- txtProgressBar(style = 3)
     for (i in 1:nrow(exposureSummary)) {
         targetId <- exposureSummary$tprimeCohortDefinitionId[i]
         comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
         targetConceptId <- exposureSummary$tCohortDefinitionId[i]
         comparatorConceptId <- exposureSummary$cCohortDefinitionId[i]
-        folderName <- file.path(outputFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
         if (!file.exists(folderName)) {
             cmData <- constructCohortMethodDataObject(targetId = targetId,
                                                       comparatorId = comparatorId,
                                                       targetConceptId = targetConceptId,
                                                       comparatorConceptId = comparatorConceptId,
-                                                      outputFolder = outputFolder)
+                                                      indicationFolder = indicationFolder)
             CohortMethod::saveCohortMethodData(cmData, folderName)
         }
         setTxtProgressBar(pb, i/nrow(exposureSummary))
     }
     close(pb)
     delta <- Sys.time() - start
-    writeLines(paste("Generating all CohortMethodData objects took", signif(delta, 3), attr(delta, "units")))
+    OhdsiRTools::logInfo(paste("Generating all CohortMethodData objects took", signif(delta, 3), attr(delta, "units")))
 }

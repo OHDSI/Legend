@@ -18,7 +18,7 @@ estimates <- analysesSum[analysesSum$targetId == treatmentId & analysesSum$compa
 calibrated <- read.csv(file.path(workFolder, "calibratedEstimates.csv"))
 
 ########################################################################### Get PS plot #
-psFile <- outcomeModelReference$sharedPsFile[outcomeModelReference$analysisId == 3 & outcomeModelReference$targetId ==
+psFile <- outcomeModelReference$sharedPsFile[outcomeModelReference$analysisId == 1 & outcomeModelReference$targetId ==
   treatmentId & outcomeModelReference$comparatorId == comparatorId][1]
 ps <- readRDS(psFile)
 fileName <- file.path(symposiumFolder, "Ps.png")
@@ -436,15 +436,16 @@ for (i in 1:length(rnd)) {
                    paste0("All_example", i, ".png")), width = 8, height = 5, dpi = 500)
 }
 
-########################################################################### Overview of PS plots #
-exposureSummary <- read.csv(file.path(workFolder, "exposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(workFolder, "cmOutput", "outcomeModelReference.rds"))
+# Overview of PS plots --------------------------------------------------------------------------------------
+indicationFolder <- file.path(outputFolder, indication)
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
 datas <- list()
 for (i in 1:nrow(exposureSummary)) {
   treatmentId <- exposureSummary$tprimeCohortDefinitionId[i]
   comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
   psFileName <- outcomeModelReference$sharedPsFile[outcomeModelReference$targetId == treatmentId &
-    outcomeModelReference$comparatorId == comparatorId & outcomeModelReference$analysisId == 3][1]
+    outcomeModelReference$comparatorId == comparatorId & outcomeModelReference$analysisId == 1][1]
   ps <- readRDS(psFileName)
   if (min(ps$propensityScore) < max(ps$propensityScore)) {
     ps <- CohortMethod:::computePreferenceScore(ps)
@@ -455,19 +456,19 @@ for (i in 1:nrow(exposureSummary)) {
     d <- data.frame(x = c(d1$x, d0$x), y = c(d1$y, d0$y), treatment = c(rep(1, length(d1$x)),
                                                                         rep(0, length(d0$x))))
     d$y <- d$y/max(d$y)
-    d$treatmentName <- exposureSummary$tCohortDefinitionName[i]
-    d$comparatorName <- exposureSummary$cCohortDefinitionName[i]
+    d$treatmentName <- exposureSummary$tName[i]
+    d$comparatorName <- exposureSummary$cName[i]
     datas[[length(datas) + 1]] <- d
 
     d$x <- 1 - d$x
     d$treatment <- 1 - d$treatment
-    d$treatmentName <- exposureSummary$cCohortDefinitionName[i]
-    d$comparatorName <- exposureSummary$tCohortDefinitionName[i]
+    d$treatmentName <- exposureSummary$cName[i]
+    d$comparatorName <- exposureSummary$tName[i]
     datas[[length(datas) + 1]] <- d
   }
 }
 data <- do.call("rbind", datas)
-saveRDS(data, file.path(symposiumFolder, "ps.rds"))
+saveRDS(data, file.path(indicationFolder, "ps.rds"))
 # data <- ps
 data$GROUP <- "Target"
 data$GROUP[data$treatment == 0] <- "Comparator"
@@ -477,8 +478,25 @@ ggplot(data, aes(x = x,
                  y = y,
                  color = GROUP,
                  group = GROUP,
-                 fill = GROUP)) + geom_density(stat = "identity") + scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) + scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) + scale_x_continuous("Preference score", limits = c(0, 1)) + scale_y_continuous("Density") + facet_grid(treatmentName ~ comparatorName) + theme(legend.title = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), strip.text.y = element_text(size = 8, angle = 0), panel.margin = unit(0.1, "lines"), legend.position = "none")
-ggsave(filename = file.path(symposiumFolder, "allPs.png"), width = 15, height = 9, dpi = 300)
+                 fill = GROUP)) +
+    geom_density(stat = "identity") +
+    scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    scale_x_continuous("Preference score", limits = c(0, 1)) + scale_y_continuous("Density") +
+    facet_grid(treatmentName ~ comparatorName) +
+    theme(legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          strip.text.y = element_text(size = 8, angle = 0),
+          panel.spacing = unit(0.1, "lines"),
+          legend.position = "none")
+ggsave(filename = file.path(indicationFolder, "allPs.png"), width = 15, height = 9, dpi = 300)
 
 
 

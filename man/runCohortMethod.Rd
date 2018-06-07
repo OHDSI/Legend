@@ -4,14 +4,14 @@
 \alias{runCohortMethod}
 \title{Run the cohort method package}
 \usage{
-runCohortMethod(workFolder, maxCores = 4)
+runCohortMethod(outputFolder, indication = "Depression", maxCores = 4)
 }
 \arguments{
-\item{workFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
-
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
+
+\item{indicationFolder}{Name of local folder to place results; make sure to use forward slashes
+(/)}
 }
 \description{
 Run the cohort method package

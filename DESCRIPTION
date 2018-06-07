@@ -14,7 +14,8 @@ Imports:
     ffbase,
 	SqlRender,
     FeatureExtraction,
-    CohortMethod,
+    CohortMethod (>= 3.0.0),
+    IcTemporalPatternDiscovery,
     EmpiricalCalibration,
 	MethodEvaluation,
     OhdsiSharing

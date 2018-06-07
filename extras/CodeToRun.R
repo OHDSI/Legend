@@ -105,14 +105,24 @@ fetchAllDataFromServer(connectionDetails = connectionDetails,
                        indication = indication,
                        outputFolder = outputFolder)
 
-OhdsiRTools::runAndNotify({
-    injectSignals(connectionDetails = connectionDetails,
-                  cdmDatabaseSchema = cdmDatabaseSchema,
-                  cohortDatabaseSchema = cohortDatabaseSchema,
-                  studyCohortTable = studyCohortTable,
-                  oracleTempSchema = oracleTempSchema,
-                  outputFolder = outputFolder,
-                  maxCores = maxCores)
+injectSignals(connectionDetails = connectionDetails,
+              cdmDatabaseSchema = cdmDatabaseSchema,
+              oracleTempSchema = oracleTempSchema,
+              cohortDatabaseSchema = cohortDatabaseSchema,
+              tablePrefix = tablePrefix,
+              indication = indication,
+              outputFolder = outputFolder,
+              maxCores = maxCores)
 
+generateAllCohortMethodDataObjects(outputFolder = outputFolder,
+                                   indication = indication)
+
+
+
+
+OhdsiRTools::runAndNotify({
+    runCohortMethod(outputFolder = outputFolder,
+                    indication = indication,
+                    maxCores = maxCores)
 
 },  mailSettings = mailSettings, label = "Legend")

@@ -63,6 +63,9 @@ execute <- function(connectionDetails,
                     injectSignals = TRUE,
                     generateAllCohortMethodDataObjects = TRUE,
                     runCohortMethod = TRUE) {
+    indicationFolder <- file.path(outputFolder, indication)
+    OhdsiRTools::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
+
     if (createExposureCohorts) {
         createExposureCohorts(connectionDetails = connectionDetails,
                               cdmDatabaseSchema = cdmDatabaseSchema,
@@ -96,16 +99,20 @@ execute <- function(connectionDetails,
     if (injectSignals) {
         injectSignals(connectionDetails = connectionDetails,
                       cdmDatabaseSchema = cdmDatabaseSchema,
-                      cohortDatabaseSchema = cohortDatabaseSchema,
-                      studyCohortTable = studyCohortTable,
                       oracleTempSchema = oracleTempSchema,
+                      cohortDatabaseSchema = cohortDatabaseSchema,
+                      tablePrefix = tablePrefix,
+                      indication = indication,
                       outputFolder = outputFolder,
                       maxCores = maxCores)
     }
     if (generateAllCohortMethodDataObjects) {
-        generateAllCohortMethodDataObjects(outputFolder)
+        generateAllCohortMethodDataObjects(outputFolder = outputFolder,
+                                           indication = indication)
     }
     if (runCohortMethod) {
-        runCohortMethod(outputFolder, maxCores = maxCores)
+        runCohortMethod(outputFolder,
+                        indication = indication,
+                        maxCores = maxCores)
     }
 }
