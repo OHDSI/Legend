@@ -16,7 +16,6 @@
 
 library(Legend)
 options(fftempdir = "r:/fftemp")
-# options('fftempdir' = 'S:/fftemp')
 maxCores <- 30
 studyFolder <- "r:/Legend"
 dbms <- "pdw"

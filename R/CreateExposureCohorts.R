@@ -141,19 +141,6 @@ createExposureCohorts <- function(connectionDetails,
                                              washout_period = 365)
     DatabaseConnector::executeSql(conn, sql)
 
-    # Drop temp tables -----------------------------------------------------------------------
-    sql <- "TRUNCATE TABLE #procedure_ancestor; DROP TABLE #procedure_ancestor;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-
-    sql <- "TRUNCATE TABLE #exposure_combi; DROP TABLE #exposure_combi;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-
-    sql <- "TRUNCATE TABLE #nesting_cohort; DROP TABLE #nesting_cohort;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-
     # Count cohorts --------------------------------------------------------------------------------
     OhdsiRTools::logInfo("Counting exposure cohorts")
     sql <- "SELECT cohort_definition_id, COUNT(*) AS count FROM @cohort_database_schema.@cohort_table GROUP BY cohort_definition_id"
@@ -179,6 +166,7 @@ createExposureCohorts <- function(connectionDetails,
                                              cdm_database_schema = cdmDatabaseSchema,
                                              cohort_database_schema = cohortDatabaseSchema,
                                              exposure_cohort_table = exposureCohortTable,
+                                             exposure_combi_table = "#exposure_combi",
                                              paired_cohort_table = pairedCohortTable,
                                              paired_cohort_summary_table = pairedCohortSummaryTable)
     DatabaseConnector::executeSql(conn, sql)
@@ -195,4 +183,17 @@ createExposureCohorts <- function(connectionDetails,
     pairedExposureSummary <- merge(pairedExposureSummary, data.frame(cCohortDefinitionId = counts$cohortDefinitionId,
                                                                      cName = counts$cohortName))
     write.csv(pairedExposureSummary, file.path(indicationFolder, "pairedExposureSummary.csv"), row.names = FALSE)
+
+    # Drop temp tables -----------------------------------------------------------------------
+    sql <- "TRUNCATE TABLE #procedure_ancestor; DROP TABLE #procedure_ancestor;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+    sql <- "TRUNCATE TABLE #exposure_combi; DROP TABLE #exposure_combi;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+    sql <- "TRUNCATE TABLE #nesting_cohort; DROP TABLE #nesting_cohort;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 }

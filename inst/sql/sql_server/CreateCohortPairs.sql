@@ -17,6 +17,7 @@ limitations under the License.
 ************************************************************************/
 {DEFAULT @cdm_database_schema = 'cdm.dbo'}
 {DEFAULT @cohort_database_schema = 'scratch.dbo'}
+{DEFAULT @exposure_combi_table = '#exposure_combi'}
 {DEFAULT @exposure_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_summary_table = 'exposure_cohort_summary'}
@@ -66,10 +67,61 @@ FROM (
 		#ec_summary s2
 	WHERE s1.cohort_definition_id < s2.cohort_definition_id
 	) t1;
+	
+	
+-- Identify single target exposures that are part of comparator combi exposure
+-- Note: this has no effect because target cohort IDs are defined to be lower than 
+-- comparator cohort IDs, and therefore the target will always be the combi. But did
+-- not want to put that explicit requirement in.
+IF OBJECT_ID('tempdb..#target_remove', 'U') IS NOT NULL
+	DROP TABLE #target_remove;
+
+--HINT DISTRIBUTE_ON_KEY(subject_id)
+SELECT cohort_pair.tprime_cohort_definition_id,
+	exposure_cohort_1.subject_id
+INTO #target_remove
+FROM #ec_pairs cohort_pair
+INNER JOIN @exposure_combi_table exposure_combi
+	ON (
+			cohort_pair.t_cohort_definition_id = exposure_combi.exposure_id_1
+			OR cohort_pair.t_cohort_definition_id = exposure_combi.exposure_id_2
+			)
+		AND cohort_pair.c_cohort_definition_id = exposure_combi.cohort_definition_id
+INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_1
+	ON cohort_pair.t_cohort_definition_id = exposure_cohort_1.cohort_definition_id
+INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_2
+	ON cohort_pair.c_cohort_definition_id = exposure_cohort_2.cohort_definition_id
+		AND exposure_cohort_1.subject_id = exposure_cohort_2.subject_id
+		AND exposure_cohort_1.cohort_start_date = exposure_cohort_2.cohort_start_date;
+
+		
+-- Identify single comparator exposures that are part of target combi exposure
+IF OBJECT_ID('tempdb..#comparator_remove', 'U') IS NOT NULL
+	DROP TABLE #comparator_remove;
+	
+--HINT DISTRIBUTE_ON_KEY(subject_id)
+SELECT cohort_pair.cprime_cohort_definition_id,
+	exposure_cohort_1.subject_id
+INTO #comparator_remove
+FROM #ec_pairs cohort_pair
+INNER JOIN @exposure_combi_table exposure_combi
+	ON cohort_pair.t_cohort_definition_id = exposure_combi.cohort_definition_id
+		AND (
+			cohort_pair.c_cohort_definition_id = exposure_combi.exposure_id_1
+			OR cohort_pair.c_cohort_definition_id = exposure_combi.exposure_id_2
+			)
+INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_1
+	ON cohort_pair.t_cohort_definition_id = exposure_cohort_1.cohort_definition_id
+INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_2
+	ON cohort_pair.c_cohort_definition_id = exposure_cohort_2.cohort_definition_id
+	AND exposure_cohort_1.subject_id = exposure_cohort_2.subject_id
+	AND exposure_cohort_1.cohort_start_date = exposure_cohort_2.cohort_start_date;
+	
 
 -- Construct all cohorts as pairs. Store in @cohort_database_schema.@paired_cohort_table
 IF OBJECT_ID('@cohort_database_schema.@paired_cohort_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@paired_cohort_table;
+	
 	
 --HINT DISTRIBUTE_ON_KEY(subject_id)
 SELECT cohort_definition_id,
@@ -78,7 +130,7 @@ SELECT cohort_definition_id,
 	cohort_end_date
 INTO @cohort_database_schema.@paired_cohort_table
 FROM (
-	-- Target filtered to common time
+	-- Target filtered to common time, remove target single exposures that are part of comparator combi exposure
 	SELECT cp1.tprime_cohort_definition_id AS cohort_definition_id,
 		ec1.subject_id,
 		ec1.cohort_start_date,
@@ -88,10 +140,14 @@ FROM (
 		ON cp1.t_cohort_definition_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
+	LEFT JOIN #target_remove tr
+		ON tr.tprime_cohort_definition_id = cp1.tprime_cohort_definition_id
+			AND tr.subject_id = ec1.subject_id
+	WHERE tr.subject_id IS NULL
 	
 	UNION ALL
 	
-	-- Comparator filtered to common time
+	-- Comparator filtered to common time, remove comparator single exposures that are part of target combi exposure
 	SELECT cp1.cprime_cohort_definition_id AS cohort_definition_id,
 		ec1.subject_id,
 		ec1.cohort_start_date,
@@ -101,10 +157,13 @@ FROM (
 		ON cp1.c_cohort_definition_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
-			
+	LEFT JOIN #comparator_remove cr
+		ON cr.cprime_cohort_definition_id = cp1.cprime_cohort_definition_id
+			AND cr.subject_id = ec1.subject_id
+	WHERE cr.subject_id IS NULL
 	) tmp;
 
-
+	
 -- Summarize cohort pairs
 IF OBJECT_ID('tempdb..#ep_cohort_summary', 'U') IS NOT NULL
 	DROP TABLE #ep_cohort_summary;
@@ -157,3 +216,9 @@ DROP TABLE #ec_pairs;
 
 TRUNCATE TABLE #ep_cohort_summary;
 DROP TABLE #ep_cohort_summary;
+
+TRUNCATE TABLE #target_remove;
+DROP TABLE #target_remove;
+
+TRUNCATE TABLE #comparator_remove;
+DROP TABLE #comparator_remove;
