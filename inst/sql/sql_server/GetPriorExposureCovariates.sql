@@ -16,14 +16,14 @@ limitations under the License.
 SELECT row_id,
 	CASE 
 		WHEN distinct_count = 1
-			THEN CAST(1999 AS BIGINT)
+			THEN CAST(1000 + @analysis_id AS BIGINT)
 		WHEN distinct_count = 2
-			THEN CAST(2999 AS BIGINT)
+			THEN CAST(2000 + @analysis_id AS BIGINT)
 		WHEN distinct_count = 3
-			THEN CAST(3999 AS BIGINT)
+			THEN CAST(3000 + @analysis_id AS BIGINT)
 		WHEN distinct_count = 4
-			THEN CAST(4999 AS BIGINT)
-		ELSE CAST(5999 AS BIGINT)
+			THEN CAST(4000 + @analysis_id AS BIGINT)
+		ELSE CAST(5000 + @analysis_id AS BIGINT)
 		END AS covariate_id,
 	1 AS covariate_value
 FROM (

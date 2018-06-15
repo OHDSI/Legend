@@ -85,6 +85,9 @@ createExposureCohorts(connectionDetails = connectionDetails,
                       oracleTempSchema = oracleTempSchema,
                       outputFolder = outputFolder)
 
+filterByExposureCohortsSize(outputFolder = outputFolder,
+                            indication = indication)
+
 createOutcomeCohorts(connectionDetails = connectionDetails,
                      cdmDatabaseSchema = cdmDatabaseSchema,
                      cohortDatabaseSchema = cohortDatabaseSchema,
@@ -93,9 +96,6 @@ createOutcomeCohorts(connectionDetails = connectionDetails,
                      oracleTempSchema = oracleTempSchema,
                      outputFolder = outputFolder)
 
-filterByExposureCohortsSize(outputFolder = outputFolder,
-                            indication = indication)
-
 fetchAllDataFromServer(connectionDetails = connectionDetails,
                        cdmDatabaseSchema = cdmDatabaseSchema,
                        oracleTempSchema = oracleTempSchema,
@@ -103,6 +103,8 @@ fetchAllDataFromServer(connectionDetails = connectionDetails,
                        tablePrefix = tablePrefix,
                        indication = indication,
                        outputFolder = outputFolder)
+
+
 
 injectSignals(connectionDetails = connectionDetails,
               cdmDatabaseSchema = cdmDatabaseSchema,
@@ -115,10 +117,6 @@ injectSignals(connectionDetails = connectionDetails,
 
 generateAllCohortMethodDataObjects(outputFolder = outputFolder,
                                    indication = indication)
-
-
-
-
 OhdsiRTools::runAndNotify({
     runCohortMethod(outputFolder = outputFolder,
                     indication = indication,

@@ -5,7 +5,8 @@
 \title{Create settings for adding prior exposures as covariates}
 \usage{
 createPriorExposureCovariateSettings(cohortDatabaseSchema = "unknown",
-  exposureEraTable = "unknown", windowStart = -999, windowEnd = -1)
+  exposureEraTable = "unknown", windowStart = -999, windowEnd = -1,
+  analysisId = 999)
 }
 \arguments{
 \item{cohortDatabaseSchema}{The name of the database schema that is the location
@@ -19,6 +20,8 @@ relative to the index date (0 = index date).}
 
 \item{windowEnd}{End day of the window where covariates are captured,
 relative to the index date (0 = index date).}
+
+\item{analysisId}{A unique identifier for this analysis.}
 }
 \value{
 A covariateSettings object.

@@ -78,12 +78,18 @@ fetchAllDataFromServer <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     # Construct covariates ---------------------------------------------------------------------
-    defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
-
+    pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
+    indications <- read.csv(pathToCsv)
+    filterConceptIds <- as.character(indications$filterConceptIds[indications$indication == indication])
+    filterConceptIds <- as.numeric(strsplit(filterConceptIds, split = ";")[[1]])
+    defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings(excludedCovariateConceptIds = filterConceptIds,
+                                                                                  addDescendantsToExclude = TRUE)
     exposureEraTable <- paste(tablePrefix, tolower(indication), "exp_era", sep = "_")
     priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
                                                                            exposureEraTable = exposureEraTable)
-    covariateSettings <- list(priorExposureCovariateSettings, defaultCovariateSettings)
+    subgroupCovariateSettings <- createSubgroupCovariateSettings()
+    covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
+    # covariateSettings <- list(priorExposureCovariateSettings, defaultCovariateSettings)
     covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
                                                         oracleTempSchema = oracleTempSchema,
                                                         cdmDatabaseSchema = cdmDatabaseSchema,

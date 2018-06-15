@@ -43,9 +43,35 @@ computeIncidenceRates <- function(connectionDetails,
                                   indication = "Depression",
                                   oracleTempSchema,
                                   outputFolder) {
-    OhdsiRTools::logInfo("Fetching chronograph data from the server")
+    OhdsiRTools::logInfo("Computing incidence rates based on extracted data")
     indicationFolder <- file.path(outputFolder, indication)
-    # Todo : fetch incidence rate data from CohortMethod data files
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    ffbase::load.ffdf(file.path(indicationFolder, "allCohorts")) # Loads cohorts ffdf
+    ffbase::load.ffdf(file.path(indicationFolder, "allOutcomes")) # Loads outcomes ffdf
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
+    ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
+    covSubset <- ff::as.ram(covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ])
+
+    cohortIds <- unique(c(exposureSummary$tCohortDefinitionId, exposureSummary$cCohortDefinitionId))
+    for (cohortId in cohortIds) {
+        minDate <- min(c(as.Date(as.character(exposureSummary$tprimeMinCohortDate[exposureSummary$tCohortDefinitionId == cohortId])),
+                         as.Date(as.character(exposureSummary$cprimeMinCohortDate[exposureSummary$cCohortDefinitionId == cohortId]))))
+        maxDate <- min(c(as.Date(as.character(exposureSummary$tprimeMaxCohortDate[exposureSummary$tCohortDefinitionId == cohortId])),
+                         as.Date(as.character(exposureSummary$cprimeMaxCohortDate[exposureSummary$cCohortDefinitionId == cohortId]))))
+
+        # Find all unique rowIds for this exposure cohort (across all comparisons)
+        exposureIds <- unique(c(exposureSummary$tprimeCohortDefinitionId[exposureSummary$tCohortDefinitionId == cohortId],
+                                exposureSummary$cprimeCohortDefinitionId[exposureSummary$cCohortDefinitionId == cohortId]))
+        subsetRowIds <- cohorts$rowId[ffbase::`%in%`(cohorts$cohortDefinitionId, ff::as.ff(exposureIds))]
+        subsetRowIds <- ffbase::unique.ff(subsetRowIds)
+
+        # Subset cohort, outcomes, covariates (for subgroups)
+        subsetCohort <- cohorts[ffbase::ffmatch(subsetRowIds, cohorts$rowId), ]
+        subsetOutcomes <- outcomes[ffbase::`%in%`(outcomes$rowId, subsetRowIds), ]
+        idx <- ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId))
+        idx[idx] <- ffbase::`%in%`(covariates$rowId[idx], subsetRowIds)
+        subsetCovariates <- covariates[idx, ]
 
 
+    }
 }

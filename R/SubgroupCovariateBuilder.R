@@ -15,76 +15,82 @@
 # limitations under the License.
 
 
-#' Create settings for adding prior exposures as covariates
+#' Create settings for adding subgroup markers as covariates
 #'
 #' @details
-#' Counts the number of prior treatments.
+#' Creates a marker covariate for each of the subgroups of interest.
 #'
-#' @param cohortDatabaseSchema  The name of the database schema that is the location
-#'                               where the data used to define the exposure cohorts is
-#'                               available.
-#' @param exposureEraTable       The tablename that contains the exposure eras.
-#' @param windowStart            Start day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
-#' @param windowEnd              End day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
 #' @param analysisId             A unique identifier for this analysis.
 #'
 #' @return
 #' A covariateSettings object.
 #'
 #' @export
-createPriorExposureCovariateSettings <- function(cohortDatabaseSchema = "unknown",
-                                                 exposureEraTable = "unknown",
-                                                 windowStart = -999,
-                                                 windowEnd = -1,
-                                                 analysisId = 999) {
-    covariateSettings <- list(cohortDatabaseSchema = cohortDatabaseSchema,
-                              exposureEraTable = exposureEraTable,
-                              windowStart = windowStart,
+createSubgroupCovariateSettings <- function(windowStart = -365,
+                                            windowEnd = -1,
+                                            analysisId = 998) {
+    covariateSettings <- list(windowStart = windowStart,
                               windowEnd = windowEnd,
                               analysisId = analysisId)
-    attr(covariateSettings, "fun") <- "Legend::getDbPriorExposuresCovariateData"
+    attr(covariateSettings, "fun") <- "Legend::getDbSubgroupCovariateData"
     class(covariateSettings) <- "covariateSettings"
     return(covariateSettings)
 }
 
 #' @export
-getDbPriorExposuresCovariateData <- function(connection,
-                                             oracleTempSchema = NULL,
-                                             cdmDatabaseSchema,
-                                             cohortTable = "#cohort_person",
-                                             cohortId = -1,
-                                             cdmVersion = "5",
-                                             rowIdField = "subject_id",
-                                             covariateSettings,
-                                             aggregated = FALSE) {
+getDbSubgroupCovariateData <- function(connection,
+                                       oracleTempSchema = NULL,
+                                       cdmDatabaseSchema,
+                                       cohortTable = "#cohort_person",
+                                       cohortId = -1,
+                                       cdmVersion = "5",
+                                       rowIdField = "subject_id",
+                                       covariateSettings,
+                                       aggregated = FALSE) {
     if (aggregated)
         stop("Aggregation not supported")
-    writeLines("Creating covariates based on prior exposures")
-    sql <- SqlRender::loadRenderTranslateSql("GetPriorExposureCovariates.sql",
+    writeLines("Creating covariates indicating subgroups of interest")
+    sql <- SqlRender::loadRenderTranslateSql("CreateSubgroups.sql",
                                              packageName = "Legend",
                                              dbms = connection@dbms,
                                              oracleTempSchema = oracleTempSchema,
+                                             cdm_database_schema = cdmDatabaseSchema,
                                              window_start = covariateSettings$windowStart,
                                              window_end = covariateSettings$windowEnd,
                                              analysis_id = covariateSettings$analysisId,
                                              row_id_field = rowIdField,
                                              cohort_temp_table = cohortTable,
-                                             cohort_id = cohortId,
-                                             cohort_database_schema = covariateSettings$cohortDatabaseSchema,
-                                             exposure_era_table = covariateSettings$exposureEraTable)
+                                             cohort_id = cohortId)
+    DatabaseConnector::executeSql(connection, sql)
+
+    sql <- SqlRender::loadRenderTranslateSql("GetSubgroups.sql",
+                                             packageName = "Legend",
+                                             dbms = connection@dbms,
+                                             oracleTempSchema = oracleTempSchema)
     covariates <- DatabaseConnector::querySql.ffdf(connection, sql)
     colnames(covariates) <- SqlRender::snakeCaseToCamelCase(colnames(covariates))
-    covariateRef <- data.frame(covariateId = c(1000, 2000, 3000, 4000, 5000) + covariateSettings$analysisId,
-                               covariateName = paste("Prior treatments:", c("1", "2", "3", "4", "5 or more")),
+
+
+    sql <- SqlRender::loadRenderTranslateSql("DropSubgroupTempTables.sql",
+                                             packageName = "Legend",
+                                             dbms = connection@dbms,
+                                             oracleTempSchema = oracleTempSchema)
+    DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+    covariateRef <- data.frame(covariateId = c(1000, 2000, 3000, 4000, 5000, 6000) + covariateSettings$analysisId,
+                               covariateName = c("Subgroup: Renal impairment",
+                                                 "Subgroup: Hepatic impairment",
+                                                 "Subgroup: Pregnant women",
+                                                 "Subgroup: Children (age < 18)",
+                                                 "Subgroup: Elderly (age >=65)",
+                                                 "Subgroup: Gender = female"),
                                analysisId = as.numeric(covariateSettings$analysisId),
                                conceptId = 0)
     covariateRef <- ff::as.ffdf(covariateRef)
 
     # Construct analysis reference:
     analysisRef <- data.frame(analysisId = as.numeric(covariateSettings$analysisId),
-                              analysisName = "Prior treatment",
+                              analysisName = "Subgroups of interest",
                               domainId = "Cohort",
                               startDay = as.numeric(covariateSettings$windowStart),
                               endDay = as.numeric(covariateSettings$windowEnd),

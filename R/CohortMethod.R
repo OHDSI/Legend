@@ -30,16 +30,14 @@ runCohortMethod <- function(outputFolder, indication = "Depression", maxCores = 
     cmFolder <- file.path(indicationFolder, "cmOutput")
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     createTcos <- function(i, exposureSummary) {
-        # originalTargetId <- exposureSummary$tCohortDefinitionId[i]
-        # originalComparatorId <- exposureSummary$cCohortDefinitionId[i]
         targetId <- exposureSummary$tprimeCohortDefinitionId[i]
         comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
         folderName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
         outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
         tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
-                                                          comparatorId = comparatorId,
-                                                          outcomeIds = outcomeIds)
+                                                            comparatorId = comparatorId,
+                                                            outcomeIds = outcomeIds)
         return(tco)
     }
     tcos <- lapply(1:nrow(exposureSummary), createTcos, exposureSummary)
@@ -86,6 +84,9 @@ runCohortMethod <- function(outputFolder, indication = "Depression", maxCores = 
 #'
 #' @export
 createAnalysesDetails <- function(outputFolder) {
+
+    subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+
     # dummy args, will never be used because data objects have already been created:
     getDbCmDataArgs <- CohortMethod::createGetDbCohortMethodDataArgs(covariateSettings = FeatureExtraction::createCovariateSettings())
 
@@ -95,6 +96,14 @@ createAnalysesDetails <- function(outputFolder) {
                                                                                    riskWindowEnd = 0,
                                                                                    addExposureDaysToEnd = TRUE,
                                                                                    minDaysAtRisk = 1)
+
+    createStudyPopArgsItt <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
+                                                                           removeSubjectsWithPriorOutcome = TRUE,
+                                                                           riskWindowStart = 0,
+                                                                           riskWindowEnd = 9999,
+                                                                           addExposureDaysToEnd = FALSE,
+                                                                           minDaysAtRisk = 1)
+
     createPsArgs <- CohortMethod::createCreatePsArgs(control = Cyclops::createControl(noiseLevel = "silent",
                                                                                       cvType = "auto",
                                                                                       tolerance = 2e-07,
@@ -102,13 +111,17 @@ createAnalysesDetails <- function(outputFolder) {
                                                                                       startingVariance = 0.01,
                                                                                       seed = 123),
                                                      stopOnError = FALSE,
+                                                     excludeCovariateIds = subgroupCovariateIds,
                                                      maxCohortSizeForFitting = 100000)
 
     stratifyByPsArgs <- CohortMethod::createStratifyByPsArgs(numberOfStrata = 10, baseSelection = "all")
 
-    fitOutcomeModelArgs <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
-                                                                   useCovariates = FALSE,
-                                                                   modelType = "cox")
+    fitOutcomeModelArgs1 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
+                                                                    modelType = "cox")
+
+    fitOutcomeModelArgs2 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
+                                                                    modelType = "cox",
+                                                                    interactionCovariateIds = subgroupCovariateIds)
 
     cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
                                                   description = "PS stratification, on-treatment",
@@ -119,14 +132,8 @@ createAnalysesDetails <- function(outputFolder) {
                                                   stratifyByPs =  TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgs)
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
-    createStudyPopArgsItt <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
-                                                                           removeSubjectsWithPriorOutcome = TRUE,
-                                                                           riskWindowStart = 0,
-                                                                           riskWindowEnd = 9999,
-                                                                           addExposureDaysToEnd = FALSE,
-                                                                           minDaysAtRisk = 1)
 
     cmAnalysis2 <- CohortMethod::createCmAnalysis(analysisId = 2,
                                                   description = "PS stratification, intent-to-treat",
@@ -137,9 +144,34 @@ createAnalysesDetails <- function(outputFolder) {
                                                   stratifyByPs =  TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgs)
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
-    cmAnalysisList <- list(cmAnalysis1, cmAnalysis2)
+    cmAnalysis3 <- CohortMethod::createCmAnalysis(analysisId = 3,
+                                                  description = "PS stratification, on-treatment, subgroup interactions",
+                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                  createPs = TRUE,
+                                                  createPsArgs = createPsArgs,
+                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPsArgs = stratifyByPsArgs,
+                                                  fitOutcomeModel = TRUE,
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgs2)
+
+
+    cmAnalysis4 <- CohortMethod::createCmAnalysis(analysisId = 4,
+                                                  description = "PS stratification, intent-to-treat, subgroup interactions",
+                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                  createStudyPopArgs = createStudyPopArgsItt,
+                                                  createPs = TRUE,
+                                                  createPsArgs = createPsArgs,
+                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPsArgs = stratifyByPsArgs,
+                                                  fitOutcomeModel = TRUE,
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgs2)
+
+    cmAnalysisList <- list(cmAnalysis1, cmAnalysis2, cmAnalysis3, cmAnalysis4)
+
+    # cmAnalysisList <- list(cmAnalysis1, cmAnalysis2)
 
     CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisList.txt"))
 }

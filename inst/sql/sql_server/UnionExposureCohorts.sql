@@ -18,6 +18,7 @@ limitations under the License.
 {DEFAULT @cohort_database_schema = 'scratch.dbo'}
 {DEFAULT @paired_cohort_table = 'cohort'}
 
+--HINT DISTRIBUTE_ON_KEY(subject_id)
 SELECT ROW_NUMBER() OVER (
 		ORDER BY subject_id,
 			cohort_start_date
