@@ -43,7 +43,9 @@
 #' @param fetchAllDataFromServer          Fetch all relevant data from the server?
 #' @param injectSignals       Inject signals to create synthetic controls?
 #' @param generateAllCohortMethodDataObjects  Create the cohortMethodData objects from the fetched data and injected signals?
-#' @param runCohortMethod      Run the CohortMethod package to produce the outcome models.
+#' @param runCohortMethod      Run the CohortMethod package to produce the outcome models?
+#' @param computeIncidenceRates Compute incidence rates?
+#' @param fetchChronographData Fetch the data for constructing chronographs?
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -62,7 +64,9 @@ execute <- function(connectionDetails,
                     fetchAllDataFromServer = TRUE,
                     injectSignals = TRUE,
                     generateAllCohortMethodDataObjects = TRUE,
-                    runCohortMethod = TRUE) {
+                    runCohortMethod = TRUE,
+                    computeIncidenceRates = TRUE,
+                    fetchChronographData = TRUE) {
     indicationFolder <- file.path(outputFolder, indication)
     OhdsiRTools::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
 
@@ -111,8 +115,28 @@ execute <- function(connectionDetails,
                                            indication = indication)
     }
     if (runCohortMethod) {
-        runCohortMethod(outputFolder,
+        runCohortMethod(outputFolder = outputFolder,
                         indication = indication,
                         maxCores = maxCores)
     }
+
+    if (computeIncidenceRates) {
+        computeIncidenceRates(outputFolder = outputFolder,
+                              indication = indication)
+    }
+    if (fetchChronographData) {
+        fetchChronographData(connectionDetails = connectionDetails,
+                             cdmDatabaseSchema = cdmDatabaseSchema,
+                             oracleTempSchema = oracleTempSchema,
+                             cohortDatabaseSchema = cohortDatabaseSchema,
+                             tablePrefix = tablePrefix,
+                             indication = indication,
+                             outputFolder = outputFolder)
+    }
+    if (computeCovariateBalance) {
+        computeCovariateBalance(outputFolder = outputFolder,
+                                indication = indication,
+                                maxCores = maxCores)
+    }
+
 }

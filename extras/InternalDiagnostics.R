@@ -296,3 +296,94 @@ data <- plyr::llply(1:nrow(exposureSummary), getModel, exposureSummary = exposur
 data <- do.call("rbind", data)
 write.csv(data, file.path(diagnosticsFolder, "propensityModels.csv"), row.names = FALSE)
 
+
+# Inspect interaction models -------------------------------------------
+indicationFolder <- file.path(outputFolder, indication)
+diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
+if (!file.exists(diagnosticsFolder)) {
+    dir.create(diagnosticsFolder)
+}
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+interactionModels <- outcomeModelReference[outcomeModelReference$analysisId == 3, ]
+# om_t7152601525_c7176081525_o2835
+
+model <- readRDS(file.path(indicationFolder, "cmOutput", "Analysis_3", "om_t7035481505_c7976181505_o2829.rds"))
+summary(model)
+strataPop <- readRDS(file.path(indicationFolder, "cmOutput", "StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds"))
+cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", "CmData_l1_t587129_c1197129"))
+subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+debug(CohortMethod::fitOutcomeModel)
+CohortMethod::fitOutcomeModel(population = strataPop,
+                              cohortMethodData = cmData,
+                              stratified = TRUE,
+                              modelType = "cox",
+                              interactionCovariateIds = subgroupCovariateIds)
+
+files <- list.files(file.path(indicationFolder, "cmOutput", "Analysis_3"))
+sample <- sample(files, 1000)
+sample <- files
+loadInteractionsFromModel <- function(fileName, folder) {
+    model <- readRDS(file.path(folder, fileName))
+    if (is.null(model$outcomeModelInteractionEstimates)) {
+        return(NULL)
+    } else {
+        interactionEstimates <- model$outcomeModelInteractionEstimates
+        interactionEstimates$fileName <- fileName
+        return(interactionEstimates)
+    }
+}
+
+d <- lapply(sample, loadInteractionsFromModel, folder = file.path(indicationFolder, "cmOutput", "Analysis_3"))
+d <- do.call("rbind", d)
+
+sum(is.na(d$seLogRr))
+d <- d[!is.na(d$seLogRr), ]
+library(ggplot2)
+d$Group <- as.factor(d$interactionName)
+d$Significant <- d$logLb95 > 0 | d$logUb95 < 0
+
+
+temp1 <- aggregate(Significant ~ Group, data = d, length)
+temp2 <- aggregate(Significant ~ Group, data = d, mean)
+
+temp1$nLabel <- paste0(formatC(temp1$Significant, big.mark = ","), " estimates")
+temp1$Significant <- NULL
+
+temp2$meanLabel <- paste0(formatC(100 * (1 - temp2$Significant), digits = 1, format = "f"),
+                          "% of CIs includes 1")
+temp2$Significant <- NULL
+dd <- merge(temp1, temp2)
+
+#breaks <- c(0.25, 0.5, 1, 2, 4, 6, 8, 10)
+breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
+theme <- element_text(colour = "#000000", size = 12)
+themeRA <- element_text(colour = "#000000", size = 12, hjust = 1)
+themeLA <- element_text(colour = "#000000", size = 12, hjust = 0)
+
+alpha <- 1 - min(0.95*(nrow(d)/nrow(dd)/50000)^0.1, 0.95)
+plot <- ggplot(d, aes(x = logRr, y = seLogRr), environment = environment()) +
+    geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.025)), colour = rgb(0.8, 0, 0), linetype = "dashed", size = 1, alpha = 0.5, data = dd) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.975)), colour = rgb(0.8, 0, 0), linetype = "dashed", size = 1, alpha = 0.5, data = dd) +
+    geom_point(size = 1, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
+    geom_hline(yintercept = 0) +
+    geom_label(x = log(0.15), y = 0.95, alpha = 1, hjust = "left", aes(label = nLabel), size = 5, data = dd) +
+    geom_label(x = log(0.15), y = 0.8, alpha = 1, hjust = "left", aes(label = meanLabel), size = 5, data = dd) +
+    scale_x_continuous("Hazard ratio ratio", limits = log(c(0.1, 10)), breaks = log(breaks), labels = breaks) +
+    scale_y_continuous("Standard Error", limits = c(0, 1)) +
+    facet_wrap(~ Group) +
+    theme(panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text.y = themeRA,
+          axis.text.x = theme,
+          axis.title = theme,
+          legend.key = element_blank(),
+          strip.text.x = theme,
+          strip.text.y = theme,
+          strip.background = element_blank(),
+          legend.position = "none")
+
+ggsave(plot = plot, filename = file.path(diagnosticsFolder, "Interactions.png"), width = 12, height = 5, dpi = 300)

@@ -36,13 +36,13 @@
 #'                             (/)
 #'
 #' @export
-loadChronographData <- function(connectionDetails,
-                                cdmDatabaseSchema,
-                                cohortDatabaseSchema,
-                                tablePrefix = "legend",
-                                indication = "Depression",
-                                oracleTempSchema,
-                                outputFolder) {
+fetchChronographData <- function(connectionDetails,
+                                 cdmDatabaseSchema,
+                                 cohortDatabaseSchema,
+                                 tablePrefix = "legend",
+                                 indication = "Depression",
+                                 oracleTempSchema,
+                                 outputFolder) {
     OhdsiRTools::logInfo("Fetching chronograph data from the server")
     indicationFolder <- file.path(outputFolder, indication)
     exposureCohortTable <- paste(tablePrefix, tolower(indication), "exp_cohort", sep = "_")
@@ -59,5 +59,5 @@ loadChronographData <- function(connectionDetails,
                                                                       exposureTable = exposureCohortTable,
                                                                       outcomeDatabaseSchema = cohortDatabaseSchema,
                                                                       outcomeTable = outcomeCohortTable)
-    saveRDS(chronographData, file.path(indicationFolder, "chronographData.rds"))
+    write.csv(chronographData, file.path(indicationFolder, "chronographData.csv"), row.names = FALSE)
 }

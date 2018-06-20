@@ -123,3 +123,15 @@ OhdsiRTools::runAndNotify({
                     maxCores = maxCores)
 
 },  mailSettings = mailSettings, label = "Legend")
+
+computeIncidenceRates(outputFolder = outputFolder,
+                      indication = indication)
+
+fetchChronographData(connectionDetails = connectionDetails,
+                     cdmDatabaseSchema = cdmDatabaseSchema,
+                     oracleTempSchema = oracleTempSchema,
+                     cohortDatabaseSchema = cohortDatabaseSchema,
+                     tablePrefix = tablePrefix,
+                     indication = indication,
+                     outputFolder = outputFolder)
+

@@ -19,41 +19,34 @@
 #' @details
 #' Compute incidence rates using the CohortMethod data files.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
 #' @param indication           A string denoting the indication for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #'
 #' @export
-computeIncidenceRates <- function(connectionDetails,
-                                  cdmDatabaseSchema,
-                                  cohortDatabaseSchema,
-                                  tablePrefix = "legend",
-                                  indication = "Depression",
-                                  oracleTempSchema,
+computeIncidenceRates <- function(indication = "Depression",
                                   outputFolder) {
     OhdsiRTools::logInfo("Computing incidence rates based on extracted data")
     indicationFolder <- file.path(outputFolder, indication)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv)
+    cohorts <- NULL
+    outcomes <- NULL
     ffbase::load.ffdf(file.path(indicationFolder, "allCohorts")) # Loads cohorts ffdf
     ffbase::load.ffdf(file.path(indicationFolder, "allOutcomes")) # Loads outcomes ffdf
+    ff::open.ffdf(cohorts, readonly = TRUE)
+    ff::open.ffdf(outcomes, readonly = TRUE)
+    on.exit({
+        ff::close.ffdf(cohorts)
+        ff::close.ffdf(outcomes)
+        })
+    outcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, outcomesOfInterest$cohortId), ]
     covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
     ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
-    covSubset <- ff::as.ram(covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ])
-
+    covSubset <- covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ]
     cohortIds <- unique(c(exposureSummary$tCohortDefinitionId, exposureSummary$cCohortDefinitionId))
-    for (cohortId in cohortIds) {
+    computeCohortIrs <- function(cohortId) {
         minDate <- min(c(as.Date(as.character(exposureSummary$tprimeMinCohortDate[exposureSummary$tCohortDefinitionId == cohortId])),
                          as.Date(as.character(exposureSummary$cprimeMinCohortDate[exposureSummary$cCohortDefinitionId == cohortId]))))
         maxDate <- min(c(as.Date(as.character(exposureSummary$tprimeMaxCohortDate[exposureSummary$tCohortDefinitionId == cohortId])),
@@ -65,13 +58,81 @@ computeIncidenceRates <- function(connectionDetails,
         subsetRowIds <- cohorts$rowId[ffbase::`%in%`(cohorts$cohortDefinitionId, ff::as.ff(exposureIds))]
         subsetRowIds <- ffbase::unique.ff(subsetRowIds)
 
-        # Subset cohort, outcomes, covariates (for subgroups)
-        subsetCohort <- cohorts[ffbase::ffmatch(subsetRowIds, cohorts$rowId), ]
-        subsetOutcomes <- outcomes[ffbase::`%in%`(outcomes$rowId, subsetRowIds), ]
-        idx <- ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId))
-        idx[idx] <- ffbase::`%in%`(covariates$rowId[idx], subsetRowIds)
-        subsetCovariates <- covariates[idx, ]
+        # Subset cohort, outcomes, covariates
+        subsetCohort <- ff::as.ram(cohorts[ffbase::ffmatch(subsetRowIds, cohorts$rowId), ])
+        subsetOutcomes <- ff::as.ram(outcomes[ffbase::`%in%`(outcomes$rowId, subsetRowIds), ])
+        subsetCovariates <- ff::as.ram(covSubset[ffbase::`%in%`(covSubset$rowId, subsetRowIds), ])
 
-
+        # Compute overall and per-subgroup IRs
+        irs <- computeIrs(subsetCohort, subsetOutcomes)
+        irs$subgroupId <- NA
+        subgroupIrs <- lapply(split(subsetCovariates, subsetCovariates$covariateId), computeSubgroupIrs, cohort = subsetCohort, outcomes = subsetOutcomes)
+        irs <- rbind(irs, do.call("rbind", subgroupIrs))
+        irs$minDate <- minDate
+        irs$maxDate <- maxDate
+        irs$cohortId <- cohortId
+        return(irs)
     }
+    allIrs <- plyr::llply(cohortIds, computeCohortIrs, .progress = "text")
+    allIrs <- do.call("rbind", allIrs)
+    write.csv(allIrs, file.path(indicationFolder, "Irs.csv"), row.names = FALSE)
 }
+
+computeSubgroupIrs <- function(cohort, outcomes, subgroupCovs) {
+    subgroupCohort <- cohort[cohort$rowId %in% subgroupCovs$rowId,]
+    subgroupIrs <- computeIrs(subgroupCohort, outcomes)
+    subgroupIrs$subgroupId <- subgroupCovs$covariateId[1]
+    return(subgroupIrs)
+}
+
+
+computeIrs <- function(cohort, outcomes) {
+
+    computeIrForOutcome <- function(outcome, cohort) {
+        priorOutcomeRowIds <- unique(outcome$rowId[outcome$daysToEvent < 0])
+        cohort$priorOutcome <- cohort$rowId %in% priorOutcomeRowIds
+        outcome <- outcome[outcome$daysToEvent >= 0, ]
+        outcome <- outcome[order(outcome$rowId, outcome$daysToEvent), ]
+        firstOutcomePostIndex <- outcome[!duplicated(outcome$rowId), ]
+        m <- merge(cohort, firstOutcomePostIndex, all.x = TRUE)
+        m$eventOnTreatment <- !is.na(m$daysToEvent) & m$daysToEvent <= m$daysToCohortEnd & m$daysToEvent <= m$daysToObsEnd
+        m$eventItt <- !is.na(m$daysToEvent) & m$daysToEvent <= m$daysToObsEnd
+        m$timeItt <- m$daysToObsEnd
+        m$timeItt[!is.na(m$daysToEvent) & (m$daysToEvent < m$timeItt)] <- m$daysToEvent[!is.na(m$daysToEvent) & (m$daysToEvent < m$timeItt)]
+        m$timeOnTreatment <- m$timeItt
+        m$timeOnTreatment[m$daysToCohortEnd < m$timeOnTreatment] <- m$daysToCohortEnd[m$daysToCohortEnd < m$timeOnTreatment]
+        m$dummy <- 1
+        # result <- data.frame(outcomeId = outcome$outcomeId[1],
+        #                      timeAtRisk = c("On treatment", "ITT", "On treatment", "ITT"),
+        #                      allowPriorOutcome = c(TRUE, TRUE, FALSE, FALSE),
+        #                      events = c(sum(m$eventOnTreatment),
+        #                                 sum(m$eventItt),
+        #                                 sum(m$eventOnTreatment[!m$priorOutcome]),
+        #                                 sum(m$eventItt[!m$priorOutcome])),
+        #                      time = c(sum(m$timeOnTreatment),
+        #                               sum(m$timeItt),
+        #                               sum(m$timeOnTreatment[!m$priorOutcome]),
+        #                               sum(m$timeItt[!m$priorOutcome])),
+        #                      persons = c(sum(m$dummy),
+        #                                  sum(m$dummy),
+        #                                  sum(m$dummy[!m$priorOutcome]),
+        #                                  sum(m$dummy[!m$priorOutcome])),
+        #                      stringsAsFactors = FALSE)
+        result <- data.frame(outcomeId = outcome$outcomeId[1],
+                             timeAtRisk = c("On treatment", "ITT"),
+                             events = c(sum(m$eventOnTreatment[!m$priorOutcome]),
+                                        sum(m$eventItt[!m$priorOutcome])),
+                             time = c(sum(m$timeOnTreatment[!m$priorOutcome]),
+                                      sum(m$timeItt[!m$priorOutcome])),
+                             persons = c( sum(m$dummy[!m$priorOutcome]),
+                                         sum(m$dummy[!m$priorOutcome])),
+                             stringsAsFactors = FALSE)
+        result$incidenceRate <- result$events / (result$time / (1000 * 365.25))
+        result$incidenceFraction <- result$events / (result$persons / (1000))
+        return(result)
+    }
+    irs <- lapply(split(outcomes, outcomes$outcomeId), computeIrForOutcome, cohort = cohort)
+    irs <- do.call("rbind", irs)
+    return(irs)
+}
+
