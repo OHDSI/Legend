@@ -106,6 +106,7 @@ injectSignals <- function(connectionDetails,
                                             riskWindowStart = 0,
                                             riskWindowEnd = 99999,
                                             addExposureDaysToEnd = FALSE,
+                                            addIntentToTreat = TRUE,
                                             firstOutcomeOnly = TRUE,
                                             removePeopleWithPriorOutcomes = TRUE,
                                             maxSubjectsForModel = 100000,
@@ -175,7 +176,8 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
 
     # Create exposures file ----------------------------------------------------------
     OhdsiRTools::logTrace("Create exposures file")
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
+    cohorts <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
     exposures <- merge(cohorts, ff::as.ffdf(exposureIdToCohortId))
     cohortIds <- unique(exposureIdToCohortId$cohortId)
     dedupe <- function(cohortId, data) {
@@ -190,10 +192,11 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
 
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
+    colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
     colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1
-    exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "eraNumber")]
+    exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "daysObserved", "eraNumber")]
     saveRDS(exposures, file.path(signalInjectionFolder, "exposures.rds"))
 
     # Create outcomes file ----------------------------------------------------------
@@ -203,22 +206,26 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     negativeControls <- read.csv(pathToCsv)
     negativeControlIds <- negativeControls$conceptId
     negativeControlOutcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, negativeControlIds),]
-    negativeControlOutcomes <- merge(negativeControlOutcomes, ff::as.ffdf(exposures[, c("rowId", "daysAtRisk")]))
+    negativeControlOutcomes <- merge(negativeControlOutcomes, ff::as.ffdf(exposures[, c("rowId", "daysAtRisk", "daysObserved")]))
 
     dedupeAndCount <- function(outcomeId, data) {
         if (!ffbase::any.ff(data$outcomeId == outcomeId)) {
             return(data.frame())
         }
         data <- ff::as.ram(data[data$outcomeId == outcomeId, ])
-        data <- data[data$daysToEvent >= 0 & data$daysToEvent <= data$daysAtRisk, ]
+        # data <- data[data$daysToEvent >= 0 & data$daysToEvent <= data$daysAtRisk, ]
+        data <- data[data$daysToEvent >= 0 & data$daysToEvent <= data$daysObserved, ]
         if (nrow(data) == 0) {
             return(data.frame())
         }
-        y <- aggregate(outcomeId ~ rowId, data, length)
-        colnames(y)[colnames(y) == "outcomeId"] <- "y"
+        data$y <- data$daysToEvent >= 0 & data$daysToEvent <= data$daysAtRisk
+        data$yItt <- 1
+        y <- aggregate(y ~ rowId, data, sum)
+        yItt <- aggregate(yItt ~ rowId, data, sum)
         timeToEvent <- aggregate(daysToEvent ~ rowId, data, min)
         colnames(timeToEvent)[colnames(timeToEvent) == "daysToEvent"] <- "timeToEvent"
         result <- merge(y, timeToEvent)
+        result <- merge(yItt, result)
         result$outcomeId <- outcomeId
         return(result)
     }
