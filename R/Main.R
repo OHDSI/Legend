@@ -41,7 +41,7 @@
 #'                             performance.
 #' @param createCohorts        Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?
 #' @param fetchAllDataFromServer          Fetch all relevant data from the server?
-#' @param injectSignals       Inject signals to create synthetic controls?
+#' @param synthesizePositiveControls       Inject signals to create synthetic controls?
 #' @param generateAllCohortMethodDataObjects  Create the cohortMethodData objects from the fetched data and injected signals?
 #' @param runCohortMethod      Run the CohortMethod package to produce the outcome models?
 #' @param computeIncidenceRates Compute incidence rates?
@@ -62,7 +62,7 @@ execute <- function(connectionDetails,
                     createExposureCohorts = TRUE,
                     createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
-                    injectSignals = TRUE,
+                    synthesizePositiveControls = TRUE,
                     generateAllCohortMethodDataObjects = TRUE,
                     runCohortMethod = TRUE,
                     computeIncidenceRates = TRUE,
@@ -84,12 +84,12 @@ execute <- function(connectionDetails,
     }
     if (createOutcomeCohorts) {
         createOutcomeCohorts(connectionDetails = connectionDetails,
-                              cdmDatabaseSchema = cdmDatabaseSchema,
-                              cohortDatabaseSchema = cohortDatabaseSchema,
-                              tablePrefix = tablePrefix,
-                              indication = indication,
-                              oracleTempSchema = oracleTempSchema,
-                              outputFolder = outputFolder)
+                             cdmDatabaseSchema = cdmDatabaseSchema,
+                             cohortDatabaseSchema = cohortDatabaseSchema,
+                             tablePrefix = tablePrefix,
+                             indication = indication,
+                             oracleTempSchema = oracleTempSchema,
+                             outputFolder = outputFolder)
     }
     if (fetchAllDataFromServer) {
         fetchAllDataFromServer(connectionDetails = connectionDetails,
@@ -100,15 +100,15 @@ execute <- function(connectionDetails,
                                indication = indication,
                                outputFolder = outputFolder)
     }
-    if (injectSignals) {
-        injectSignals(connectionDetails = connectionDetails,
-                      cdmDatabaseSchema = cdmDatabaseSchema,
-                      oracleTempSchema = oracleTempSchema,
-                      cohortDatabaseSchema = cohortDatabaseSchema,
-                      tablePrefix = tablePrefix,
-                      indication = indication,
-                      outputFolder = outputFolder,
-                      maxCores = maxCores)
+    if (synthesizePositiveControls) {
+        synthesizePositiveControls(connectionDetails = connectionDetails,
+                                   cdmDatabaseSchema = cdmDatabaseSchema,
+                                   oracleTempSchema = oracleTempSchema,
+                                   cohortDatabaseSchema = cohortDatabaseSchema,
+                                   tablePrefix = tablePrefix,
+                                   indication = indication,
+                                   outputFolder = outputFolder,
+                                   maxCores = maxCores)
     }
     if (generateAllCohortMethodDataObjects) {
         generateAllCohortMethodDataObjects(outputFolder = outputFolder,

@@ -55,16 +55,23 @@ fetchAllDataFromServer <- function(connectionDetails,
     OhdsiRTools::logInfo("Fetching all data from the server")
     indicationFolder <- file.path(outputFolder, indication)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-    exposureIdToCohortId <- rbind(data.frame(exposureId = exposureSummary$tprimeCohortDefinitionId,
-                                              cohortId = exposureSummary$tCohortDefinitionId),
-                                   data.frame(exposureId = exposureSummary$cprimeCohortDefinitionId,
-                                              cohortId = exposureSummary$cCohortDefinitionId))
-
     counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
     outcomeIds <- counts$cohortDefinitionId
 
     conn <- DatabaseConnector::connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
+
+    # Upload comparisons with enough data ---------------------------------------------------------
+    table <- exposureSummary[, c("targetId", "comparatorId")]
+    colnames(table) <- SqlRender::camelCaseToSnakeCase(colnames(table))
+    DatabaseConnector::insertTable(connection = conn,
+                                   tableName = "#comparisons",
+                                   data = table,
+                                   dropTableIfExists = TRUE,
+                                   createTable = TRUE,
+                                   tempTable = TRUE,
+                                   oracleTempSchema = oracleTempSchema)
+
 
     # Lump persons of interest into one table -----------------------------------------------------
     pairedCohortTable <- paste(tablePrefix, tolower(indication), "pair_cohort", sep = "_")
@@ -73,9 +80,15 @@ fetchAllDataFromServer <- function(connectionDetails,
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
                                              cohort_database_schema = cohortDatabaseSchema,
-                                             paired_cohort_table = pairedCohortTable,
-                                             exposure_ids = exposureIdToCohortId$exposureId)
+                                             paired_cohort_table = pairedCohortTable)
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+
+    # Drop comparisons temp table ----------------------------------------------------------------
+    sql <- "TRUNCATE TABLE #comparisons; DROP TABLE #comparisons;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
 
     # Construct covariates ---------------------------------------------------------------------
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
@@ -89,7 +102,6 @@ fetchAllDataFromServer <- function(connectionDetails,
                                                                            exposureEraTable = exposureEraTable)
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
     covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
-    # covariateSettings <- list(priorExposureCovariateSettings, defaultCovariateSettings)
     covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
                                                         oracleTempSchema = oracleTempSchema,
                                                         cdmDatabaseSchema = cdmDatabaseSchema,
@@ -170,17 +182,18 @@ fetchAllDataFromServer <- function(connectionDetails,
 
 constructCohortMethodDataObject <- function(targetId,
                                             comparatorId,
-                                            targetConceptId,
-                                            comparatorConceptId,
                                             indicationFolder) {
     # Subsetting cohorts
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
+    cohorts <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
     ff::open.ffdf(cohorts, readonly = TRUE)
-    idx <- cohorts$cohortDefinitionId == targetId | cohorts$cohortDefinitionId == comparatorId
+    idx <- cohorts$targetId == targetId & cohorts$comparatorId == comparatorId
     cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
     cohorts$treatment <- 0
     cohorts$treatment[cohorts$cohortDefinitionId == targetId] <- 1
     cohorts$cohortDefinitionId <- NULL
+    cohorts$targetId <- NULL
+    cohorts$comparatorId <- NULL
     targetPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
     comparatorPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 0]))
     targetExposures <- length(cohorts$subjectId[cohorts$treatment == 1])
@@ -196,31 +209,31 @@ constructCohortMethodDataObject <- function(targetId,
     attr(cohorts, "metaData") <- metaData
 
     # Subsetting outcomes
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes"))
+    outcomes <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes")) # Loads outcomes
     ff::open.ffdf(outcomes, readonly = TRUE)
-    idx <- !is.na(ffbase::ffmatch(outcomes$rowId, ff::as.ff(cohorts$rowId)))
-    if (ffbase::any.ff(idx)){
-        outcomes <- ff::as.ram(outcomes[ffbase::ffwhich(idx, idx == TRUE), ])
+    idx <- ffbase::`%in%`(outcomes$rowId, ff::as.ff(cohorts$rowId))
+    if (ffbase::any.ff(idx)) {
+        outcomes <- ff::as.ram(outcomes[idx, ])
     } else {
         outcomes <- as.data.frame(outcomes[1, ])
         outcomes <- outcomes[T == F,]
     }
     # Add injected outcomes
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes"))
+    injectedOutcomes <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes")) # Loads injectedOutcomes
     ff::open.ffdf(injectedOutcomes, readonly = TRUE)
     injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
-    injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetConceptId, comparatorConceptId), ]
+    injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetId, comparatorId), ]
     idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
     idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
     idx <- idx1 & idx2
-    if (ffbase::any.ff(idx)){
+    if (ffbase::any.ff(idx)) {
         injectedOutcomes <- ff::as.ram(injectedOutcomes[idx, ])
         colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
         colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
         injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
         injectedOutcomes$daysToEvent = injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
-        #any(injectedOutcomes$daysToEvent < 0)
-        #min(outcomes$daysToEvent[outcomes$outcomeId == 73008])
         outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
     }
     metaData <- data.frame(outcomeIds = unique(outcomes$outcomeId))
@@ -228,18 +241,18 @@ constructCohortMethodDataObject <- function(targetId,
 
     # Subsetting covariates
     covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
-    idx <- is.na(ffbase::ffmatch(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId)))
-    covariates <- covariateData$covariates[ffbase::ffwhich(idx, idx == FALSE), ]
+    idx <- ffbase::`%in%`(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId))
+    covariates <- covariateData$covariates[idx, ]
 
     # Filtering covariates
     filterConcepts <- readRDS(file.path(indicationFolder, "filterConceps.rds"))
-    filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetConceptId, comparatorConceptId),]
+    filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetId, comparatorId),]
     filterConceptIds <- unique(filterConcepts$filterConceptId)
-    idx <- is.na(ffbase::ffmatch(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds)))
-    covariateRef <- covariateData$covariateRef[ffbase::ffwhich(idx, idx == TRUE), ]
-    filterCovariateIds <- covariateData$covariateRef$covariateId[ffbase::ffwhich(idx, idx == FALSE), ]
-    idx <- is.na(ffbase::ffmatch(covariates$covariateId, filterCovariateIds))
-    covariates <- covariates[ffbase::ffwhich(idx, idx == TRUE), ]
+    idx <- ffbase::`%in%`(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds))
+    covariateRef <- covariateData$covariateRef[!idx, ]
+    filterCovariateIds <- covariateData$covariateRef$covariateId[idx, ]
+    idx <- !ffbase::`%in%`(covariates$covariateId, filterCovariateIds)
+    covariates <- covariates[idx, ]
 
     result <- list(cohorts = cohorts,
                    outcomes = outcomes,
@@ -269,16 +282,12 @@ generateAllCohortMethodDataObjects <- function(outputFolder, indication = "Depre
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pb <- txtProgressBar(style = 3)
     for (i in 1:nrow(exposureSummary)) {
-        targetId <- exposureSummary$tprimeCohortDefinitionId[i]
-        comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
-        targetConceptId <- exposureSummary$tCohortDefinitionId[i]
-        comparatorConceptId <- exposureSummary$cCohortDefinitionId[i]
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
         folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
         if (!file.exists(folderName)) {
             cmData <- constructCohortMethodDataObject(targetId = targetId,
                                                       comparatorId = comparatorId,
-                                                      targetConceptId = targetConceptId,
-                                                      comparatorConceptId = comparatorConceptId,
                                                       indicationFolder = indicationFolder)
             CohortMethod::saveCohortMethodData(cmData, folderName)
         }

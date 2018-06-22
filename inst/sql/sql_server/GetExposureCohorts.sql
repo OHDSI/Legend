@@ -20,7 +20,9 @@ limitations under the License.
 
 SELECT row_id,
 	e1.subject_id,
-    e1.cohort_definition_id,
+	e1.cohort_definition_id,
+	e1.target_id,
+	e1.comparator_id,
 	e1.cohort_start_date,
 	DATEDIFF(DAY, observation_period_start_date, e1.cohort_start_date) AS days_from_obs_start,
 	DATEDIFF(DAY, e1.cohort_start_date, e1.cohort_end_date) AS days_to_cohort_end,

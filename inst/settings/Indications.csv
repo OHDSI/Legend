@@ -1,2 +1,2 @@
-indication,filterConceptIds
-Depression,43527992;900000010
+indication,filterConceptIds,positiveControlIdOffset
+Depression,43527992;900000010,10000

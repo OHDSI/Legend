@@ -68,15 +68,29 @@ createOutcomeCohorts <- function(connectionDetails,
     OhdsiRTools::logInfo("- Creating negative control outcome cohorts")
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
+    negativeControls <- negativeControls[negativeControls$indication == indication, ]
+    negativeControls <- negativeControls[, c("conceptId", "cohortId")]
+    colnames(negativeControls) <- SqlRender::camelCaseToSnakeCase(colnames(negativeControls))
+    DatabaseConnector::insertTable(connection = conn,
+                                   tableName = "#negative_controls",
+                                   data = negativeControls,
+                                   dropTableIfExists = TRUE,
+                                   createTable = TRUE,
+                                   tempTable = TRUE,
+                                   oracleTempSchema = oracleTempSchema)
     sql <- SqlRender::loadRenderTranslateSql("NegativeControls.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,
                                              cdm_database_schema = cdmDatabaseSchema,
                                              target_database_schema = cohortDatabaseSchema,
-                                             target_cohort_table = outcomeCohortTable,
-                                             outcome_ids = negativeControls$conceptId)
+                                             target_cohort_table = outcomeCohortTable)
     DatabaseConnector::executeSql(conn, sql)
+
+    sql <- "TRUNCATE TABLE #negative_controls; DROP TABLE #negative_controls;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
 
     # Count cohorts --------------------------------------------------------------------------------
     OhdsiRTools::logInfo("Counting outcome cohorts")
@@ -93,7 +107,7 @@ createOutcomeCohorts <- function(connectionDetails,
 
     countsOutcomesOfInterest <- merge(counts, data.frame(cohortDefinitionId = outcomesOfInterest$cohortId,
                                                          cohortName = outcomesOfInterest$name))
-    countsNegativeControls <- merge(counts, data.frame(cohortDefinitionId = negativeControls$conceptId,
+    countsNegativeControls <- merge(counts, data.frame(cohortDefinitionId = negativeControls$cohortId,
                                                        cohortName = negativeControls$name))
     counts <- rbind(countsOutcomesOfInterest, countsNegativeControls)
     write.csv(counts, file.path(indicationFolder, "outcomeCohortCounts.csv"), row.names = FALSE)

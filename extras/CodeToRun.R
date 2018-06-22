@@ -106,14 +106,14 @@ fetchAllDataFromServer(connectionDetails = connectionDetails,
 
 
 
-injectSignals(connectionDetails = connectionDetails,
-              cdmDatabaseSchema = cdmDatabaseSchema,
-              oracleTempSchema = oracleTempSchema,
-              cohortDatabaseSchema = cohortDatabaseSchema,
-              tablePrefix = tablePrefix,
-              indication = indication,
-              outputFolder = outputFolder,
-              maxCores = maxCores)
+synthesizePositiveControls(connectionDetails = connectionDetails,
+                           cdmDatabaseSchema = cdmDatabaseSchema,
+                           oracleTempSchema = oracleTempSchema,
+                           cohortDatabaseSchema = cohortDatabaseSchema,
+                           tablePrefix = tablePrefix,
+                           indication = indication,
+                           outputFolder = outputFolder,
+                           maxCores = maxCores)
 
 generateAllCohortMethodDataObjects(outputFolder = outputFolder,
                                    indication = indication)

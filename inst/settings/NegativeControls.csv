@@ -1,53 +1,53 @@
-indication,conceptId,name
-Depression,73008,Enthesopathy
-Depression,441788,Human papilloma virus infection
-Depression,4110709,Benign epithelial neoplasm of skin
-Depression,75354,Osteochondropathy
-Depression,4134455,Mononeuropathy
-Depression,141932,Seborrheic keratosis
-Depression,75576,Irritable bowel syndrome
-Depression,196456,Gallstone
-Depression,4050747,Fracture of upper limb
-Depression,4215978,Onychomycosis
-Depression,438531,Chondromalacia
-Depression,4249170,Epicondylitis
-Depression,4087647,Rectal mass
-Depression,4234533,Tonsillitis
-Depression,441818,Hemangioma
-Depression,443285,Lesion of cervix
-Depression,139099,Ingrowing nail
-Depression,373478,Presbyopia
-Depression,4112731,Polyp of intestine
-Depression,378424,Astigmatism
-Depression,134461,Tietze's disease
-Depression,443767,Diabetic oculopathy
-Depression,4169984,Scar
-Depression,74855,Genital herpes simplex
-Depression,140480,Impetigo
-Depression,381581,Chalazion
-Depression,4248870,Visceroptosis
-Depression,436634,Acariasis
-Depression,4291005,Viral hepatitis
-Depression,4030042,Toxic goiter
-Depression,4345472,Epstein-Barr virus disease
-Depression,81893,Ulcerative colitis
-Depression,434926,Iridocyclitis
-Depression,200775,Endometrial hyperplasia
-Depression,201606,Crohn's disease
-Depression,440638,Lyme disease
-Depression,254443,Sjogren's syndrome
-Depression,374923,Bell's palsy
-Depression,4156115,Malignant neoplasm of endocrine gland
-Depression,380038,Viral conjunctivitis
-Depression,77650,Aseptic necrosis of bone
-Depression,441589,Endocarditis
-Depression,196236,Septic shock
-Depression,438688,Sarcoidosis
-Depression,437082,Ankylosing spondylitis
-Depression,4254542,Hypopituitarism
-Depression,192606,Paraplegia
-Depression,260134,Croup
-Depression,253954,Pulmonary tuberculosis
-Depression,4038835,Hodgkin's disease
-Depression,380688,Hypoglycemic coma
-Depression,432595,Amyloidosis
+indication,conceptId,cohortId,name
+Depression,73008,1000,Enthesopathy
+Depression,74855,1001,Genital herpes simplex
+Depression,75354,1002,Osteochondropathy
+Depression,75576,1003,Irritable bowel syndrome
+Depression,77650,1004,Aseptic necrosis of bone
+Depression,81893,1005,Ulcerative colitis
+Depression,134461,1006,Tietze's disease
+Depression,139099,1007,Ingrowing nail
+Depression,140480,1008,Impetigo
+Depression,141932,1009,Seborrheic keratosis
+Depression,192606,1010,Paraplegia
+Depression,196236,1011,Septic shock
+Depression,196456,1012,Gallstone
+Depression,200775,1013,Endometrial hyperplasia
+Depression,201606,1014,Crohn's disease
+Depression,253954,1015,Pulmonary tuberculosis
+Depression,254443,1016,Sjogren's syndrome
+Depression,260134,1017,Croup
+Depression,373478,1018,Presbyopia
+Depression,374923,1019,Bell's palsy
+Depression,378424,1020,Astigmatism
+Depression,380038,1021,Viral conjunctivitis
+Depression,380688,1022,Hypoglycemic coma
+Depression,381581,1023,Chalazion
+Depression,432595,1024,Amyloidosis
+Depression,434926,1025,Iridocyclitis
+Depression,436634,1026,Acariasis
+Depression,437082,1027,Ankylosing spondylitis
+Depression,438531,1028,Chondromalacia
+Depression,438688,1029,Sarcoidosis
+Depression,440638,1030,Lyme disease
+Depression,441589,1031,Endocarditis
+Depression,441788,1032,Human papilloma virus infection
+Depression,441818,1033,Hemangioma
+Depression,443285,1034,Lesion of cervix
+Depression,443767,1035,Diabetic oculopathy
+Depression,4030042,1036,Toxic goiter
+Depression,4038835,1037,Hodgkin's disease
+Depression,4050747,1038,Fracture of upper limb
+Depression,4087647,1039,Rectal mass
+Depression,4110709,1040,Benign epithelial neoplasm of skin
+Depression,4112731,1041,Polyp of intestine
+Depression,4134455,1042,Mononeuropathy
+Depression,4156115,1043,Malignant neoplasm of endocrine gland
+Depression,4169984,1044,Scar
+Depression,4215978,1045,Onychomycosis
+Depression,4234533,1046,Tonsillitis
+Depression,4248870,1047,Visceroptosis
+Depression,4249170,1048,Epicondylitis
+Depression,4254542,1049,Hypopituitarism
+Depression,4291005,1050,Viral hepatitis
+Depression,4345472,1051,Epstein-Barr virus disease

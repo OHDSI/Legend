@@ -38,14 +38,14 @@
 #'                             this can speed up the analyses.
 #'
 #' @export
-injectSignals <- function(connectionDetails,
-                          cdmDatabaseSchema,
-                          cohortDatabaseSchema,
-                          tablePrefix = "legend",
-                          indication = "Depression",
-                          oracleTempSchema,
-                          outputFolder,
-                          maxCores = 4) {
+synthesizePositiveControls <- function(connectionDetails,
+                                       cdmDatabaseSchema,
+                                       cohortDatabaseSchema,
+                                       tablePrefix = "legend",
+                                       indication = "Depression",
+                                       oracleTempSchema,
+                                       outputFolder,
+                                       maxCores = 4) {
     OhdsiRTools::logInfo("Synthesizing positive controls for: ", indication)
 
     indicationFolder <- file.path(outputFolder, indication)
@@ -55,16 +55,26 @@ injectSignals <- function(connectionDetails,
     outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
 
     createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder)
+    # Legend:::createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = 10000)
 
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-
-    exposureCohortIds <- unique(c(exposureSummary$tCohortDefinitionId, exposureSummary$cCohortDefinitionId))
+    # Get all possible exposure IDs, including ones not found in this database
+    # to make sure new outcome IDs translate across databases:
+    exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
+    exposureIds <- unique(c(exposureCombis$cohortDefinitionId,
+                            exposureCombis$exposureId1,
+                            exposureCombis$exposureId2))
+    exposureIds <- exposureIds[order(exposureIds)]
 
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
-    negativeControlIds <- negativeControls$conceptId
-    exposureOutcomePairs <- data.frame(exposureId = rep(exposureCohortIds, each = length(negativeControlIds)),
-                                       outcomeId = rep(negativeControlIds, length(exposureCohortIds)))
+    negativeControls <- negativeControls[negativeControls$indication == indication, ]
+    negativeControlIds <- negativeControls$cohortId
+    exposureOutcomePairs <- data.frame(exposureId = rep(exposureIds, each = length(negativeControlIds)),
+                                       outcomeId = rep(negativeControlIds, length(exposureIds)))
+
+    pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
+    indications <- read.csv(pathToCsv)
+    positiveControlIdOffset <- indications$positiveControlIdOffset[indications$indication == indication]
 
     # Create a dummy exposure table:
     OhdsiRTools::logTrace("Create a dummy exposure table")
@@ -112,7 +122,7 @@ injectSignals <- function(connectionDetails,
                                             maxSubjectsForModel = 100000,
                                             effectSizes = c(1.5, 2, 4),
                                             precision = 0.01,
-                                            outputIdOffset = 10000,
+                                            outputIdOffset = positiveControlIdOffset,
                                             workFolder = signalInjectionFolder,
                                             cdmVersion = "5",
                                             modelThreads = max(1, round(maxCores/10)),
@@ -128,7 +138,8 @@ injectSignals <- function(connectionDetails,
 
     # Only fetch outcomes for subjects in the exposure cohorts, because
     # only those are used in a cohort method design:
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts"))
+    cohorts <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
     subjectIds <- ffbase::unique.ff(cohorts$subjectId)
     subjectIds <- data.frame(subject_id = ff::as.ram(subjectIds))
     DatabaseConnector::insertTable(connection = conn,
@@ -166,34 +177,32 @@ injectSignals <- function(connectionDetails,
 }
 
 createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
-    OhdsiRTools::logInfo("- Preparing data files")
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-    exposureIdToCohortId <- rbind(data.frame(cohortDefinitionId = exposureSummary$tprimeCohortDefinitionId,
-                                             cohortId = exposureSummary$tCohortDefinitionId),
-                                  data.frame(cohortDefinitionId = exposureSummary$cprimeCohortDefinitionId,
-                                             cohortId = exposureSummary$cCohortDefinitionId))
+    OhdsiRTools::logInfo("- Preparing data files")
+    # exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 
     # Create exposures file ----------------------------------------------------------
     OhdsiRTools::logTrace("Create exposures file")
     cohorts <- NULL
     ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-    exposures <- merge(cohorts, ff::as.ffdf(exposureIdToCohortId))
-    cohortIds <- unique(exposureIdToCohortId$cohortId)
+    ff::open.ffdf(cohorts)
+    cohortIds <- ff::as.ram(ffbase::unique.ff(cohorts$cohortDefinitionId))
     dedupe <- function(cohortId, data) {
-        data <- data[data$cohortId == cohortId,]
+        data <- data[data$cohortDefinitionId == cohortId,]
         data <- ff::as.ram(data)
+        data$targetId <- NULL
+        data$comparatorId <- NULL
         data <- data[order(data$rowId), ]
         data <- data[!duplicated(data$rowId), ]
         return(data)
     }
-    exposures <- sapply(cohortIds, dedupe, data = exposures, simplify = FALSE)
+    exposures <- sapply(cohortIds, dedupe, data = cohorts, simplify = FALSE)
     exposures <- do.call("rbind", exposures)
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
 
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
     colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
-    colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
+    colnames(exposures)[colnames(exposures) == "cohortDefinitionId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1
     exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "daysObserved", "eraNumber")]
@@ -201,10 +210,12 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
 
     # Create outcomes file ----------------------------------------------------------
     OhdsiRTools::logTrace("Create outcomes file")
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes"))
+    outcomes <- NULL
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes")) # Loads outcomes
+    ff::open.ffdf(outcomes)
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
-    negativeControlIds <- negativeControls$conceptId
+    negativeControlIds <- negativeControls$cohortId
     negativeControlOutcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, negativeControlIds),]
     negativeControlOutcomes <- merge(negativeControlOutcomes, ff::as.ffdf(exposures[, c("rowId", "daysAtRisk", "daysObserved")]))
 
@@ -213,7 +224,6 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
             return(data.frame())
         }
         data <- ff::as.ram(data[data$outcomeId == outcomeId, ])
-        # data <- data[data$daysToEvent >= 0 & data$daysToEvent <= data$daysAtRisk, ]
         data <- data[data$daysToEvent >= 0 & data$daysToEvent <= data$daysObserved, ]
         if (nrow(data) == 0) {
             return(data.frame())

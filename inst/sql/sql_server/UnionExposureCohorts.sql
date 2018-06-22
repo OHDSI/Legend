@@ -31,6 +31,8 @@ FROM (
 	SELECT DISTINCT subject_id,
 		cohort_start_date,
 		cohort_end_date
-	FROM @cohort_database_schema.@paired_cohort_table
-	WHERE cohort_definition_id IN (@exposure_ids)
+	FROM @cohort_database_schema.@paired_cohort_table paired_cohort
+	INNER JOIN #comparisons comparisons
+		ON paired_cohort.target_id = comparisons.target_id
+			AND paired_cohort.comparator_id = comparisons.comparator_id
 	) tmp;

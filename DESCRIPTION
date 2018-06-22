@@ -16,7 +16,7 @@ Imports:
     FeatureExtraction,
     CohortMethod (>= 3.0.0),
     IcTemporalPatternDiscovery,
-    EmpiricalCalibration,
+    EmpiricalCalibration (>= 1.4.0),
 	MethodEvaluation (>= 0.3.0),
     OhdsiSharing
 Suggests:

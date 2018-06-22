@@ -22,7 +22,7 @@ hois <- data.frame(outcomeId = hois$cohortDefinitionId,
 
 pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
 negativeControls <- read.csv(pathToCsv)
-negativeControls <- data.frame(outcomeId = negativeControls$conceptId,
+negativeControls <- data.frame(outcomeId = negativeControls$cohortId,
                                outcomeName = negativeControls$name,
                                outcomeType = "negative control",
                                trueRr = 1)

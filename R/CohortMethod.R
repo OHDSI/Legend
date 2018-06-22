@@ -37,13 +37,13 @@ runCohortMethod <- function(outputFolder, indication = "Depression", maxCores = 
     negativeControls <- negativeControls[negativeControls$indication == indication, ]
 
     createTcos <- function(i, excludePositiveControls = FALSE) {
-        targetId <- exposureSummary$tprimeCohortDefinitionId[i]
-        comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
         folderName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
         outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
         if (excludePositiveControls) {
-            outcomeIds <- outcomeIds[outcomeIds %in% c(hois$cohortId, negativeControls$conceptId)]
+            outcomeIds <- outcomeIds[outcomeIds %in% c(hois$cohortId, negativeControls$cohortId)]
         }
         tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
                                                             comparatorId = comparatorId,

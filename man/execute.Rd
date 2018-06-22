@@ -8,9 +8,9 @@ execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, studyCohortTable, exposureCohortSummaryTable,
   outputFolder, maxCores, indication = "Depression",
   createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
-  fetchAllDataFromServer = TRUE, injectSignals = TRUE,
+  fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
-  computeIncidenceRates = TRUE)
+  computeIncidenceRates = TRUE, fetchChronographData = TRUE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -45,13 +45,15 @@ this can speed up the analyses.}
 
 \item{fetchAllDataFromServer}{Fetch all relevant data from the server?}
 
-\item{injectSignals}{Inject signals to create synthetic controls?}
+\item{synthesizePositiveControls}{Inject signals to create synthetic controls?}
 
 \item{generateAllCohortMethodDataObjects}{Create the cohortMethodData objects from the fetched data and injected signals?}
 
 \item{runCohortMethod}{Run the CohortMethod package to produce the outcome models?}
 
 \item{computeIncidenceRates}{Compute incidence rates?}
+
+\item{fetchChronographData}{Fetch the data for constructing chronographs?}
 
 \item{createCohorts}{Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?}
 }

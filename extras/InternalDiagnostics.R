@@ -94,7 +94,7 @@ exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFi
 analysesSum <- read.csv(file.path(indicationFolder, "analysisSummary.csv"))
 pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
 negativeControls <- read.csv(pathToCsv)
-negativeControlIds <- negativeControls$conceptId
+negativeControlIds <- negativeControls$cohortId
 signalInjectionSum <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
 sample <- 1:nrow(exposureSummary)
 sample <- sample(nrow(exposureSummary), 100, replace = FALSE)

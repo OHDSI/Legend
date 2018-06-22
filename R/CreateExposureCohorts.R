@@ -178,10 +178,10 @@ createExposureCohorts <- function(connectionDetails,
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     pairedExposureSummary <- DatabaseConnector::querySql(conn, sql)
     colnames(pairedExposureSummary) <- SqlRender::snakeCaseToCamelCase(colnames(pairedExposureSummary))
-    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(tCohortDefinitionId = counts$cohortDefinitionId,
-                                                                     tName = counts$cohortName))
-    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(cCohortDefinitionId = counts$cohortDefinitionId,
-                                                                     cName = counts$cohortName))
+    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(targetId = counts$cohortDefinitionId,
+                                                                     targetName = counts$cohortName))
+    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(comparatorId = counts$cohortDefinitionId,
+                                                                     comparatorName = counts$cohortName))
     write.csv(pairedExposureSummary, file.path(indicationFolder, "pairedExposureSummary.csv"), row.names = FALSE)
 
     # Drop temp tables -----------------------------------------------------------------------
