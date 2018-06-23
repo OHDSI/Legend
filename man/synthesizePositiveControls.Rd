@@ -6,7 +6,7 @@
 \usage{
 synthesizePositiveControls(connectionDetails, cdmDatabaseSchema,
   cohortDatabaseSchema, tablePrefix = "legend", indication = "Depression",
-  oracleTempSchema, outputFolder, maxCores = 4)
+  oracleTempSchema, outputFolder, sampleSize = 1e+05, maxCores = 4)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -30,6 +30,8 @@ priviliges for storing temporary tables.}
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
+
+\item{sampleSize}{The maximum sample size to be used to fit the outcome models.}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}

@@ -69,11 +69,11 @@ createOutcomeCohorts <- function(connectionDetails,
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[negativeControls$indication == indication, ]
-    negativeControls <- negativeControls[, c("conceptId", "cohortId")]
-    colnames(negativeControls) <- SqlRender::camelCaseToSnakeCase(colnames(negativeControls))
+    data <- negativeControls[, c("conceptId", "cohortId")]
+    colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
     DatabaseConnector::insertTable(connection = conn,
                                    tableName = "#negative_controls",
-                                   data = negativeControls,
+                                   data = data,
                                    dropTableIfExists = TRUE,
                                    createTable = TRUE,
                                    tempTable = TRUE,

@@ -96,28 +96,30 @@ createOutcomeCohorts(connectionDetails = connectionDetails,
                      oracleTempSchema = oracleTempSchema,
                      outputFolder = outputFolder)
 
-fetchAllDataFromServer(connectionDetails = connectionDetails,
-                       cdmDatabaseSchema = cdmDatabaseSchema,
-                       oracleTempSchema = oracleTempSchema,
-                       cohortDatabaseSchema = cohortDatabaseSchema,
-                       tablePrefix = tablePrefix,
-                       indication = indication,
-                       outputFolder = outputFolder)
 
+OhdsiRTools::runAndNotify({
 
-
-synthesizePositiveControls(connectionDetails = connectionDetails,
+    fetchAllDataFromServer(connectionDetails = connectionDetails,
                            cdmDatabaseSchema = cdmDatabaseSchema,
                            oracleTempSchema = oracleTempSchema,
                            cohortDatabaseSchema = cohortDatabaseSchema,
                            tablePrefix = tablePrefix,
                            indication = indication,
-                           outputFolder = outputFolder,
-                           maxCores = maxCores)
+                           outputFolder = outputFolder)
 
-generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                   indication = indication)
-OhdsiRTools::runAndNotify({
+    synthesizePositiveControls(connectionDetails = connectionDetails,
+                               cdmDatabaseSchema = cdmDatabaseSchema,
+                               oracleTempSchema = oracleTempSchema,
+                               cohortDatabaseSchema = cohortDatabaseSchema,
+                               tablePrefix = tablePrefix,
+                               indication = indication,
+                               outputFolder = outputFolder,
+                               sampleSize = 10000, # Change this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                               maxCores = maxCores)
+
+    generateAllCohortMethodDataObjects(outputFolder = outputFolder,
+                                       indication = indication)
+
     runCohortMethod(outputFolder = outputFolder,
                     indication = indication,
                     maxCores = maxCores)

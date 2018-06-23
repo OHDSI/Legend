@@ -49,6 +49,7 @@ fetchChronographData <- function(connectionDetails,
     outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     hois <- read.csv(pathToCsv)
+    hois <- hois[hois$indication == indication, ]
     outcomeIds <- hois$cohortId
     chronographData <- IcTemporalPatternDiscovery::getChronographData(connectionDetails = connectionDetails,
                                                                       cdmDatabaseSchema = cdmDatabaseSchema,

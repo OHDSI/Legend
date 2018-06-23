@@ -34,6 +34,7 @@
 #'                             priviliges for storing temporary tables.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
+#' @param sampleSize           The maximum sample size to be used to fit the outcome models.
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -45,6 +46,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                        indication = "Depression",
                                        oracleTempSchema,
                                        outputFolder,
+                                       sampleSize = 100000,
                                        maxCores = 4) {
     OhdsiRTools::logInfo("Synthesizing positive controls for: ", indication)
 
@@ -54,7 +56,7 @@ synthesizePositiveControls <- function(connectionDetails,
         dir.create(signalInjectionFolder)
     outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
 
-    createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder)
+    createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = sampleSize)
     # Legend:::createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = 10000)
 
     # Get all possible exposure IDs, including ones not found in this database
