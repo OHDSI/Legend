@@ -21,6 +21,7 @@ limitations under the License.
 {DEFAULT @exposure_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_summary_table = 'exposure_cohort_summary'}
+{DEFAULT @attrition_table = 'attrition'}
 
 IF OBJECT_ID('tempdb..#ec_summary', 'U') IS NOT NULL
 	DROP TABLE #ec_summary;
@@ -212,6 +213,73 @@ INNER JOIN #ep_cohort_summary epcs2
 	ON cp1.comparator_id = epcs2.cohort_definition_id
 		AND cp1.target_id = epcs2.target_id
 		AND cp1.comparator_id = epcs2.comparator_id;
+	
+	
+-- Add to attrition table
+INSERT INTO @cohort_database_schema.@attrition_table (
+	exposure_id,
+	target_id,
+	comparator_id,
+	sequence_number,
+	description,
+	subjects)
+SELECT exposure_id,
+	target_id,
+	comparator_id,
+	sequence_number,
+	description,
+	subjects
+FROM (
+	-- Restricted to common period: take final number and add removed count (if any)
+	SELECT epcs.cohort_definition_id AS exposure_id,
+		epcs.target_id,
+		epcs.comparator_id,
+		CAST(4 AS INT) AS sequence_number,
+		CAST('Restricted to common period' AS VARCHAR(255)) AS description,
+		CASE 
+			WHEN removed_counts.exposure_id IS NULL THEN epcs.num_persons
+			ELSE epcs.num_persons + removed
+		END AS subjects
+	FROM #ep_cohort_summary epcs
+	LEFT JOIN (
+		SELECT exposure_id,
+			target_id,
+			comparator_id,
+			COUNT(*) AS removed
+		FROM (
+			SELECT target_id AS exposure_id,
+				target_id,
+				comparator_id,
+				subject_id
+			FROM #target_remove
+			
+			UNION ALL
+			
+			SELECT comparator_id AS exposure_id,
+				target_id,
+				comparator_id,
+				subject_id
+			FROM #comparator_remove
+		) temp
+		GROUP BY exposure_id,
+			target_id,
+			comparator_id
+	) removed_counts
+	ON removed_counts.exposure_id = epcs.cohort_definition_id
+		AND removed_counts.target_id = epcs.target_id
+		AND removed_counts.comparator_id = epcs.comparator_id 
+
+	UNION ALL
+	
+	-- Final count
+	SELECT epcs.cohort_definition_id AS exposure_id,
+		epcs.target_id,
+		epcs.comparator_id,
+		CAST(5 AS INT) AS sequence_number,
+		CAST('Removed single exposures part of comparator combination exposures' AS VARCHAR(255)) AS description,
+		epcs.num_persons AS subjects
+	FROM #ep_cohort_summary epcs	
+) temp;
 	
 -- Cleanup
 TRUNCATE TABLE #ec_summary;
