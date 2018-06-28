@@ -1,5 +1,5 @@
 # Overview of PS plots --------------------------------------------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
@@ -79,7 +79,7 @@ ggsave(plot = plot, filename = file.path(diagnosticsFolder, "allPs.png"), width 
 
 
 # Calibration plots -----------------------------------------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
@@ -89,7 +89,7 @@ if (!file.exists(calibrationFolder)) {
     dir.create(calibrationFolder)
 }
 
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 analysesSum <- read.csv(file.path(indicationFolder, "analysisSummary.csv"))
 pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
@@ -191,8 +191,65 @@ for (i in sample) {
     }
 }
 
+# Calibration plots for interatcions -------------------------------------------------------------
+indicationFolder <- file.path(outputFolder, indicationId)
+diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
+if (!file.exists(diagnosticsFolder)) {
+    dir.create(diagnosticsFolder)
+}
+calibrationFolder <- file.path(diagnosticsFolder, "calibration")
+if (!file.exists(calibrationFolder)) {
+    dir.create(calibrationFolder)
+}
+
+indicationFolder <- file.path(outputFolder, indicationId)
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+analysesSum <- read.csv(file.path(indicationFolder, "analysisSummaryInteractions.csv"))
+pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
+negativeControls <- read.csv(pathToCsv)
+negativeControlIds <- negativeControls$cohortId
+covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
+subgroups <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
+analysisId <- 3
+
+sample <- 1:nrow(exposureSummary)
+sample <- sample(nrow(exposureSummary), 100, replace = FALSE)
+for (i in sample) {
+    treatmentId <- exposureSummary$tprimeCohortDefinitionId[i]
+    comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
+    treatmentConceptId <- exposureSummary$tCohortDefinitionId[i]
+    comparatorConceptId <- exposureSummary$cCohortDefinitionId[i]
+    treatmentName <- exposureSummary$tName[i]
+    comparatorName <- exposureSummary$cName[i]
+    for (j in nrow(subgroups)) {
+        subgroupCovariateId <- subgroups$covariateId[j]
+        estimates <- analysesSum[analysesSum$analysisId == analysisId & analysesSum$targetId == treatmentId &
+                                     analysesSum$comparatorId == comparatorId, ]
+
+        negControls <- estimates[estimates$outcomeId %in% negativeControlIds, ]
+        subgroupEstimates <- data.frame(logRr = negControls[, paste0("logRrI", subgroupCovariateId)],
+                                        seLogRr = negControls[, paste0("seLogRrI", subgroupCovariateId)])
+        fileName <- file.path(calibrationFolder, paste0("negControls_a",
+                                                        analysisId,
+                                                        "_t",
+                                                        treatmentId,
+                                                        "_c",
+                                                        comparatorId,
+                                                        "_s",
+                                                        subgroupCovariateId,
+                                                        ".png"))
+        title <- paste(treatmentName, "vs.", comparatorName, "- ", subgroups$covariateName[j])
+        EmpiricalCalibration::plotCalibrationEffect(logRrNegatives = subgroupEstimates$logRr,
+                                                    seLogRrNegatives = subgroupEstimates$seLogRr,
+                                                    title = title,
+                                                    xLabel = "Hazard ratio ratio",
+                                                    showCis = TRUE,
+                                                    fileName = fileName)
+    }
+}
+
 # Prior treatments distribution -----------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
@@ -227,7 +284,7 @@ write.csv(data, file.path(diagnosticsFolder, "PriorExposureCounts.csv"), row.nam
 
 
 # Check subgroup covariates -----------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
@@ -242,7 +299,7 @@ counts <- merge(counts, ref[, c("covariateId", "covariateName")])
 covariateData$metaData$populationSize
 
 # Propensiy models --------------------------------------------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
@@ -298,33 +355,41 @@ write.csv(data, file.path(diagnosticsFolder, "propensityModels.csv"), row.names 
 
 
 # Inspect interaction models -------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+showNegativeControls <- TRUE
+indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
 interactionModels <- outcomeModelReference[outcomeModelReference$analysisId == 3, ]
-# om_t7152601525_c7176081525_o2835
 
-model <- readRDS(file.path(indicationFolder, "cmOutput", "Analysis_3", "om_t7035481505_c7976181505_o2829.rds"))
-summary(model)
-strataPop <- readRDS(file.path(indicationFolder, "cmOutput", "StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds"))
-cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", "CmData_l1_t587129_c1197129"))
-subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
-debug(CohortMethod::fitOutcomeModel)
-CohortMethod::fitOutcomeModel(population = strataPop,
-                              cohortMethodData = cmData,
-                              stratified = TRUE,
-                              modelType = "cox",
-                              interactionCovariateIds = subgroupCovariateIds)
+pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
+negativeControls <- read.csv(pathToCsv)
+negativeControlIds <- negativeControls$cohortId
+if (showNegativeControls) {
+    interactionModels <- outcomeModelReference[outcomeModelReference$outcomeId %in% negativeControlIds, ]
+} else {
+    interactionModels <- outcomeModelReference[!(outcomeModelReference$outcomeId %in% negativeControlIds), ]
+}
+# model <- readRDS(file.path(indicationFolder, "cmOutput", "Analysis_3", "om_t7035481505_c7976181505_o2829.rds"))
+# summary(model)
+# strataPop <- readRDS(file.path(indicationFolder, "cmOutput", "StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds"))
+# cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", "CmData_l1_t587129_c1197129"))
+# subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+# debug(CohortMethod::fitOutcomeModel)
+# CohortMethod::fitOutcomeModel(population = strataPop,
+#                               cohortMethodData = cmData,
+#                               stratified = TRUE,
+#                               modelType = "cox",
+#                               interactionCovariateIds = subgroupCovariateIds)
 
-files <- list.files(file.path(indicationFolder, "cmOutput", "Analysis_3"))
-sample <- sample(files, 1000)
+files <- interactionModels$outcomeModelFile
+sample <- sample(files, 10)
 sample <- files
-loadInteractionsFromModel <- function(fileName, folder) {
-    model <- readRDS(file.path(folder, fileName))
+loadInteractionsFromModel <- function(fileName) {
+    model <- readRDS(fileName)
     if (is.null(model$outcomeModelInteractionEstimates)) {
         return(NULL)
     } else {
@@ -334,7 +399,7 @@ loadInteractionsFromModel <- function(fileName, folder) {
     }
 }
 
-d <- lapply(sample, loadInteractionsFromModel, folder = file.path(indicationFolder, "cmOutput", "Analysis_3"))
+d <- plyr::llply(sample, loadInteractionsFromModel, .progress = "text")
 d <- do.call("rbind", d)
 
 sum(is.na(d$seLogRr))
@@ -355,7 +420,6 @@ temp2$meanLabel <- paste0(formatC(100 * (1 - temp2$Significant), digits = 1, for
 temp2$Significant <- NULL
 dd <- merge(temp1, temp2)
 
-#breaks <- c(0.25, 0.5, 1, 2, 4, 6, 8, 10)
 breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
 theme <- element_text(colour = "#000000", size = 12)
 themeRA <- element_text(colour = "#000000", size = 12, hjust = 1)
@@ -385,5 +449,8 @@ plot <- ggplot(d, aes(x = logRr, y = seLogRr), environment = environment()) +
           strip.text.y = theme,
           strip.background = element_blank(),
           legend.position = "none")
-
-ggsave(plot = plot, filename = file.path(diagnosticsFolder, "Interactions.png"), width = 12, height = 5, dpi = 300)
+if (showNegativeControls) {
+    ggsave(plot = plot, filename = file.path(diagnosticsFolder, "InteractionsNCs.png"), width = 12, height = 5, dpi = 300)
+} else {
+    ggsave(plot = plot, filename = file.path(diagnosticsFolder, "Interactions.png"), width = 12, height = 5, dpi = 300)
+}

@@ -20,16 +20,16 @@
 #' Compute covariate alance for each comparison. The balance is computed considering the entire target and comparator cohort,
 #' so note removing subjects with prior outcomes. Stores the results in a subfolder called 'balance'.
 #'
-#' @param indication           A string denoting the indication for which the exposure cohorts should be created.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #'
 #' @export
-computeCovariateBalance <- function(indication = "Depression",
+computeCovariateBalance <- function(indicationId = "Depression",
                                     outputFolder,
                                     maxCores) {
     OhdsiRTools::logInfo("Computing covariate balance")
-    indicationFolder <- file.path(outputFolder, indication)
+    indicationFolder <- file.path(outputFolder, indicationId)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     balanceFolder <- file.path(indicationFolder, "balance")
     if (!file.exists(balanceFolder)) {
@@ -44,10 +44,10 @@ computeCovariateBalance <- function(indication = "Depression",
     studyPopArgs <- cmAnalysisList[[2]]$createStudyPopArgs
     stratifyByPsArgs <- cmAnalysisList[[2]]$stratifyByPsArgs
     computeBalance <- function(exposureSummaryRow, studyPopArgs, stratifyByPsArgs, indicationFolder, balanceFolder) {
-        OhdsiRTools::logTrace("Computing balance for target ", exposureSummaryRow$tprimeCohortDefinitionId, " and comparator ",  exposureSummaryRow$cprimeCohortDefinitionId)
-        cmDataFolder <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", exposureSummaryRow$tprimeCohortDefinitionId, "_c", exposureSummaryRow$cprimeCohortDefinitionId))
+        OhdsiRTools::logTrace("Computing balance for target ", exposureSummaryRow$targetId, " and comparator ",  exposureSummaryRow$comparatorId)
+        cmDataFolder <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-        psFile <- file.path(indicationFolder, "cmOutput", paste0("Ps_l1_p1_t", exposureSummaryRow$tprimeCohortDefinitionId, "_c", exposureSummaryRow$cprimeCohortDefinitionId, ".rds"))
+        psFile <- file.path(indicationFolder, "cmOutput", paste0("Ps_l1_p1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId, ".rds"))
         ps <- readRDS(psFile)
 
         studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
@@ -68,9 +68,9 @@ computeCovariateBalance <- function(indication = "Depression",
                                                 numberOfStrata = stratifyByPsArgs$numberOfStrata,
                                                 baseSelection = stratifyByPsArgs$baseSelection)
         fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                    exposureSummaryRow$tprimeCohortDefinitionId,
+                                                    exposureSummaryRow$targetId,
                                                     "_c",
-                                                    exposureSummaryRow$cprimeCohortDefinitionId,
+                                                    exposureSummaryRow$comparatorId,
                                                     ".rds"))
         if (!file.exists(fileName)) {
             balance <- CohortMethod::computeCovariateBalance(population = strataPop,
@@ -80,9 +80,9 @@ computeCovariateBalance <- function(indication = "Depression",
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
         for (subgroupCovariateId in subgroupCovariateIds) {
             fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                        exposureSummaryRow$tprimeCohortDefinitionId,
+                                                        exposureSummaryRow$targetId,
                                                         "_c",
-                                                        exposureSummaryRow$cprimeCohortDefinitionId,
+                                                        exposureSummaryRow$comparatorId,
                                                         "_s",
                                                         subgroupCovariateId,
                                                         ".rds"))
@@ -101,8 +101,9 @@ computeCovariateBalance <- function(indication = "Depression",
     }
 
     cluster <- OhdsiRTools::makeCluster(numberOfThreads = min(4, maxCores))
+    exposureSummary$comparison <- paste(exposureSummary$targetId, exposureSummary$comparatorId, sep = "-")
     OhdsiRTools::clusterApply(cluster = cluster,
-                              x = split(exposureSummary, exposureSummary$tprimeCohortDefinitionId),
+                              x = split(exposureSummary, exposureSummary$comparison),
                               fun = computeBalance,
                               studyPopArgs = studyPopArgs,
                               stratifyByPsArgs = stratifyByPsArgs,

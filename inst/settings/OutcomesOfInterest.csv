@@ -1,4 +1,4 @@
-indication,atlasId,cohortId,name
+indicationId,atlasId,cohortId,name
 Depression,2837,1,Acute liver injury
 Depression,2557,2,Acute myocardial infarction
 Depression,2830,3,Alopecia

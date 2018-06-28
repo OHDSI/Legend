@@ -34,39 +34,40 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
 cdmDatabaseSchema <- "cdm_truven_ccae_v697.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_ccae"
-databaseName <- "CCAE"
+databaseId <- "CCAE"
 outputFolder <- file.path(studyFolder, "ccae")
 
 # MDCD settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_truven_mdcd_v699.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_mdcd"
-databaseName <- "MDCD"
+databaseId <- "MDCD"
 outputFolder <- file.path(studyFolder, "mdcd")
 
 # MDCR settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_truven_mdcr_v698.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_mdcr"
-databaseName <- "MDCR"
+databaseId <- "MDCR"
 outputFolder <- file.path(studyFolder, "mdcr")
 
 # Optum settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_optum_extended_dod_v695.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_optum"
-databaseName <- "Optum"
+databaseId <- "Optum"
 outputFolder <- file.path(studyFolder, "optum")
 
 # Synpuf settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_synpuf_v667.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_synpuf"
-databaseName <- "Synpuf"
+databaseId <- "Synpuf"
+databaseName <- "Medicare Claims Synthetic Public Use Files (SynPUFs)"
 outputFolder <- file.path(studyFolder, "synpuf")
 
 
-indication <- "Depression"
+indicationId <- "Depression"
 
 mailSettings <- list(from = Sys.getenv("mailAddress"),
                      to = c(Sys.getenv("mailAddress")),
@@ -81,18 +82,18 @@ createExposureCohorts(connectionDetails = connectionDetails,
                       cdmDatabaseSchema = cdmDatabaseSchema,
                       cohortDatabaseSchema = cohortDatabaseSchema,
                       tablePrefix = tablePrefix,
-                      indication = indication,
+                      indicationId = indicationId,
                       oracleTempSchema = oracleTempSchema,
                       outputFolder = outputFolder)
 
 filterByExposureCohortsSize(outputFolder = outputFolder,
-                            indication = indication)
+                            indicationId = indicationId)
 
 createOutcomeCohorts(connectionDetails = connectionDetails,
                      cdmDatabaseSchema = cdmDatabaseSchema,
                      cohortDatabaseSchema = cohortDatabaseSchema,
                      tablePrefix = tablePrefix,
-                     indication = indication,
+                     indicationId = indicationId,
                      oracleTempSchema = oracleTempSchema,
                      outputFolder = outputFolder)
 
@@ -104,7 +105,7 @@ OhdsiRTools::runAndNotify({
                            oracleTempSchema = oracleTempSchema,
                            cohortDatabaseSchema = cohortDatabaseSchema,
                            tablePrefix = tablePrefix,
-                           indication = indication,
+                           indicationId = indicationId,
                            outputFolder = outputFolder)
 
     synthesizePositiveControls(connectionDetails = connectionDetails,
@@ -112,28 +113,36 @@ OhdsiRTools::runAndNotify({
                                oracleTempSchema = oracleTempSchema,
                                cohortDatabaseSchema = cohortDatabaseSchema,
                                tablePrefix = tablePrefix,
-                               indication = indication,
+                               indicationId = indicationId,
                                outputFolder = outputFolder,
                                sampleSize = 10000, # Change this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                                maxCores = maxCores)
 
     generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                       indication = indication)
+                                       indicationId = indicationId)
 
     runCohortMethod(outputFolder = outputFolder,
-                    indication = indication,
+                    indicationId = indicationId,
                     maxCores = maxCores)
 
 },  mailSettings = mailSettings, label = "Legend")
 
-computeIncidenceRates(outputFolder = outputFolder,
-                      indication = indication)
+computeIncidence(outputFolder = outputFolder,
+                 indicationId = indicationId)
 
 fetchChronographData(connectionDetails = connectionDetails,
                      cdmDatabaseSchema = cdmDatabaseSchema,
                      oracleTempSchema = oracleTempSchema,
                      cohortDatabaseSchema = cohortDatabaseSchema,
                      tablePrefix = tablePrefix,
-                     indication = indication,
+                     indicationId = indicationId,
                      outputFolder = outputFolder)
 
+computeCovariateBalance(outputFolder = outputFolder,
+                        indicationId = indicationId,
+                        maxCores = maxCores)
+
+exportResults(outputFolder = outputFolder,
+              databaseId = databaseId,
+              databaseName = databaseName,
+              maxCores = maxCores)

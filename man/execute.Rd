@@ -6,11 +6,11 @@
 \usage{
 execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, studyCohortTable, exposureCohortSummaryTable,
-  outputFolder, maxCores, indication = "Depression",
+  outputFolder, maxCores, indicationId = "Depression",
   createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
   fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
-  computeIncidenceRates = TRUE, fetchChronographData = TRUE)
+  computeIncidence = TRUE, fetchChronographData = TRUE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -43,6 +43,8 @@ performance.}
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
 
+\item{indicationId}{A string denoting the indicationId.}
+
 \item{fetchAllDataFromServer}{Fetch all relevant data from the server?}
 
 \item{synthesizePositiveControls}{Inject signals to create synthetic controls?}
@@ -51,11 +53,11 @@ this can speed up the analyses.}
 
 \item{runCohortMethod}{Run the CohortMethod package to produce the outcome models?}
 
-\item{computeIncidenceRates}{Compute incidence rates?}
-
 \item{fetchChronographData}{Fetch the data for constructing chronographs?}
 
 \item{createCohorts}{Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?}
+
+\item{computeIncidenceRates}{Compute incidence rates?}
 }
 \description{
 Execute OHDSI Large-Scale Population-Level Evidence Generation study

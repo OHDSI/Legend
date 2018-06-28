@@ -437,7 +437,7 @@ for (i in 1:length(rnd)) {
 }
 
 # Overview of PS plots --------------------------------------------------------------------------------------
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
 datas <- list()

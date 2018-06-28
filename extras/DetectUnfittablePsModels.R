@@ -1,6 +1,6 @@
 library(CohortMethod)
 
-indicationFolder <- file.path(outputFolder, indication)
+indicationFolder <- file.path(outputFolder, indicationId)
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
 row <- outcomeModelReference[outcomeModelReference$targetId == 7100625580 & outcomeModelReference$comparatorId == 43279415580 & outcomeModelReference$analysisId == 1, ][1, ]

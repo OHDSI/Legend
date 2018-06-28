@@ -4,7 +4,7 @@
 \alias{runCohortMethod}
 \title{Run the cohort method package}
 \usage{
-runCohortMethod(outputFolder, indication = "Depression", maxCores = 4)
+runCohortMethod(outputFolder, indicationId = "Depression", maxCores = 4)
 }
 \arguments{
 \item{maxCores}{How many parallel cores should be used? If more cores are made available

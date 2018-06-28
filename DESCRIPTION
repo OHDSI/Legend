@@ -18,7 +18,8 @@ Imports:
     IcTemporalPatternDiscovery,
     EmpiricalCalibration (>= 1.4.0),
 	MethodEvaluation (>= 0.3.0),
-    OhdsiSharing
+    OhdsiSharing,
+    zip
 Suggests:
     testthat,
     meta,

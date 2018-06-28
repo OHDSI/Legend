@@ -1,4 +1,4 @@
-indication,conceptId,cohortId,name
+indicationId,conceptId,cohortId,name
 Depression,73008,1000,Enthesopathy
 Depression,74855,1001,Genital herpes simplex
 Depression,75354,1002,Osteochondropathy

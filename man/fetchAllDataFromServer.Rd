@@ -5,7 +5,7 @@
 \title{Fetch all data on the cohorts for analysis}
 \usage{
 fetchAllDataFromServer(connectionDetails, cdmDatabaseSchema,
-  cohortDatabaseSchema, tablePrefix = "legend", indication = "Depression",
+  cohortDatabaseSchema, tablePrefix = "legend", indicationId = "Depression",
   oracleTempSchema, outputFolder)
 }
 \arguments{

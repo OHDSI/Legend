@@ -4,7 +4,7 @@
 \alias{filterByExposureCohortsSize}
 \title{Filter exposure pairs by size of the cohorts}
 \usage{
-filterByExposureCohortsSize(outputFolder, indication = "Depression",
+filterByExposureCohortsSize(outputFolder, indicationId = "Depression",
   minCohortsSize = 2500)
 }
 \arguments{

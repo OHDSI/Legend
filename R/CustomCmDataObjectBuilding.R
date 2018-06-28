@@ -40,7 +40,7 @@ fetchAllDataFromServer <- function(connectionDetails,
                                    cdmDatabaseSchema,
                                    cohortDatabaseSchema,
                                    tablePrefix = "legend",
-                                   indication = "Depression",
+                                   indicationId = "Depression",
                                    oracleTempSchema,
                                    outputFolder) {
     # Some ad-hoc nomenclature:
@@ -53,7 +53,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     # filterConceptId: A concept ID that needs to be filtered when fitting propensity model.
 
     OhdsiRTools::logInfo("Fetching all data from the server")
-    indicationFolder <- file.path(outputFolder, indication)
+    indicationFolder <- file.path(outputFolder, indicationId)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
     outcomeIds <- counts$cohortDefinitionId
@@ -74,7 +74,7 @@ fetchAllDataFromServer <- function(connectionDetails,
 
 
     # Lump persons of interest into one table -----------------------------------------------------
-    pairedCohortTable <- paste(tablePrefix, tolower(indication), "pair_cohort", sep = "_")
+    pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("UnionExposureCohorts.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -93,11 +93,11 @@ fetchAllDataFromServer <- function(connectionDetails,
     # Construct covariates ---------------------------------------------------------------------
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
-    filterConceptIds <- as.character(indications$filterConceptIds[indications$indication == indication])
+    filterConceptIds <- as.character(indications$filterConceptIds[indications$indicationId == indicationId])
     filterConceptIds <- as.numeric(strsplit(filterConceptIds, split = ";")[[1]])
     defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings(excludedCovariateConceptIds = filterConceptIds,
                                                                                   addDescendantsToExclude = TRUE)
-    exposureEraTable <- paste(tablePrefix, tolower(indication), "exp_era", sep = "_")
+    exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
     priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
                                                                            exposureEraTable = exposureEraTable)
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
@@ -128,7 +128,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     ff::close.ffdf(cohorts)
 
     OhdsiRTools::logInfo("Retrieving outcomes")
-    outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
+    outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("GetOutcomes.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -146,7 +146,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     OhdsiRTools::logInfo("Retrieving filter concepts")
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
-    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indication == indication, ]
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
     procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
     ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$conceptId,
                            descendantConceptId = exposuresOfInterest$conceptId)
@@ -275,9 +275,9 @@ constructCohortMethodDataObject <- function(targetId,
 #'                             (/)
 #'
 #' @export
-generateAllCohortMethodDataObjects <- function(outputFolder, indication = "Depression") {
+generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Depression") {
     OhdsiRTools::logInfo("Constructing CohortMethodData objects")
-    indicationFolder <- file.path(outputFolder, indication)
+    indicationFolder <- file.path(outputFolder, indicationId)
     start <- Sys.time()
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pb <- txtProgressBar(style = 3)

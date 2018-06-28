@@ -22,8 +22,8 @@
 #'                             cohorts.
 #'
 #' @export
-filterByExposureCohortsSize <- function(outputFolder, indication = "Depression", minCohortsSize = 2500) {
-    exposureSummary <- read.csv(file.path(outputFolder, indication, "pairedExposureSummary.csv"))
+filterByExposureCohortsSize <- function(outputFolder, indicationId = "Depression", minCohortsSize = 2500) {
+    exposureSummary <- read.csv(file.path(outputFolder, indicationId, "pairedExposureSummary.csv"))
     filtered <- exposureSummary[exposureSummary$targetPairedPersons > minCohortsSize & exposureSummary$comparatorPairedPersons > minCohortsSize, ]
-    write.csv(filtered, file.path(outputFolder, indication, "pairedExposureSummaryFilteredBySize.csv"), row.names = FALSE)
+    write.csv(filtered, file.path(outputFolder, indicationId, "pairedExposureSummaryFilteredBySize.csv"), row.names = FALSE)
 }

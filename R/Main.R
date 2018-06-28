@@ -39,6 +39,7 @@
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/). Do not use a folder on a network drive since this greatly impacts
 #'                             performance.
+#' @param indicationId           A string denoting the indicationId.
 #' @param createCohorts        Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?
 #' @param fetchAllDataFromServer          Fetch all relevant data from the server?
 #' @param synthesizePositiveControls       Inject signals to create synthetic controls?
@@ -58,16 +59,20 @@ execute <- function(connectionDetails,
                     exposureCohortSummaryTable,
                     outputFolder,
                     maxCores,
-                    indication = "Depression",
+                    indicationId = "Depression",
                     createExposureCohorts = TRUE,
                     createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
                     synthesizePositiveControls = TRUE,
                     generateAllCohortMethodDataObjects = TRUE,
                     runCohortMethod = TRUE,
-                    computeIncidenceRates = TRUE,
+                    computeIncidence = TRUE,
                     fetchChronographData = TRUE) {
-    indicationFolder <- file.path(outputFolder, indication)
+
+    indicationFolder <- file.path(outputFolder, indicationId)
+    if (!file.exists(indicationFolder)) {
+        dir.create(indicationFolder, recursive = TRUE)
+    }
     OhdsiRTools::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
 
     if (createExposureCohorts) {
@@ -75,19 +80,19 @@ execute <- function(connectionDetails,
                               cdmDatabaseSchema = cdmDatabaseSchema,
                               cohortDatabaseSchema = cohortDatabaseSchema,
                               tablePrefix = tablePrefix,
-                              indication = indication,
+                              indicationId = indicationId,
                               oracleTempSchema = oracleTempSchema,
                               outputFolder = outputFolder)
 
         filterByExposureCohortsSize(outputFolder = outputFolder,
-                                    indication = indication)
+                                    indicationId = indicationId)
     }
     if (createOutcomeCohorts) {
         createOutcomeCohorts(connectionDetails = connectionDetails,
                              cdmDatabaseSchema = cdmDatabaseSchema,
                              cohortDatabaseSchema = cohortDatabaseSchema,
                              tablePrefix = tablePrefix,
-                             indication = indication,
+                             indicationId = indicationId,
                              oracleTempSchema = oracleTempSchema,
                              outputFolder = outputFolder)
     }
@@ -97,7 +102,7 @@ execute <- function(connectionDetails,
                                oracleTempSchema = oracleTempSchema,
                                cohortDatabaseSchema = cohortDatabaseSchema,
                                tablePrefix = tablePrefix,
-                               indication = indication,
+                               indicationId = indicationId,
                                outputFolder = outputFolder)
     }
     if (synthesizePositiveControls) {
@@ -106,23 +111,23 @@ execute <- function(connectionDetails,
                                    oracleTempSchema = oracleTempSchema,
                                    cohortDatabaseSchema = cohortDatabaseSchema,
                                    tablePrefix = tablePrefix,
-                                   indication = indication,
+                                   indicationId = indicationId,
                                    outputFolder = outputFolder,
                                    maxCores = maxCores)
     }
     if (generateAllCohortMethodDataObjects) {
         generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                           indication = indication)
+                                           indicationId = indicationId)
     }
     if (runCohortMethod) {
         runCohortMethod(outputFolder = outputFolder,
-                        indication = indication,
+                        indicationId = indicationId,
                         maxCores = maxCores)
     }
 
-    if (computeIncidenceRates) {
-        computeIncidenceRates(outputFolder = outputFolder,
-                              indication = indication)
+    if (computeIncidence) {
+        computeIncidence(outputFolder = outputFolder,
+                         indicationId = indicationId)
     }
     if (fetchChronographData) {
         fetchChronographData(connectionDetails = connectionDetails,
@@ -130,12 +135,12 @@ execute <- function(connectionDetails,
                              oracleTempSchema = oracleTempSchema,
                              cohortDatabaseSchema = cohortDatabaseSchema,
                              tablePrefix = tablePrefix,
-                             indication = indication,
+                             indicationId = indicationId,
                              outputFolder = outputFolder)
     }
     if (computeCovariateBalance) {
         computeCovariateBalance(outputFolder = outputFolder,
-                                indication = indication,
+                                indicationId = indicationId,
                                 maxCores = maxCores)
     }
 

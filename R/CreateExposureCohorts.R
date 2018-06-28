@@ -30,7 +30,7 @@
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indication           A string denoting the indication for which the exposure cohorts should be created.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
@@ -41,17 +41,17 @@ createExposureCohorts <- function(connectionDetails,
                                   cdmDatabaseSchema,
                                   cohortDatabaseSchema,
                                   tablePrefix = "legend",
-                                  indication = "Depression",
+                                  indicationId = "Depression",
                                   oracleTempSchema,
                                   outputFolder) {
-    OhdsiRTools::logInfo("Creating exposure cohorts for indication: ", indication)
+    OhdsiRTools::logInfo("Creating exposure cohorts for indicationId: ", indicationId)
 
-    indicationFolder <- file.path(outputFolder, indication)
-    attritionTable <- paste(tablePrefix, tolower(indication), "attition", sep = "_")
-    exposureEraTable <- paste(tablePrefix, tolower(indication), "exp_era", sep = "_")
-    exposureCohortTable <- paste(tablePrefix, tolower(indication), "exp_cohort", sep = "_")
-    pairedCohortTable <- paste(tablePrefix, tolower(indication), "pair_cohort", sep = "_")
-    pairedCohortSummaryTable <- paste(tablePrefix, tolower(indication), "pair_sum", sep = "_")
+    indicationFolder <- file.path(outputFolder, indicationId)
+    attritionTable <- paste(tablePrefix, tolower(indicationId), "attition", sep = "_")
+    exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
+    exposureCohortTable <- paste(tablePrefix, tolower(indicationId), "exp_cohort", sep = "_")
+    pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
+    pairedCohortSummaryTable <- paste(tablePrefix, tolower(indicationId), "pair_sum", sep = "_")
 
     if (!file.exists(indicationFolder)) {
         dir.create(indicationFolder, recursive = TRUE)
@@ -71,7 +71,7 @@ createExposureCohorts <- function(connectionDetails,
     # Load exposures of interest, and define exposure combinations of interest ----------------------
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
-    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indication == indication, ]
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
     exposuresOfInterest <- exposuresOfInterest[order(exposuresOfInterest$conceptId), ]
     exposureCombis <- expand.grid(exposureId1 = exposuresOfInterest$conceptId, exposureId2 = exposuresOfInterest$conceptId)
     exposureCombis <- exposureCombis[exposureCombis$exposureId1 < exposureCombis$exposureId2, ]
@@ -82,7 +82,7 @@ createExposureCohorts <- function(connectionDetails,
     namedExposureCombis <- exposureCombis
     namedExposureCombis$exposureName1 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId1, exposuresOfInterest$conceptId)]
     namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId2, exposuresOfInterest$conceptId)]
-    namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1, namedExposureCombis$exposureName2, sep = " - ")
+    namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1, namedExposureCombis$exposureName2, sep = " & ")
     write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)
 
     # Upload combis and procedure groups -----------------------------------------------------------
@@ -113,7 +113,7 @@ createExposureCohorts <- function(connectionDetails,
 
     # Create nesting cohort table ------------------------------------------------------------------------
     OhdsiRTools::logInfo("- Creating nesting cohort")
-    sql <- SqlRender::loadRenderTranslateSql(sprintf("NestingCohort%s.sql", indication),
+    sql <- SqlRender::loadRenderTranslateSql(sprintf("NestingCohort%s.sql", indicationId),
                                              "Legend",
                                              dbms = connectionDetails$dbms,
                                              oracleTempSchema = oracleTempSchema,

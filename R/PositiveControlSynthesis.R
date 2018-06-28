@@ -29,7 +29,7 @@
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indication           A string denoting the indication for which the exposure cohorts should be created.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
@@ -43,18 +43,18 @@ synthesizePositiveControls <- function(connectionDetails,
                                        cdmDatabaseSchema,
                                        cohortDatabaseSchema,
                                        tablePrefix = "legend",
-                                       indication = "Depression",
+                                       indicationId = "Depression",
                                        oracleTempSchema,
                                        outputFolder,
                                        sampleSize = 100000,
                                        maxCores = 4) {
-    OhdsiRTools::logInfo("Synthesizing positive controls for: ", indication)
+    OhdsiRTools::logInfo("Synthesizing positive controls for: ", indicationId)
 
-    indicationFolder <- file.path(outputFolder, indication)
+    indicationFolder <- file.path(outputFolder, indicationId)
     signalInjectionFolder <- file.path(indicationFolder, "signalInjection")
     if (!file.exists(signalInjectionFolder))
         dir.create(signalInjectionFolder)
-    outcomeCohortTable <- paste(tablePrefix, tolower(indication), "out_cohort", sep = "_")
+    outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
 
     createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = sampleSize)
     # Legend:::createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = 10000)
@@ -69,14 +69,14 @@ synthesizePositiveControls <- function(connectionDetails,
 
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
-    negativeControls <- negativeControls[negativeControls$indication == indication, ]
+    negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
     negativeControlIds <- negativeControls$cohortId
     exposureOutcomePairs <- data.frame(exposureId = rep(exposureIds, each = length(negativeControlIds)),
                                        outcomeId = rep(negativeControlIds, length(exposureIds)))
 
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
-    positiveControlIdOffset <- indications$positiveControlIdOffset[indications$indication == indication]
+    positiveControlIdOffset <- indications$positiveControlIdOffset[indications$indicationId == indicationId]
 
     # Create a dummy exposure table:
     OhdsiRTools::logTrace("Create a dummy exposure table")

@@ -1,4 +1,4 @@
-indication,type,class,name,conceptId,includedConceptIds
+indicationId,type,class,name,conceptId,includedConceptIds
 Depression,Drug,Atypical,Bupropion,750982,
 Depression,Drug,Atypical,Mirtazapine,725131,
 Depression,Procedure,ECT,Electroconvulsive therapy,4030840,2007727;2007728;2108578;2108579;2213552;4004830;4020981;4030840;4111663;4210144;4210145;4332436;4336318;44508134

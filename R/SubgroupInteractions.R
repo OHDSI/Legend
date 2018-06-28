@@ -29,7 +29,7 @@
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indication           A string denoting the indication for which the exposure cohorts should be created.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
@@ -40,7 +40,7 @@ estimateSubgroupInteractions <- function(connectionDetails,
                                         cdmDatabaseSchema,
                                         cohortDatabaseSchema,
                                         tablePrefix = "legend",
-                                        indication = "Depression",
+                                        indicationId = "Depression",
                                         oracleTempSchema,
                                         outputFolder) {
 

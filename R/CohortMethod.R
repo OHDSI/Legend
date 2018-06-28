@@ -25,16 +25,16 @@
 #'                             this can speed up the analyses.
 #'
 #' @export
-runCohortMethod <- function(outputFolder, indication = "Depression", maxCores = 4) {
-    indicationFolder <- file.path(outputFolder, indication)
+runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores = 4) {
+    indicationFolder <- file.path(outputFolder, indicationId)
     cmFolder <- file.path(indicationFolder, "cmOutput")
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     hois <- read.csv(pathToCsv)
-    hois <- hois[hois$indication == indication, ]
+    hois <- hois[hois$indicationId == indicationId, ]
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
-    negativeControls <- negativeControls[negativeControls$indication == indication, ]
+    negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
 
     createTcos <- function(i, excludePositiveControls = FALSE) {
         targetId <- exposureSummary$targetId[i]
@@ -108,7 +108,7 @@ runCohortMethod <- function(outputFolder, indication = "Depression", maxCores = 
                                 psCvThreads = min(10, maxCores),
                                 trimMatchStratifyThreads = min(4, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
-                                fitOutcomeModelThreads = max(1, round(maxCores/5)),
+                                fitOutcomeModelThreads = 1,#max(1, round(maxCores/5)),
                                 outcomeCvThreads = min(10, maxCores),
                                 refitPsForEveryOutcome = FALSE,
                                 refitPsForEveryStudyPopulation = FALSE,

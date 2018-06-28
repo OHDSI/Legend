@@ -5,7 +5,7 @@
 \title{Create the exposure cohorts}
 \usage{
 createExposureCohorts(connectionDetails, cdmDatabaseSchema,
-  cohortDatabaseSchema, tablePrefix = "legend", indication = "Depression",
+  cohortDatabaseSchema, tablePrefix = "legend", indicationId = "Depression",
   oracleTempSchema, outputFolder)
 }
 \arguments{
@@ -23,7 +23,7 @@ include both the database and schema name, for example 'cdm_data.dbo'.}
 
 \item{tablePrefix}{A prefix to be used for all table names created for this study.}
 
-\item{indication}{A string denoting the indication for which the exposure cohorts should be created.}
+\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be created.}
 
 \item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
 priviliges for storing temporary tables.}

@@ -4,10 +4,10 @@
 \alias{computeCovariateBalance}
 \title{Compute covariate balance for each comparison}
 \usage{
-computeCovariateBalance(indication = "Depression", outputFolder, maxCores)
+computeCovariateBalance(indicationId = "Depression", outputFolder, maxCores)
 }
 \arguments{
-\item{indication}{A string denoting the indication for which the exposure cohorts should be created.}
+\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be created.}
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
