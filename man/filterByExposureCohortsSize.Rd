@@ -11,6 +11,8 @@ filterByExposureCohortsSize(outputFolder, indicationId = "Depression",
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
 
+\item{indicationId}{A string denoting the indicationId.}
+
 \item{minCohortsSize}{Minimum number of people that have to be in each cohort to keep a pair of
 cohorts.}
 }

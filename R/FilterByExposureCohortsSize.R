@@ -18,6 +18,7 @@
 #'
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
+#' @param indicationId         A string denoting the indicationId.
 #' @param minCohortsSize       Minimum number of people that have to be in each cohort to keep a pair of
 #'                             cohorts.
 #'

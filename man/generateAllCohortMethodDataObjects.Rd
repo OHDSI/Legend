@@ -9,6 +9,8 @@ generateAllCohortMethodDataObjects(outputFolder, indicationId = "Depression")
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
+
+\item{indicationId}{A string denoting the indicationId.}
 }
 \description{
 Construct all cohortMethodData object

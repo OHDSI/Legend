@@ -19,6 +19,9 @@
 #' @docType package
 #' @name Legend
 #' @import DatabaseConnector
+#' @importFrom grDevices rgb
+#' @importFrom stats aggregate density pnorm qnorm quantile
+#' @importFrom utils write.csv read.csv setTxtProgressBar txtProgressBar write.table
 NULL
 
 .onLoad <- function(libname, pkgname) {

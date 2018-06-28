@@ -25,28 +25,25 @@
 #' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param studyCohortTable     The name of the table that will be created in the work database schema.
-#'                             This table will hold the exposure and outcome cohorts used in this
-#'                             study.
-#' @param exposureCohortSummaryTable   The name of the table that will be created in the work database schema.
-#'                             This table will hold summary data on the  exposure cohorts used in this
-#'                             study.
 #' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
 #'                             priviliges for storing temporary tables.
+#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
+#'                             write priviliges in this schema. Note that for SQL Server, this should
+#'                             include both the database and schema name, for example 'cdm_data.dbo'.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/). Do not use a folder on a network drive since this greatly impacts
 #'                             performance.
-#' @param indicationId           A string denoting the indicationId.
-#' @param createCohorts        Create the studyCohortTable and exposureCohortSummaryTable tables with the exposure and outcome cohorts?
+#' @param indicationId         A string denoting the indicationId.
+#' @param tablePrefix          A prefix to be used for all table names created for this study.
+#' @param createExposureCohorts     Create the tables with the exposure cohorts?
+#' @param createOutcomeCohorts     Create the tables with the outcome cohorts?
 #' @param fetchAllDataFromServer          Fetch all relevant data from the server?
 #' @param synthesizePositiveControls       Inject signals to create synthetic controls?
 #' @param generateAllCohortMethodDataObjects  Create the cohortMethodData objects from the fetched data and injected signals?
 #' @param runCohortMethod      Run the CohortMethod package to produce the outcome models?
-#' @param computeIncidenceRates Compute incidence rates?
+#' @param computeIncidence     Compute incidence rates?
 #' @param fetchChronographData Fetch the data for constructing chronographs?
+#' @param computeCovariateBalance Fetch the data for constructing chronographs?
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -55,11 +52,9 @@ execute <- function(connectionDetails,
                     cdmDatabaseSchema,
                     oracleTempSchema,
                     cohortDatabaseSchema,
-                    studyCohortTable,
-                    exposureCohortSummaryTable,
                     outputFolder,
-                    maxCores,
                     indicationId = "Depression",
+                    tablePrefix,
                     createExposureCohorts = TRUE,
                     createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
@@ -67,7 +62,9 @@ execute <- function(connectionDetails,
                     generateAllCohortMethodDataObjects = TRUE,
                     runCohortMethod = TRUE,
                     computeIncidence = TRUE,
-                    fetchChronographData = TRUE) {
+                    fetchChronographData = TRUE,
+                    computeCovariateBalance = TRUE,
+                    maxCores) {
 
     indicationFolder <- file.path(outputFolder, indicationId)
     if (!file.exists(indicationFolder)) {

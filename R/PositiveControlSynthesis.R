@@ -246,7 +246,7 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     saveRDS(outcomes2, file.path(signalInjectionFolder, "outcomes.rds"))
 
     priorOutcomes <- negativeControlOutcomes[negativeControlOutcomes$daysToEvent < 0, c("rowId", "outcomeId")]
-    dedupe <- function(outcomeId, data) {
+    dedupe2 <- function(outcomeId, data) {
         if (!ffbase::any.ff(data$outcomeId == outcomeId)) {
             return(data.frame())
         }
@@ -254,7 +254,7 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
         rowIds <- ff::as.ram(ffbase::unique.ff(data$rowId))
         return(data.frame(rowId = rowIds, outcomeId = outcomeId))
     }
-    priorOutcomes <- sapply(negativeControlIds, dedupe, data = priorOutcomes, simplify = FALSE)
+    priorOutcomes <- sapply(negativeControlIds, dedupe2, data = priorOutcomes, simplify = FALSE)
     priorOutcomes <- do.call("rbind", priorOutcomes)
     saveRDS(priorOutcomes, file.path(signalInjectionFolder, "priorOutcomes.rds"))
 

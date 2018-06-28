@@ -14,10 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' Export all results to tables
+#'
+#' @description
+#' Outputs all results to a folder called 'export', and zips them.
+#'
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/). Do not use a folder on a network drive since this greatly impacts
 #'                             performance.
-#' @param indicationId           A string denoting the indicationId.
+#' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
+#' @param databaseName         The full name of the database.
+#' @param maxCores             How many parallel cores should be used? If more cores are made available
+#'                             this can speed up the analyses.
 #'
 #' @export
 exportResults <- function(outputFolder,
@@ -47,7 +55,8 @@ exportResults <- function(outputFolder,
 
     exportMetadata(outputFolder = outputFolder,
                    exportFolder = exportFolder,
-                   databaseId = databaseId)
+                   databaseId = databaseId,
+                   databaseName = databaseName)
 
     exportMainResults(outputFolder = outputFolder,
                       exportFolder = exportFolder,
@@ -56,7 +65,8 @@ exportResults <- function(outputFolder,
 
     exportDiagnostics(outputFolder = outputFolder,
                       exportFolder = exportFolder,
-                      databaseId = databaseId)
+                      databaseId = databaseId,
+                      maxCores = maxCores)
 
     # Add all to zip file -------------------------------------------------------------------------------
     zipName <- file.path(exportFolder, "Results.zip")
@@ -227,7 +237,8 @@ exportOutcomes <- function(outputFolder,
 
 exportMetadata <- function(outputFolder,
                            exportFolder,
-                           databaseId) {
+                           databaseId,
+                           databaseName) {
     OhdsiRTools::logInfo("Exporting metadata")
     OhdsiRTools::logInfo("- database table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
@@ -362,7 +373,7 @@ exportMainResults <- function(outputFolder,
     rm(cmResults) # Free up memory
     results <- OhdsiRTools::clusterApply(cluster,
                                          subsets,
-                                         Legend:::calibrate,
+                                         calibrate,
                                          negativeControls = negativeControls,
                                          positiveControls = positiveControls)
     OhdsiRTools::stopCluster(cluster)
@@ -430,7 +441,7 @@ exportMainResults <- function(outputFolder,
     subsets <- split(interactions, paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
     interactions <- OhdsiRTools::clusterApply(cluster,
                                               subsets,
-                                              Legend:::calibrateInteractions,
+                                              calibrateInteractions,
                                               negativeControls = negativeControls)
     OhdsiRTools::stopCluster(cluster)
     rm(subsets) # Free up memory
@@ -579,7 +590,8 @@ calibrateInteractions <- function(subset, negativeControls) {
 
 exportDiagnostics <- function(outputFolder,
                               exportFolder,
-                              databaseId) {
+                              databaseId,
+                              maxCores) {
     OhdsiRTools::logInfo("Exporting diagnostics")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
@@ -717,7 +729,7 @@ exportDiagnostics <- function(outputFolder,
             }
             return(NULL)
         }
-        outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+        outcomeModelReference <- readRDS(file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))
         outcomeModelReference <- outcomeModelReference[order(outcomeModelReference$sharedPsFile), ]
         outcomeModelReference <- outcomeModelReference[!duplicated(outcomeModelReference$sharedPsFile), ]
         data <- plyr::llply(1:nrow(outcomeModelReference), getPsModel, outcomeModelReference = outcomeModelReference, .progress = "text")
@@ -743,7 +755,7 @@ exportDiagnostics <- function(outputFolder,
         cluster <- OhdsiRTools::makeCluster(min(6, maxCores))
         data <- OhdsiRTools::clusterApply(cluster,
                                           1:nrow(outcomeModelReference),
-                                          Legend:::prepareKm,
+                                          prepareKm,
                                           outcomeModelReference = outcomeModelReference)
         OhdsiRTools::stopCluster(cluster)
         data <- do.call("rbind", data)

@@ -25,23 +25,24 @@
 #' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
+#'                             write priviliges in this schema. Note that for SQL Server, this should
+#'                             include both the database and schema name, for example 'cdm_data.dbo'.
+#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
+#'                             priviliges for storing temporary tables.
+#' @param indicationId         A string denoting the indicationId.
+#' @param tablePrefix          A prefix to be used for all table names created for this study.
 #' @param outputFolder         Schema name where intermediate data can be stored. You will need to have
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param studyCohortTable     The name of the study cohort table  in the work database schema.
-#' @param exposureCohortSummaryTable     The name of the exposure summary table in the work database schema.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
 #'
 #' @export
 fetchAllDataFromServer <- function(connectionDetails,
                                    cdmDatabaseSchema,
                                    cohortDatabaseSchema,
-                                   tablePrefix = "legend",
-                                   indicationId = "Depression",
                                    oracleTempSchema,
+                                   indicationId = "Depression",
+                                   tablePrefix = "legend",
                                    outputFolder) {
     # Some ad-hoc nomenclature:
     #
@@ -273,6 +274,7 @@ constructCohortMethodDataObject <- function(targetId,
 #'
 #' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
+#' @param indicationId         A string denoting the indicationId.
 #'
 #' @export
 generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Depression") {

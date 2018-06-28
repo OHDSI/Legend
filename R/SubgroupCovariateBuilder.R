@@ -20,6 +20,10 @@
 #' @details
 #' Creates a marker covariate for each of the subgroups of interest.
 #'
+#' @param windowStart            Start day of the window where covariates are captured,
+#'                               relative to the index date (0 = index date).
+#' @param windowEnd              End day of the window where covariates are captured,
+#'                               relative to the index date (0 = index date).
 #' @param analysisId             A unique identifier for this analysis.
 #'
 #' @return

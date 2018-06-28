@@ -11,6 +11,9 @@ computeCovariateBalance(indicationId = "Depression", outputFolder, maxCores)
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
+
+\item{maxCores}{How many parallel cores should be used? If more cores are made available
+this can speed up the analyses.}
 }
 \description{
 Compute covariate balance for each comparison

@@ -19,8 +19,10 @@
 #' @details
 #' Runs the cohort method package to produce propensity scores and outcome models.
 #'
-#' @param indicationFolder           Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
+#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
+#'                             (/). Do not use a folder on a network drive since this greatly impacts
+#'                             performance.
+#' @param indicationId         A string denoting the indicationId.
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'

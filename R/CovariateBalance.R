@@ -23,6 +23,8 @@
 #' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
+#' @param maxCores             How many parallel cores should be used? If more cores are made available
+#'                             this can speed up the analyses.
 #'
 #' @export
 computeCovariateBalance <- function(indicationId = "Depression",
