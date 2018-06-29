@@ -173,11 +173,9 @@ fetchAllDataFromServer <- function(connectionDetails,
     cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
                                    data.frame(cohortId = exposuresOfInterest$conceptId,
                                               ancestorConceptId = exposuresOfInterest$conceptId))
-
     filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
-    counts <- read.csv(file.path(indicationFolder, "exposureCohortCounts.csv"))
-    filterConcepts <- merge(filterConcepts, data.frame(cohortId = counts$cohortDefinitionId,
-                                                       cohortName = counts$cohortName))
+    filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
+                                                       cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
     saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
 }
 

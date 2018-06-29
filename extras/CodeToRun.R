@@ -31,10 +31,11 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 port = port)
 
 # CCAE settings ----------------------------------------------------------------
-cdmDatabaseSchema <- "cdm_truven_ccae_v697.dbo"
+cdmDatabaseSchema <- "cdm_truven_ccae_v750.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_ccae"
 databaseId <- "CCAE"
+databaseName <- "Truven Health MarketScan Commercial Claims and Encounters Database"
 outputFolder <- file.path(studyFolder, "ccae")
 
 # MDCD settings ----------------------------------------------------------------
@@ -42,20 +43,23 @@ cdmDatabaseSchema <- "cdm_truven_mdcd_v699.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_mdcd"
 databaseId <- "MDCD"
+databaseName <- "Truven Health MarketScan® Multi-State Medicaid Database"
 outputFolder <- file.path(studyFolder, "mdcd")
 
 # MDCR settings ----------------------------------------------------------------
-cdmDatabaseSchema <- "cdm_truven_mdcr_v698.dbo"
+cdmDatabaseSchema <- "cdm_truven_mdcr_v751.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_mdcr"
 databaseId <- "MDCR"
+databaseName <- "Truven Health MarketScan Medicare Supplemental and Coordination of Benefits Database"
 outputFolder <- file.path(studyFolder, "mdcr")
 
 # Optum settings ----------------------------------------------------------------
-cdmDatabaseSchema <- "cdm_optum_extended_dod_v695.dbo"
+cdmDatabaseSchema <- "cdm_optum_extended_dod_v734.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 tablePrefix <- "legend_optum"
 databaseId <- "Optum"
+databaseName <- "Optum’s  Clinformatics® Extended Data Mart"
 outputFolder <- file.path(studyFolder, "optum")
 
 # Synpuf settings ----------------------------------------------------------------
@@ -76,6 +80,30 @@ mailSettings <- list(from = Sys.getenv("mailAddress"),
                                  passwd = Sys.getenv("mailPassword"), ssl = TRUE),
                      authenticate = TRUE,
                      send = TRUE)
+
+OhdsiRTools::runAndNotify({
+    execute(connectionDetails = connectionDetails,
+            cdmDatabaseSchema = cdmDatabaseSchema,
+            oracleTempSchema = oracleTempSchema,
+            cohortDatabaseSchema = cohortDatabaseSchema,
+            outputFolder = outputFolder,
+            indicationId = indicationId,
+            tablePrefix = tablePrefix,
+            createExposureCohorts = FALSE,
+            createOutcomeCohorts = FALSE,
+            fetchAllDataFromServer = FALSE,
+            synthesizePositiveControls = TRUE,
+            generateAllCohortMethodDataObjects = TRUE,
+            runCohortMethod = TRUE,
+            computeIncidence = TRUE,
+            fetchChronographData = TRUE,
+            computeCovariateBalance = TRUE,
+            maxCores = maxCores)
+},  mailSettings = mailSettings, label = "Legend")
+
+
+
+
 
 
 createExposureCohorts(connectionDetails = connectionDetails,
@@ -98,7 +126,7 @@ createOutcomeCohorts(connectionDetails = connectionDetails,
                      outputFolder = outputFolder)
 
 
-OhdsiRTools::runAndNotify({
+
 
     fetchAllDataFromServer(connectionDetails = connectionDetails,
                            cdmDatabaseSchema = cdmDatabaseSchema,
@@ -125,7 +153,7 @@ OhdsiRTools::runAndNotify({
                     indicationId = indicationId,
                     maxCores = maxCores)
 
-},  mailSettings = mailSettings, label = "Legend")
+
 
 computeIncidence(outputFolder = outputFolder,
                  indicationId = indicationId)
