@@ -24,6 +24,7 @@
 #'                             performance.
 #' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
 #' @param databaseName         The full name of the database.
+#' @param minCellCount         The minimum cell count for fields contains person counts or fractions.
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -31,6 +32,7 @@
 exportResults <- function(outputFolder,
                           databaseId,
                           databaseName,
+                          minCellCount = 5,
                           maxCores) {
     exportFolder <- file.path(outputFolder, "export")
     if (!file.exists(exportFolder)) {
@@ -56,16 +58,19 @@ exportResults <- function(outputFolder,
     exportMetadata(outputFolder = outputFolder,
                    exportFolder = exportFolder,
                    databaseId = databaseId,
-                   databaseName = databaseName)
+                   databaseName = databaseName,
+                   minCellCount = minCellCount)
 
     exportMainResults(outputFolder = outputFolder,
                       exportFolder = exportFolder,
                       databaseId = databaseId,
+                      minCellCount = minCellCount,
                       maxCores = maxCores)
 
     exportDiagnostics(outputFolder = outputFolder,
                       exportFolder = exportFolder,
                       databaseId = databaseId,
+                      minCellCount = minCellCount,
                       maxCores = maxCores)
 
     # Add all to zip file -------------------------------------------------------------------------------
@@ -238,7 +243,8 @@ exportOutcomes <- function(outputFolder,
 exportMetadata <- function(outputFolder,
                            exportFolder,
                            databaseId,
-                           databaseName) {
+                           databaseName,
+                           minCellCount) {
     OhdsiRTools::logInfo("Exporting metadata")
     OhdsiRTools::logInfo("- database table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
@@ -301,7 +307,7 @@ exportMetadata <- function(outputFolder,
             attrition <- rbind(attrition1, attrition2)
             attrition$targetId <- outcomeModelReference$targetId[i]
             attrition$comparatorId <- outcomeModelReference$comparatorId[i]
-            attrition <- rbind(attrition, swapColumnContents(attrition, "targetId", "comparatorId"))
+            attrition <- rbind(attrition, Legend:::swapColumnContents(attrition, "targetId", "comparatorId"))
             attrition$analysisId <- outcomeModelReference$analysisId[i]
             attrition$outcomeId <-  outcomeModelReference$outcomeId[i]
             return(attrition)
@@ -314,7 +320,7 @@ exportMetadata <- function(outputFolder,
         pathToCsv <- file.path(outputFolder, indicationId, "attrition.csv")
         attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
         attritionFromDbTc <- attritionFromDb[attritionFromDb$targetId != -1, ]
-        attritionFromDb <- rbind(attritionFromDb, swapColumnContents(attritionFromDbTc, "targetId", "comparatorId"))
+        attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc, "targetId", "comparatorId"))
         attritionFromDb$analysisId <- -1
         attritionFromDb$outcomeId <- -1
         attritionFromDb$databaseId <- databaseId
@@ -324,6 +330,7 @@ exportMetadata <- function(outputFolder,
     }
     attrition <- lapply(indications$indicationId, loadAttrition)
     attrition <- do.call("rbind", attrition)
+    attrition <- enforceMinCellValue(attrition, "subjects", minCellCount)
     colnames(attrition) <- SqlRender::camelCaseToSnakeCase(colnames(attrition))
     fileName <- file.path(exportFolder, "attrition.csv")
     write.csv(attrition, fileName, row.names = FALSE)
@@ -346,9 +353,31 @@ exportMetadata <- function(outputFolder,
     rm(covariateNames) # Free up memory
 }
 
+enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
+    toCensor <- !is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0
+    if (!silent) {
+        percent <- round(100 * sum(toCensor) / nrow(data), 1)
+        OhdsiRTools::logInfo("   censoring ",
+                             sum(toCensor),
+                             " values (",
+                             percent,
+                             "%) from ",
+                             fieldName,
+                             " because value below minimum")
+    }
+    if (length(minValues) == 1) {
+        data[toCensor, fieldName] <- -minValues
+    } else {
+        data[toCensor, fieldName] <- -minValues[toCensor]
+    }
+    return(data)
+}
+
+
 exportMainResults <- function(outputFolder,
                               exportFolder,
                               databaseId,
+                              minCellCount,
                               maxCores) {
     OhdsiRTools::logInfo("Exporting main results")
     OhdsiRTools::logInfo("- cohort_method_result table")
@@ -373,13 +402,17 @@ exportMainResults <- function(outputFolder,
     rm(cmResults) # Free up memory
     results <- OhdsiRTools::clusterApply(cluster,
                                          subsets,
-                                         calibrate,
+                                         Legend:::calibrate,
                                          negativeControls = negativeControls,
                                          positiveControls = positiveControls)
     OhdsiRTools::stopCluster(cluster)
     rm(subsets) # Free up memory
     results <- do.call("rbind", results)
     results$databaseId <- databaseId
+    results <- enforceMinCellValue(results, "targetSubjects", minCellCount)
+    results <- enforceMinCellValue(results, "comparatorSubjects", minCellCount)
+    results <- enforceMinCellValue(results, "targetOutcomes", minCellCount)
+    results <- enforceMinCellValue(results, "comparatorOutcomes", minCellCount)
     colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
     fileName <- file.path(exportFolder, "cohort_method_result.csv")
     write.csv(results, fileName, row.names = FALSE)
@@ -441,14 +474,14 @@ exportMainResults <- function(outputFolder,
     subsets <- split(interactions, paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
     interactions <- OhdsiRTools::clusterApply(cluster,
                                               subsets,
-                                              calibrateInteractions,
+                                              Legend:::calibrateInteractions,
                                               negativeControls = negativeControls)
     OhdsiRTools::stopCluster(cluster)
     rm(subsets) # Free up memory
     interactions <- do.call("rbind", interactions)
 
     # Add TC -> CT swap
-    interactionsCt <- swapColumnContents(interactions, "targetId", "comparatorId")
+    interactionsCt <- Legend:::swapColumnContents(interactions, "targetId", "comparatorId")
     interactionsCt$rrr <- 1/interactionsCt$rrr
     interactionsCt$logRrr <- -interactionsCt$logRrr
     temp <- 1/interactionsCt$ci95Lb
@@ -457,6 +490,10 @@ exportMainResults <- function(outputFolder,
     interactions <- rbind(interactionsCt)
     interactions$databaseId <- databaseId
 
+    interactions <- enforceMinCellValue(interactions, "targetSubjects", minCellCount)
+    interactions <- enforceMinCellValue(interactions, "comparatorSubjects", minCellCount)
+    interactions <- enforceMinCellValue(interactions, "targetOutcomes", minCellCount)
+    interactions <- enforceMinCellValue(interactions, "comparatorOutcomes", minCellCount)
     colnames(interactions) <- SqlRender::camelCaseToSnakeCase(colnames(interactions))
     fileName <- file.path(exportFolder, "cm_interaction_result.csv")
     write.csv(interactions, fileName, row.names = FALSE)
@@ -471,6 +508,8 @@ exportMainResults <- function(outputFolder,
     incidence <- lapply(indications$indicationId, loadIncidence)
     incidence <- do.call("rbind", incidence)
     incidence$databaseId <- databaseId
+    incidence <- enforceMinCellValue(incidence, "subjects", minCellCount)
+    incidence <- enforceMinCellValue(incidence, "outcomes", minCellCount)
     colnames(incidence) <- SqlRender::camelCaseToSnakeCase(colnames(incidence))
     fileName <- file.path(exportFolder, "incidence.csv")
     write.csv(incidence, fileName, row.names = FALSE)
@@ -484,8 +523,21 @@ exportMainResults <- function(outputFolder,
     chronograph <- lapply(indications$indicationId, loadChronograph)
     chronograph <- do.call("rbind", chronograph)
     chronograph$databaseId <- databaseId
-    chronograph <- chronograph[, c("databaseId", "exposureId", "outcomeCount", "periodId", "outcomeCount", "expectedCount", "ic", "icLow", "icHigh")]
-    colnames(chronograph) <- c("databaseId", "exposureId", "outcomeCount", "time", "outcomes", "expectedOutcomes", " ic", "icLb", "icUb")
+    chronograph <- chronograph[, c("databaseId", "exposureId", "outcomeId", "periodId", "outcomeCount", "expectedCount", "ic", "icLow", "icHigh")]
+    colnames(chronograph) <- c("databaseId", "exposureId", "outcomeId", "time", "outcomes", "expectedOutcomes", "ic", "icLb", "icUb")
+    # IC metric depends on number of observed outcomes, so consider together for minCellCount:
+    toCensor <- chronograph$outcomes < minCellCount & chronograph$outcomes != 0
+    percent <- round(100 * sum(toCensor) / nrow(chronograph), 1)
+    chronograph$outcomes[toCensor] <- minCellCount
+    chronograph$ic[toCensor] <- NA
+    chronograph$icLb[toCensor] <- NA
+    chronograph$icUb[toCensor] <- NA
+    OhdsiRTools::logInfo("   censoring ",
+                         sum(toCensor),
+                         " values (",
+                         percent,
+                         "%) from outcomes, ic, icLb, icUb because value below minimum")
+
     colnames(chronograph) <- SqlRender::camelCaseToSnakeCase(colnames(chronograph))
     fileName <- file.path(exportFolder, "chronograph.csv")
     write.csv(chronograph, fileName, row.names = FALSE)
@@ -563,7 +615,7 @@ calibrate <- function(subset, negativeControls, positiveControls) {
     subset$i2 <- rep(NA, nrow(subset))
     subset <- subset[, c("targetId", "comparatorId", "outcomeId", "analysisId", "rr", "ci95lb",
                          "ci95ub", "p", "i2", "logRr", "seLogRr", "target", "comparator", "targetDays", "comparatorDays",
-                         "eventsTarget", "comparatorDays", "calibratedP", "calibratedRr", "calibratedCi95Lb", "calibratedCi95Ub",
+                         "eventsTarget", "eventsComparator", "calibratedP", "calibratedRr", "calibratedCi95Lb", "calibratedCi95Ub",
                          "calibratedLogRr", "calibratedSeLogRr")]
     colnames(subset) <- c("targetId", "comparatorId", "outcomeId", "analysisId", "rr", "ci95lb",
                           "ci95ub", "p", "i2", "logRr", "seLogRr", "targetSubjects", "comparatorSubjects", "targetDays", "comparatorDays",
@@ -591,6 +643,7 @@ calibrateInteractions <- function(subset, negativeControls) {
 exportDiagnostics <- function(outputFolder,
                               exportFolder,
                               databaseId,
+                              minCellCount,
                               maxCores) {
     OhdsiRTools::logInfo("Exporting diagnostics")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
@@ -617,6 +670,13 @@ exportDiagnostics <- function(outputFolder,
                 subgroupId <- NA
             }
             balance <- readRDS(files[i])
+
+
+            inferredTargetBeforeSize <- mean(balance$beforeMatchingSumTarget/balance$beforeMatchingMeanTarget, na.rm = TRUE)
+            inferredComparatorBeforeSize <- mean(balance$beforeMatchingSumComparator/balance$beforeMatchingMeanComparator, na.rm = TRUE)
+            inferredTargetAfterSize <- mean(balance$afterMatchingSumTarget/balance$afterMatchingMeanTarget, na.rm = TRUE)
+            inferredComparatorAfterSize <- mean(balance$afterMatchingSumComparator/balance$afterMatchingMeanComparator, na.rm = TRUE)
+
             balance$databaseId <- databaseId
             balance$targetId <- targetId
             balance$comparatorId <- comparatorId
@@ -627,10 +687,14 @@ exportDiagnostics <- function(outputFolder,
             colnames(balance) <- c("databaseId", "targetId", "comparatorId", "interactionCovariateId", "covariateId",
                                    "targetMeanBefore", "comparatorMeanBefore", "stdDiffBefore",
                                    "targetMeanAfter", "comparatorMeanAfter", "stdDiffAfter")
+            balance$targetMeanBefore[is.na(balance$targetMeanBefore)] <- 0
             balance$targetMeanBefore <- round(balance$targetMeanBefore, 3)
+            balance$comparatorMeanBefore[is.na(balance$comparatorMeanBefore)] <- 0
             balance$comparatorMeanBefore <- round(balance$comparatorMeanBefore, 3)
             balance$stdDiffBefore <- round(balance$stdDiffBefore, 3)
+            balance$targetMeanAfter[is.na(balance$targetMeanAfter)] <- 0
             balance$targetMeanAfter <- round(balance$targetMeanAfter, 3)
+            balance$comparatorMeanAfter[is.na(balance$comparatorMeanAfter)] <- 0
             balance$comparatorMeanAfter <- round(balance$comparatorMeanAfter, 3)
             balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
 
@@ -640,6 +704,12 @@ exportDiagnostics <- function(outputFolder,
             balanceCt <- swapColumnContents(balanceCt, "targetMeanAfter", "comparatorMeanAfter")
             balanceCt$stdDiffAfter <- -balanceCt$stdDiffAfter
             balance <- rbind(balance, balanceCt)
+
+            balance <- enforceMinCellValue(balance, "targetMeanBefore",  minCellCount / inferredTargetBeforeSize, TRUE)
+            balance <- enforceMinCellValue(balance, "comparatorMeanBefore",  minCellCount / inferredComparatorBeforeSize, TRUE)
+            balance <- enforceMinCellValue(balance, "targetMeanAfter",  minCellCount / inferredTargetAfterSize, TRUE)
+            balance <- enforceMinCellValue(balance, "comparatorMeanAfter",  minCellCount / inferredComparatorAfterSize, TRUE)
+
             colnames(balance) <- SqlRender::camelCaseToSnakeCase(colnames(balance))
             write.table(x = balance,
                         file = fileName,
@@ -755,14 +825,17 @@ exportDiagnostics <- function(outputFolder,
         cluster <- OhdsiRTools::makeCluster(min(6, maxCores))
         data <- OhdsiRTools::clusterApply(cluster,
                                           1:nrow(outcomeModelReference),
-                                          prepareKm,
+                                          Legend:::prepareKm,
                                           outcomeModelReference = outcomeModelReference)
         OhdsiRTools::stopCluster(cluster)
         data <- do.call("rbind", data)
         data$databaseId <- databaseId
+        return(data)
     }
     data <- lapply(indications$indicationId, prepareKms)
     data <- do.call("rbind", data)
+    data <- enforceMinCellValue(data, "targetAtRisk", minCellCount)
+    data <- enforceMinCellValue(data, "comparatorAtRisk", minCellCount)
     colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
     fileName <- file.path(exportFolder, "kaplan_meier_dist.csv")
     write.csv(data, fileName, row.names = FALSE)

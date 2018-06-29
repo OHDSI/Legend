@@ -4,7 +4,8 @@
 \alias{exportResults}
 \title{Export all results to tables}
 \usage{
-exportResults(outputFolder, databaseId, databaseName, maxCores)
+exportResults(outputFolder, databaseId, databaseName, minCellCount = 5,
+  maxCores)
 }
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
@@ -14,6 +15,8 @@ performance.}
 \item{databaseId}{A short string for identifying the database (e.g. 'Synpuf').}
 
 \item{databaseName}{The full name of the database.}
+
+\item{minCellCount}{The minimum cell count for fields contains person counts or fractions.}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
