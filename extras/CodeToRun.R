@@ -92,8 +92,8 @@ OhdsiRTools::runAndNotify({
             createExposureCohorts = FALSE,
             createOutcomeCohorts = FALSE,
             fetchAllDataFromServer = FALSE,
-            synthesizePositiveControls = TRUE,
-            generateAllCohortMethodDataObjects = TRUE,
+            synthesizePositiveControls = FALSE,
+            generateAllCohortMethodDataObjects = FALSE,
             runCohortMethod = TRUE,
             computeIncidence = TRUE,
             fetchChronographData = TRUE,
@@ -128,30 +128,29 @@ createOutcomeCohorts(connectionDetails = connectionDetails,
 
 
 
-    fetchAllDataFromServer(connectionDetails = connectionDetails,
+fetchAllDataFromServer(connectionDetails = connectionDetails,
+                       cdmDatabaseSchema = cdmDatabaseSchema,
+                       oracleTempSchema = oracleTempSchema,
+                       cohortDatabaseSchema = cohortDatabaseSchema,
+                       tablePrefix = tablePrefix,
+                       indicationId = indicationId,
+                       outputFolder = outputFolder)
+
+synthesizePositiveControls(connectionDetails = connectionDetails,
                            cdmDatabaseSchema = cdmDatabaseSchema,
                            oracleTempSchema = oracleTempSchema,
                            cohortDatabaseSchema = cohortDatabaseSchema,
                            tablePrefix = tablePrefix,
                            indicationId = indicationId,
-                           outputFolder = outputFolder)
+                           outputFolder = outputFolder,
+                           maxCores = maxCores)
 
-    synthesizePositiveControls(connectionDetails = connectionDetails,
-                               cdmDatabaseSchema = cdmDatabaseSchema,
-                               oracleTempSchema = oracleTempSchema,
-                               cohortDatabaseSchema = cohortDatabaseSchema,
-                               tablePrefix = tablePrefix,
-                               indicationId = indicationId,
-                               outputFolder = outputFolder,
-                               sampleSize = 10000, # Change this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                               maxCores = maxCores)
+generateAllCohortMethodDataObjects(outputFolder = outputFolder,
+                                   indicationId = indicationId)
 
-    generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                       indicationId = indicationId)
-
-    runCohortMethod(outputFolder = outputFolder,
-                    indicationId = indicationId,
-                    maxCores = maxCores)
+runCohortMethod(outputFolder = outputFolder,
+                indicationId = indicationId,
+                maxCores = maxCores)
 
 
 
@@ -173,4 +172,5 @@ computeCovariateBalance(outputFolder = outputFolder,
 exportResults(outputFolder = outputFolder,
               databaseId = databaseId,
               databaseName = databaseName,
+              minCellCount = 5,
               maxCores = maxCores)
