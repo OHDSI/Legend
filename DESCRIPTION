@@ -7,7 +7,7 @@ Maintainer: Martijn J. Schuemie <schuemie@ohdsi.org>
 Description: Large-Scale Evidence Generation and Evaluation in a Network of Databases.
 Depends:
     R (>= 3.1),
-    DatabaseConnector
+    DatabaseConnector (>= 2.1.4)
 Imports:
     Cyclops,
     ff,
@@ -19,7 +19,7 @@ Imports:
     EmpiricalCalibration (>= 1.4.0),
 	MethodEvaluation (>= 0.3.0),
     OhdsiRTools,
-    zip,
+    zip (>= 1.0.0.9000),
     plyr
 Suggests:
     testthat,
