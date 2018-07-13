@@ -151,9 +151,9 @@ plotCiCalibration <- function(d) {
 
     #rm(calibrated)
     #rm(d)
-    cluster <- OhdsiRTools::makeCluster(15)
-    coverages <- OhdsiRTools::clusterApply(cluster, 1:nrow(result), computeLooCoverage, data = data, result = result)
-    OhdsiRTools::stopCluster(cluster)
+    cluster <- ParallelLogger::makeCluster(15)
+    coverages <- ParallelLogger::clusterApply(cluster, 1:nrow(result), computeLooCoverage, data = data, result = result)
+    ParallelLogger::stopCluster(cluster)
     #coverages <- lapply(unique(leaveOutGrouping), computeLooCoverage, data = data)
     coverage <- do.call("rbind", coverages)
     data$count <- 1

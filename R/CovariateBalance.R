@@ -30,7 +30,7 @@
 computeCovariateBalance <- function(indicationId = "Depression",
                                     outputFolder,
                                     maxCores) {
-    OhdsiRTools::logInfo("Computing covariate balance")
+    ParallelLogger::logInfo("Computing covariate balance")
     indicationFolder <- file.path(outputFolder, indicationId)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     balanceFolder <- file.path(indicationFolder, "balance")
@@ -46,7 +46,7 @@ computeCovariateBalance <- function(indicationId = "Depression",
     studyPopArgs <- cmAnalysisList[[2]]$createStudyPopArgs
     stratifyByPsArgs <- cmAnalysisList[[2]]$stratifyByPsArgs
     computeBalance <- function(exposureSummaryRow, studyPopArgs, stratifyByPsArgs, indicationFolder, balanceFolder) {
-        OhdsiRTools::logTrace("Computing balance for target ", exposureSummaryRow$targetId, " and comparator ",  exposureSummaryRow$comparatorId)
+        ParallelLogger::logTrace("Computing balance for target ", exposureSummaryRow$targetId, " and comparator ",  exposureSummaryRow$comparatorId)
         cmDataFolder <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
         psFile <- file.path(indicationFolder, "cmOutput", paste0("Ps_l1_p1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId, ".rds"))
@@ -102,15 +102,15 @@ computeCovariateBalance <- function(indicationId = "Depression",
         }
     }
 
-    cluster <- OhdsiRTools::makeCluster(numberOfThreads = min(4, maxCores))
+    cluster <- ParallelLogger::makeCluster(numberOfThreads = min(4, maxCores))
     exposureSummary$comparison <- paste(exposureSummary$targetId, exposureSummary$comparatorId, sep = "-")
-    OhdsiRTools::clusterApply(cluster = cluster,
+    ParallelLogger::clusterApply(cluster = cluster,
                               x = split(exposureSummary, exposureSummary$comparison),
                               fun = computeBalance,
                               studyPopArgs = studyPopArgs,
                               stratifyByPsArgs = stratifyByPsArgs,
                               indicationFolder = indicationFolder,
                               balanceFolder = balanceFolder)
-    OhdsiRTools::stopCluster(cluster)
+    ParallelLogger::stopCluster(cluster)
 }
 

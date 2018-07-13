@@ -70,7 +70,7 @@ execute <- function(connectionDetails,
     if (!file.exists(indicationFolder)) {
         dir.create(indicationFolder, recursive = TRUE)
     }
-    OhdsiRTools::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
+    ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
 
     if (createExposureCohorts) {
         createExposureCohorts(connectionDetails = connectionDetails,

@@ -133,7 +133,7 @@ for (db in dbs) {
 }
 
 ### Balance files (saved separately because they're big)
-library(OhdsiRTools)
+library(ParallelLogger)
 library(CohortMethod)
 options(fftempdir = "R:/fftemp")
 dbs <- unique(d$db)
@@ -171,7 +171,7 @@ for (db in dbs) {
     clusterRequire(cluster, "CohortMethod")
     clusterApply(cluster, 1:nrow(tcs), fun, tcs = tcs, db = db, omr = omr, dataFolder = dataFolder)
     #clusterApply(cluster, 1:3, fun, tcs = tcs, db = db, omr = omr, dataFolder = dataFolder)
-    OhdsiRTools::stopCluster(cluster)
+    ParallelLogger::stopCluster(cluster)
 }
 
 # Literature data ---------------------------------------------------------

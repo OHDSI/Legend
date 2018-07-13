@@ -48,7 +48,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                        outputFolder,
                                        sampleSize = 100000,
                                        maxCores = 4) {
-    OhdsiRTools::logInfo("Synthesizing positive controls for: ", indicationId)
+    ParallelLogger::logInfo("Synthesizing positive controls for: ", indicationId)
 
     indicationFolder <- file.path(outputFolder, indicationId)
     signalInjectionFolder <- file.path(indicationFolder, "signalInjection")
@@ -79,7 +79,7 @@ synthesizePositiveControls <- function(connectionDetails,
     positiveControlIdOffset <- indications$positiveControlIdOffset[indications$indicationId == indicationId]
 
     # Create a dummy exposure table:
-    OhdsiRTools::logTrace("Create a dummy exposure table")
+    ParallelLogger::logTrace("Create a dummy exposure table")
     conn <- DatabaseConnector::connect(connectionDetails)
     sql <- "IF OBJECT_ID('@cohort_database_schema.@table_prefix_dummy', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@table_prefix_dummy;
@@ -91,7 +91,7 @@ synthesizePositiveControls <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql)
     DatabaseConnector::disconnect(conn)
 
-    OhdsiRTools::logTrace("Calling injectSignals function")
+    ParallelLogger::logTrace("Calling injectSignals function")
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
                                             oracleTempSchema = cdmDatabaseSchema,
@@ -180,11 +180,11 @@ synthesizePositiveControls <- function(connectionDetails,
 
 createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
-    OhdsiRTools::logInfo("- Preparing data files")
+    ParallelLogger::logInfo("- Preparing data files")
     # exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 
     # Create exposures file ----------------------------------------------------------
-    OhdsiRTools::logTrace("Create exposures file")
+    ParallelLogger::logTrace("Create exposures file")
     cohorts <- NULL
     ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
     ff::open.ffdf(cohorts)
@@ -211,7 +211,7 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     saveRDS(exposures, file.path(signalInjectionFolder, "exposures.rds"))
 
     # Create outcomes file ----------------------------------------------------------
-    OhdsiRTools::logTrace("Create outcomes file")
+    ParallelLogger::logTrace("Create outcomes file")
     outcomes <- NULL
     ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes")) # Loads outcomes
     ff::open.ffdf(outcomes)
@@ -259,7 +259,7 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     saveRDS(priorOutcomes, file.path(signalInjectionFolder, "priorOutcomes.rds"))
 
     # Clone covariate data for prediction----------------------------------------------------
-    OhdsiRTools::logTrace("Clone covariate data for prediction")
+    ParallelLogger::logTrace("Clone covariate data for prediction")
     covariatesFolder <- file.path(signalInjectionFolder, "covarsForPrediction_g1")
     if (file.exists(covariatesFolder)) {
         unlink(covariatesFolder, recursive = TRUE)
@@ -273,7 +273,7 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     FeatureExtraction::saveCovariateData(covariateDataClone, covariatesFolder)
 
     # Sample for model fitting --------------------------------------------------------------
-    OhdsiRTools::logTrace("Sample for model fitting")
+    ParallelLogger::logTrace("Sample for model fitting")
     #sampleSize = 10000
     uniqueGroups <- list(unique(exposures$exposureId))
     saveRDS(uniqueGroups, file.path(signalInjectionFolder, "uniqueGroups.rds"))

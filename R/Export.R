@@ -74,12 +74,13 @@ exportResults <- function(outputFolder,
                       maxCores = maxCores)
 
     # Add all to zip file -------------------------------------------------------------------------------
+    ParallelLogger::logInfo("Adding results to zip file")
     zipName <- file.path(exportFolder, "Results.zip")
-    files <- list.files(exportFolder)
+    files <- list.files(exportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(exportFolder)
     on.exit(setwd(oldWd))
     zip::zip(zipfile = zipName, files = files, recurse = FALSE)
-    OhdsiRTools::logInfo("Results are ready for sharing at:", zipName)
+    ParallelLogger::logInfo("Results are ready for sharing at:", zipName)
 }
 
 swapColumnContents <- function(df, column1 = "targetId", column2 = "comparatorId") {
@@ -92,8 +93,8 @@ swapColumnContents <- function(df, column1 = "targetId", column2 = "comparatorId
 exportIndications <- function(outputFolder,
                               exportFolder,
                               databaseId) {
-    OhdsiRTools::logInfo("Exporting indications")
-    OhdsiRTools::logInfo("- indication table")
+    ParallelLogger::logInfo("Exporting indications")
+    ParallelLogger::logInfo("- indication table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     for (i in 1:nrow(indications)) {
@@ -112,8 +113,8 @@ exportIndications <- function(outputFolder,
 exportAnalyses <- function(outputFolder,
                            exportFolder,
                            databaseId) {
-    OhdsiRTools::logInfo("Exporting analyses")
-    OhdsiRTools::logInfo("- cohort_method_analysis table")
+    ParallelLogger::logInfo("Exporting analyses")
+    ParallelLogger::logInfo("- cohort_method_analysis table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     cmAnalysisListFile <- system.file("settings",
@@ -124,9 +125,13 @@ exportAnalyses <- function(outputFolder,
                                       "cmAnalysisListInteractions.json",
                                       package = "Legend")
     cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
+    cmAnalysisListFile <- system.file("settings",
+                                      "cmAnalysisListAsym.json",
+                                      package = "Legend")
+    cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
     cmAnalysisToRow <- function(cmAnalysis) {
         tempFileName <- tempfile()
-        OhdsiRTools::saveSettingsToJson(cmAnalysis, tempFileName)
+        ParallelLogger::saveSettingsToJson(cmAnalysis, tempFileName)
         row <- data.frame(analysisId = cmAnalysis$analysisId,
                           description = cmAnalysis$description,
                           definition = readChar(tempFileName, file.info(tempFileName)$size))
@@ -139,7 +144,7 @@ exportAnalyses <- function(outputFolder,
     fileName <- file.path(exportFolder, "cohort_method_analysis.csv")
     write.csv(cohortMethodAnalysis, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- covariate_analysis table")
+    ParallelLogger::logInfo("- covariate_analysis table")
     indicationFolder <- file.path(outputFolder, indications$indicationId[1])
     covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
     covariateAnalysis <- ff::as.ram(covariateData$analysisRef)
@@ -148,7 +153,7 @@ exportAnalyses <- function(outputFolder,
     fileName <- file.path(exportFolder, "covariate_analysis.csv")
     write.csv(covariateAnalysis, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- incidence_analysis table")
+    ParallelLogger::logInfo("- incidence_analysis table")
     incidenceAnalysis <- data.frame(incidence_analysis_id = c("On-treatment", "Intent-to-treat"),
                                     description = c("On-treatment", "Intent-to-treat"))
     fileName <- file.path(exportFolder, "incidence_analysis.csv")
@@ -158,8 +163,8 @@ exportAnalyses <- function(outputFolder,
 exportExposures <- function(outputFolder,
                             exportFolder,
                             databaseId) {
-    OhdsiRTools::logInfo("Exporting exposures")
-    OhdsiRTools::logInfo("- single_exposure_of_interest table")
+    ParallelLogger::logInfo("Exporting exposures")
+    ParallelLogger::logInfo("- single_exposure_of_interest table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
@@ -171,7 +176,7 @@ exportExposures <- function(outputFolder,
     fileName <- file.path(exportFolder, "single_exposure_of_interest.csv")
     write.csv(singleExposuresOfInterest, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- combi_exposure_of_interest table")
+    ParallelLogger::logInfo("- combi_exposure_of_interest table")
     loadCombiExposures <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "exposureCombis.csv")
         if (file.exists(pathToCsv)) {
@@ -193,8 +198,8 @@ exportExposures <- function(outputFolder,
 exportOutcomes <- function(outputFolder,
                            exportFolder,
                            databaseId) {
-    OhdsiRTools::logInfo("Exporting outcomes")
-    OhdsiRTools::logInfo("- outcome_of_interest table")
+    ParallelLogger::logInfo("Exporting outcomes")
+    ParallelLogger::logInfo("- outcome_of_interest table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
@@ -209,7 +214,7 @@ exportOutcomes <- function(outputFolder,
     fileName <- file.path(exportFolder, "outcome_of_interest.csv")
     write.csv(outcomesOfInterest, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- negative_control_outcome table")
+    ParallelLogger::logInfo("- negative_control_outcome table")
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[, c("cohortId", "name", "conceptId", "indicationId")]
@@ -218,7 +223,7 @@ exportOutcomes <- function(outputFolder,
     write.csv(negativeControls, fileName, row.names = FALSE)
     colnames(negativeControls) <- SqlRender::snakeCaseToCamelCase(colnames(negativeControls)) # Need this later
 
-    OhdsiRTools::logInfo("- positive_control_outcome table")
+    ParallelLogger::logInfo("- positive_control_outcome table")
     loadPositiveControls <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "signalInjectionSummary.csv")
         if (file.exists(pathToCsv)) {
@@ -245,8 +250,8 @@ exportMetadata <- function(outputFolder,
                            databaseId,
                            databaseName,
                            minCellCount) {
-    OhdsiRTools::logInfo("Exporting metadata")
-    OhdsiRTools::logInfo("- database table")
+    ParallelLogger::logInfo("Exporting metadata")
+    ParallelLogger::logInfo("- database table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     database <- data.frame(database_id = databaseId,
@@ -255,7 +260,7 @@ exportMetadata <- function(outputFolder,
     fileName <- file.path(exportFolder, "database.csv")
     write.csv(database, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- exposure_summary table")
+    ParallelLogger::logInfo("- exposure_summary table")
     loadExposurePairs <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "pairedExposureSummary.csv")
         if (file.exists(pathToCsv)) {
@@ -276,7 +281,7 @@ exportMetadata <- function(outputFolder,
     fileName <- file.path(exportFolder, "exposure_summary.csv")
     write.csv(exposureSummary, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- comparison_summary table")
+    ParallelLogger::logInfo("- comparison_summary table")
     exposurePairs <- exposurePairs[, c("databaseId", "targetId", "comparatorId", "pairedMinDate", "pairedMaxDate")]
     colnames(exposurePairs) <- c("databaseId", "targetId", "comparatorId", "minDate", "maxDate")
     exposurePairs <- rbind(exposurePairs,
@@ -285,15 +290,26 @@ exportMetadata <- function(outputFolder,
     fileName <- file.path(exportFolder, "comparison_summary.csv")
     write.csv(exposurePairs, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- attrition table")
+    ParallelLogger::logInfo("- attrition table")
+    fileName <- file.path(exportFolder, "attrition.csv")
+    if (file.exists(fileName)) {
+        unlink(fileName)
+    }
     loadAttrition <- function(indicationId) {
-        OhdsiRTools::logInfo("   compiling attrition table for ", indicationId)
+        ParallelLogger::logInfo("   compiling attrition table for ", indicationId)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
         outcomeModelReference1 <- readRDS(pathToRds)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference2 <- readRDS(pathToRds)
         outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
-        loadAttritionFromOutcomeModel <- function(i) {
+        outcomeModelReference$symmetrical <- TRUE
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
+        outcomeModelReference3 <- readRDS(pathToRds)
+        outcomeModelReference3$symmetrical <- FALSE
+        outcomeModelReference <- rbind(outcomeModelReference, outcomeModelReference3)
+        first <- !file.exists(fileName)
+        pb <- txtProgressBar(style = 3)
+        for (i in 1:nrow(outcomeModelReference)) {
             outcomeModel <- readRDS(outcomeModelReference$outcomeModelFile[i])
             attrition <- outcomeModel$attrition[, c("description", "targetPersons", "comparatorPersons")]
             attrition <- attrition[2:nrow(attrition), ] # First row is duplicate of last row from DB pull
@@ -307,15 +323,30 @@ exportMetadata <- function(outputFolder,
             attrition <- rbind(attrition1, attrition2)
             attrition$targetId <- outcomeModelReference$targetId[i]
             attrition$comparatorId <- outcomeModelReference$comparatorId[i]
-            attrition <- rbind(attrition, Legend:::swapColumnContents(attrition, "targetId", "comparatorId"))
+            if (outcomeModelReference$symmetrical[i]) {
+                attrition <- rbind(attrition, Legend:::swapColumnContents(attrition, "targetId", "comparatorId"))
+            }
             attrition$analysisId <- outcomeModelReference$analysisId[i]
             attrition$outcomeId <-  outcomeModelReference$outcomeId[i]
-            return(attrition)
+            attrition$databaseId <- databaseId
+            attrition <- attrition[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")]
+            attrition <- Legend:::enforceMinCellValue(attrition, "subjects", minCellCount, silent = TRUE)
+            colnames(attrition) <- SqlRender::camelCaseToSnakeCase(colnames(attrition))
+            write.table(x = attrition,
+                        file = fileName,
+                        row.names = FALSE,
+                        col.names = first,
+                        sep = ",",
+                        dec = ".",
+                        qmethod = "double",
+                        append = !first)
+            first <- FALSE
+            if (i %% 1000 == 10) {
+                setTxtProgressBar(pb, i/nrow(outcomeModelReference))
+            }
         }
-        # attrition <- lapply(1:nrow(outcomeModelReference), loadAttritionFromOutcomeModel)
-        attrition <- plyr::llply(1:nrow(outcomeModelReference), loadAttritionFromOutcomeModel, .progress = "text")
-        attrition <- do.call("rbind", attrition)
-        attrition$databaseId <- databaseId
+        setTxtProgressBar(pb, 1)
+        close(pb)
 
         pathToCsv <- file.path(outputFolder, indicationId, "attrition.csv")
         attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
@@ -324,19 +355,21 @@ exportMetadata <- function(outputFolder,
         attritionFromDb$analysisId <- -1
         attritionFromDb$outcomeId <- -1
         attritionFromDb$databaseId <- databaseId
-        attrition <- rbind(attrition[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")],
-                           attritionFromDb[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")])
-        return(attrition)
+        attritionFromDb <- attritionFromDb[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")]
+        colnames(attritionFromDb) <- SqlRender::camelCaseToSnakeCase(colnames(attritionFromDb))
+        write.table(x = attritionFromDb,
+                    file = fileName,
+                    row.names = FALSE,
+                    col.names = first,
+                    sep = ",",
+                    dec = ".",
+                    qmethod = "double",
+                    append = !first)
+        return(NULL)
     }
-    attrition <- lapply(indications$indicationId, loadAttrition)
-    attrition <- do.call("rbind", attrition)
-    attrition <- enforceMinCellValue(attrition, "subjects", minCellCount)
-    colnames(attrition) <- SqlRender::camelCaseToSnakeCase(colnames(attrition))
-    fileName <- file.path(exportFolder, "attrition.csv")
-    write.csv(attrition, fileName, row.names = FALSE)
-    rm(attrition) # Free up memory
+    lapply(indications$indicationId, loadAttrition)
 
-    OhdsiRTools::logInfo("- covariate table")
+    ParallelLogger::logInfo("- covariate table")
     loadCovariateNames <- function(indicationId) {
         covariateData <- FeatureExtraction::loadCovariateData(file.path(outputFolder, indicationId, "allCovariates"))
         covariateNames <- ff::as.ram(covariateData$covariateRef[, c("covariateId", "covariateName", "analysisId")])
@@ -357,7 +390,7 @@ enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
     toCensor <- !is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0
     if (!silent) {
         percent <- round(100 * sum(toCensor) / nrow(data), 1)
-        OhdsiRTools::logInfo("   censoring ",
+        ParallelLogger::logInfo("   censoring ",
                              sum(toCensor),
                              " values (",
                              percent,
@@ -379,8 +412,8 @@ exportMainResults <- function(outputFolder,
                               databaseId,
                               minCellCount,
                               maxCores) {
-    OhdsiRTools::logInfo("Exporting main results")
-    OhdsiRTools::logInfo("- cohort_method_result table")
+    ParallelLogger::logInfo("Exporting main results")
+    ParallelLogger::logInfo("- cohort_method_result table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
     positiveControls <- read.csv(file.path(exportFolder, "positive_control_outcome.csv"))
@@ -391,21 +424,25 @@ exportMainResults <- function(outputFolder,
         analysesSum <- read.csv(file.path(outputFolder, indicationId, "analysisSummary.csv"))
         analysesSum2 <- read.csv(file.path(outputFolder, indicationId, "analysisSummaryInteractions.csv"))
         analysesSum <- rbind(analysesSum, analysesSum2[, colnames(analysesSum)])
+        analysesSum$symmetrical <- TRUE
+        analysesSum3 <- read.csv(file.path(outputFolder, indicationId, "analysisSummaryAsym.csv"))
+        analysesSum3$symmetrical <- FALSE
+        analysesSum <- rbind(analysesSum, analysesSum3[, colnames(analysesSum)])
         return(analysesSum)
     }
     cmResults <- lapply(indications$indicationId, loadCmResults)
     cmResults <- do.call("rbind", cmResults)
 
-    OhdsiRTools::logInfo("  Performing empirical calibration on main effects")
-    cluster <- OhdsiRTools::makeCluster(min(6, maxCores))
+    ParallelLogger::logInfo("  Performing empirical calibration on main effects")
+    cluster <- ParallelLogger::makeCluster(min(6, maxCores))
     subsets <- split(cmResults, paste(cmResults$targetId, cmResults$comparatorId, cmResults$analysisId))
     rm(cmResults) # Free up memory
-    results <- OhdsiRTools::clusterApply(cluster,
+    results <- ParallelLogger::clusterApply(cluster,
                                          subsets,
                                          Legend:::calibrate,
                                          negativeControls = negativeControls,
                                          positiveControls = positiveControls)
-    OhdsiRTools::stopCluster(cluster)
+    ParallelLogger::stopCluster(cluster)
     rm(subsets) # Free up memory
     results <- do.call("rbind", results)
     results$databaseId <- databaseId
@@ -418,9 +455,9 @@ exportMainResults <- function(outputFolder,
     write.csv(results, fileName, row.names = FALSE)
     rm(results) # Free up memory
 
-    OhdsiRTools::logInfo("- cm_interaction_result table")
+    ParallelLogger::logInfo("- cm_interaction_result table")
     loadInteractionEffects <- function(indicationId) {
-        OhdsiRTools::logInfo("   compiling interaction results for ", indicationId)
+        ParallelLogger::logInfo("   compiling interaction results for ", indicationId)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference <- readRDS(pathToRds)
         loadInteractionsFromOutcomeModel <- function(i) {
@@ -469,14 +506,14 @@ exportMainResults <- function(outputFolder,
     interactions <- lapply(indications$indicationId, loadInteractionEffects)
     interactions <- do.call("rbind", interactions)
 
-    OhdsiRTools::logInfo("  Performing empirical calibration on interaction effects")
-    cluster <- OhdsiRTools::makeCluster(min(6, maxCores))
+    ParallelLogger::logInfo("  Performing empirical calibration on interaction effects")
+    cluster <- ParallelLogger::makeCluster(min(6, maxCores))
     subsets <- split(interactions, paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
-    interactions <- OhdsiRTools::clusterApply(cluster,
+    interactions <- ParallelLogger::clusterApply(cluster,
                                               subsets,
                                               Legend:::calibrateInteractions,
                                               negativeControls = negativeControls)
-    OhdsiRTools::stopCluster(cluster)
+    ParallelLogger::stopCluster(cluster)
     rm(subsets) # Free up memory
     interactions <- do.call("rbind", interactions)
 
@@ -499,7 +536,7 @@ exportMainResults <- function(outputFolder,
     write.csv(interactions, fileName, row.names = FALSE)
     rm(interactions) # Free up memory
 
-    OhdsiRTools::logInfo("- incidence table")
+    ParallelLogger::logInfo("- incidence table")
     loadIncidence <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "incidence.csv")
         incidence <- read.csv(pathToCsv)
@@ -514,7 +551,7 @@ exportMainResults <- function(outputFolder,
     fileName <- file.path(exportFolder, "incidence.csv")
     write.csv(incidence, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- chronograph table")
+    ParallelLogger::logInfo("- chronograph table")
     loadChronograph <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "chronographData.csv")
         chronograph <- read.csv(pathToCsv)
@@ -532,7 +569,7 @@ exportMainResults <- function(outputFolder,
     chronograph$ic[toCensor] <- NA
     chronograph$icLb[toCensor] <- NA
     chronograph$icUb[toCensor] <- NA
-    OhdsiRTools::logInfo("   censoring ",
+    ParallelLogger::logInfo("   censoring ",
                          sum(toCensor),
                          " values (",
                          percent,
@@ -558,6 +595,7 @@ calibrate <- function(subset, negativeControls, positiveControls) {
     targetPcs <- merge(subset, data.frame(targetId = positiveControls$exposureId,
                                           outcomeId = positiveControls$outcomeId,
                                           effectSize = positiveControls$effectSize))
+
     comparatorPcs <- merge(subset, data.frame(comparatorId = positiveControls$exposureId,
                                               outcomeId = positiveControls$outcomeId,
                                               effectSize = positiveControls$effectSize))
@@ -645,17 +683,17 @@ exportDiagnostics <- function(outputFolder,
                               databaseId,
                               minCellCount,
                               maxCores) {
-    OhdsiRTools::logInfo("Exporting diagnostics")
+    ParallelLogger::logInfo("Exporting diagnostics")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
 
-    OhdsiRTools::logInfo("- covariate_balance table")
+    ParallelLogger::logInfo("- covariate_balance table")
     fileName <- file.path(exportFolder, "covariate_balance.csv")
     if (file.exists(fileName)) {
         unlink(fileName)
     }
     loadAndSaveBalance <- function(indicationId) {
-        OhdsiRTools::logInfo("   compiling covariate balance statistics for ", indicationId)
+        ParallelLogger::logInfo("   compiling covariate balance statistics for ", indicationId)
         first <- !file.exists(fileName)
         files <- list.files(file.path(outputFolder, indicationId, "balance"), pattern = "Bal_.*.rds", full.names = TRUE)
         pb <- txtProgressBar(style = 3)
@@ -727,9 +765,9 @@ exportDiagnostics <- function(outputFolder,
     }
     lapply(indications$indicationId, loadAndSaveBalance)
 
-    OhdsiRTools::logInfo("- preference_score_dist table")
+    ParallelLogger::logInfo("- preference_score_dist table")
     preparePlots <- function(indicationId) {
-        OhdsiRTools::logInfo("   compiling preference score distributions for ", indicationId)
+        ParallelLogger::logInfo("   compiling preference score distributions for ", indicationId)
 
         preparePlot <- function(i, outcomeModelReference) {
             psFileName <- outcomeModelReference$sharedPsFile[i]
@@ -770,9 +808,9 @@ exportDiagnostics <- function(outputFolder,
     colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
     write.csv(data, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- propensity_model table")
+    ParallelLogger::logInfo("- propensity_model table")
     getPsModels <- function(indicationId) {
-        OhdsiRTools::logInfo("   compiling propensity models for ", indicationId)
+        ParallelLogger::logInfo("   compiling propensity models for ", indicationId)
 
         getPsModel <- function(i, outcomeModelReference) {
             psFileName <- outcomeModelReference$sharedPsFile[i]
@@ -812,22 +850,24 @@ exportDiagnostics <- function(outputFolder,
     colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
     write.csv(data, fileName, row.names = FALSE)
 
-    OhdsiRTools::logInfo("- kaplan_meier_dist table")
+    ParallelLogger::logInfo("- kaplan_meier_dist table")
     prepareKms <- function(indicationId) {
-        OhdsiRTools::logInfo("   preparing Kaplan-Meier plots for ", indicationId)
+        ParallelLogger::logInfo("   preparing Kaplan-Meier plots for ", indicationId)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
         outcomeModelReference1 <- readRDS(pathToRds)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference2 <- readRDS(pathToRds)
-        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
+        outcomeModelReference3 <- readRDS(pathToRds)
+        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
         outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ] # HOIs only
         outcomeModelReference <- outcomeModelReference[, c("strataFile", "targetId", "comparatorId", "outcomeId", "analysisId")]
-        cluster <- OhdsiRTools::makeCluster(min(6, maxCores))
-        data <- OhdsiRTools::clusterApply(cluster,
+        cluster <- ParallelLogger::makeCluster(min(6, maxCores))
+        data <- ParallelLogger::clusterApply(cluster,
                                           1:nrow(outcomeModelReference),
                                           Legend:::prepareKm,
                                           outcomeModelReference = outcomeModelReference)
-        OhdsiRTools::stopCluster(cluster)
+        ParallelLogger::stopCluster(cluster)
         data <- do.call("rbind", data)
         data$databaseId <- databaseId
         return(data)

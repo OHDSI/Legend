@@ -79,11 +79,11 @@ fitAllPsModels <- function(workFolder, fitThreads = 1) {
       }
     }
   }
-  cluster <- OhdsiRTools::makeCluster(fitThreads)
-  OhdsiRTools::clusterRequire(cluster, "Cyclops")
-  OhdsiRTools::clusterRequire(cluster, "CohortMethod")
-  dummy <- OhdsiRTools::clusterApply(cluster, tasks, fitPropensityModel, stopOnError = TRUE)
-  OhdsiRTools::stopCluster(cluster)
+  cluster <- ParallelLogger::makeCluster(fitThreads)
+  ParallelLogger::clusterRequire(cluster, "Cyclops")
+  ParallelLogger::clusterRequire(cluster, "CohortMethod")
+  dummy <- ParallelLogger::clusterApply(cluster, tasks, fitPropensityModel, stopOnError = TRUE)
+  ParallelLogger::stopCluster(cluster)
 }
 options(fftempdir = "r:/fftemp")
 workFolder <- "r:/PopEstDepression_Ccae"

@@ -141,11 +141,11 @@ fitAllPsModels <- function(workFolder, fitThreads = 1, cvThreads = 4) {
                                                                                                                                          seed = 1))
     saveRDS(ps, task$fileName)
   }
-  cluster <- OhdsiRTools::makeCluster(fitThreads)
-  OhdsiRTools::clusterRequire(cluster, "Cyclops")
-  OhdsiRTools::clusterRequire(cluster, "CohortMethod")
-  dummy <- OhdsiRTools::clusterApply(cluster, tasks, fitPropensityModel, stopOnError = TRUE)
-  OhdsiRTools::stopCluster(cluster)
+  cluster <- ParallelLogger::makeCluster(fitThreads)
+  ParallelLogger::clusterRequire(cluster, "Cyclops")
+  ParallelLogger::clusterRequire(cluster, "CohortMethod")
+  dummy <- ParallelLogger::clusterApply(cluster, tasks, fitPropensityModel, stopOnError = TRUE)
+  ParallelLogger::stopCluster(cluster)
 }
 options(fftempdir = "S:/fftemp")
 workFolder <- "s:/PopEstDepression_Ccae"

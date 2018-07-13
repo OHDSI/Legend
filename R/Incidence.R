@@ -26,7 +26,7 @@
 #' @export
 computeIncidence <- function(indicationId = "Depression",
                              outputFolder) {
-    OhdsiRTools::logInfo("Computing incidence rates based on extracted data")
+    ParallelLogger::logInfo("Computing incidence rates based on extracted data")
     indicationFolder <- file.path(outputFolder, indicationId)
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")

@@ -44,7 +44,7 @@ createExposureCohorts <- function(connectionDetails,
                                   indicationId = "Depression",
                                   oracleTempSchema,
                                   outputFolder) {
-    OhdsiRTools::logInfo("Creating exposure cohorts for indicationId: ", indicationId)
+    ParallelLogger::logInfo("Creating exposure cohorts for indicationId: ", indicationId)
 
     indicationFolder <- file.path(outputFolder, indicationId)
     attritionTable <- paste(tablePrefix, tolower(indicationId), "attition", sep = "_")
@@ -112,7 +112,7 @@ createExposureCohorts <- function(connectionDetails,
                                    data = procedureAncestor)
 
     # Create nesting cohort table ------------------------------------------------------------------------
-    OhdsiRTools::logInfo("- Creating nesting cohort")
+    ParallelLogger::logInfo("- Creating nesting cohort")
     sql <- SqlRender::loadRenderTranslateSql(sprintf("NestingCohort%s.sql", indicationId),
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -122,7 +122,7 @@ createExposureCohorts <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     # Create exposure eras and cohorts ------------------------------------------------------
-    OhdsiRTools::logInfo("- Populating tables ", exposureEraTable, " and ", exposureCohortTable)
+    ParallelLogger::logInfo("- Populating tables ", exposureEraTable, " and ", exposureCohortTable)
     drugConceptIds <- exposuresOfInterest$conceptId[exposuresOfInterest$type == "Drug"]
     sql <- SqlRender::loadRenderTranslateSql("CreateExposureCohorts.sql",
                                              "Legend",
@@ -144,7 +144,7 @@ createExposureCohorts <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql)
 
     # Create cohort pairs ----------------------------------------------------------------------
-    OhdsiRTools::logInfo("- Pairing exposure cohorts")
+    ParallelLogger::logInfo("- Pairing exposure cohorts")
     sql <- SqlRender::loadRenderTranslateSql("CreateCohortPairs.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -159,7 +159,7 @@ createExposureCohorts <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql)
 
     # Attrition table --------------------------------------------------------------------------------
-    OhdsiRTools::logInfo("Fetching attrition table")
+    ParallelLogger::logInfo("Fetching attrition table")
     sql <- "SELECT * FROM @cohort_database_schema.@attrition_table"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
@@ -170,7 +170,7 @@ createExposureCohorts <- function(connectionDetails,
     write.csv(attrition, file.path(indicationFolder, "attrition.csv"), row.names = FALSE)
 
     # Cohort summary table --------------------------------------------------------------------------
-    OhdsiRTools::logInfo("Fetching cohort summary table")
+    ParallelLogger::logInfo("Fetching cohort summary table")
     sql <- "SELECT * FROM @cohort_database_schema.@paired_cohort_summary_table"
     sql <- SqlRender::renderSql(sql = sql,
                                 cohort_database_schema = cohortDatabaseSchema,

@@ -43,7 +43,7 @@ fetchChronographData <- function(connectionDetails,
                                  indicationId = "Depression",
                                  oracleTempSchema,
                                  outputFolder) {
-    OhdsiRTools::logInfo("Fetching chronograph data from the server")
+    ParallelLogger::logInfo("Fetching chronograph data from the server")
     indicationFolder <- file.path(outputFolder, indicationId)
     exposureCohortTable <- paste(tablePrefix, tolower(indicationId), "exp_cohort", sep = "_")
     outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")

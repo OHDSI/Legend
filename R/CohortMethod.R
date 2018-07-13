@@ -126,7 +126,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     reference <- readRDS(pathToRds)
     reference <- reference[order(reference$cohortMethodDataFolder), ]
     reference <- reference[!duplicated(reference$cohortMethodDataFolder), ]
-    OhdsiRTools::logInfo("Making cohortMethodData and ps objects symmetrical")
+    ParallelLogger::logInfo("Making cohortMethodData and ps objects symmetrical")
     addOtherHalf <- function(i) {
         sourceFolder <- reference$cohortMethodDataFolder[i]
         targetFolder <- gsub(paste0("_t", reference$targetId[i]),
@@ -175,8 +175,9 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
         }
         return(NULL)
     }
-    dummy <- plyr::llply(1:nrow(reference), addOtherHalf, .progress = "text")
+    plyr::llply(1:nrow(reference), addOtherHalf, .progress = "text")
 
+    injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
     tcos <- lapply(1:nrow(exposureSummary), createTcos)
     switchTc <- function(tco) {
        temp <- tco$targetId
@@ -186,6 +187,12 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     }
     otherTcos <- lapply(tcos, switchTc)
     tcos <- c(tcos, otherTcos)
+    removeComparatorPositiveControls <- function(tco) {
+        pcs <- injectionSummary$newOutcomeId[injectionSummary$exposureId == tco$comparatorId]
+        tco$outcomeIds <- tco$outcomeIds[!(tco$outcomeIds %in% pcs)]
+        return(tco)
+    }
+    tcos <- lapply(tcos, removeComparatorPositiveControls)
     cmAnalysisListFile <- system.file("settings",
                                       "cmAnalysisListAsym.json",
                                       package = "Legend")

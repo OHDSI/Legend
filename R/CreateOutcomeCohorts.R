@@ -45,7 +45,7 @@ createOutcomeCohorts <- function(connectionDetails,
                                  indicationId = "Depression",
                                  oracleTempSchema,
                                  outputFolder) {
-    OhdsiRTools::logInfo("Creating outcome cohorts for indicationId: ", indicationId)
+    ParallelLogger::logInfo("Creating outcome cohorts for indicationId: ", indicationId)
 
     indicationFolder <- file.path(outputFolder, indicationId)
     outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
@@ -56,7 +56,7 @@ createOutcomeCohorts <- function(connectionDetails,
     on.exit(DatabaseConnector::disconnect(conn))
 
     # Creating outcome of interest cohorts ------------------------------------------------------------------
-    OhdsiRTools::logInfo("- Creating outcome of interest cohorts")
+    ParallelLogger::logInfo("- Creating outcome of interest cohorts")
     .createCohorts(connection = conn,
                    cdmDatabaseSchema = cdmDatabaseSchema,
                    cohortDatabaseSchema = cohortDatabaseSchema,
@@ -65,7 +65,7 @@ createOutcomeCohorts <- function(connectionDetails,
                    outputFolder = indicationFolder)
 
     # Creating negative control outcome cohorts ------------------------------------------------------------
-    OhdsiRTools::logInfo("- Creating negative control outcome cohorts")
+    ParallelLogger::logInfo("- Creating negative control outcome cohorts")
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
@@ -93,7 +93,7 @@ createOutcomeCohorts <- function(connectionDetails,
 
 
     # Count cohorts --------------------------------------------------------------------------------
-    OhdsiRTools::logInfo("Counting outcome cohorts")
+    ParallelLogger::logInfo("Counting outcome cohorts")
     sql <- "SELECT cohort_definition_id, COUNT(*) AS count FROM @cohort_database_schema.@cohort_table GROUP BY cohort_definition_id"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
