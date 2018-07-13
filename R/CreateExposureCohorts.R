@@ -68,48 +68,31 @@ createExposureCohorts <- function(connectionDetails,
                                              cohort_table = exposureCohortTable)
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
-    # Load exposures of interest, and define exposure combinations of interest ----------------------
+    # Load exposures of interest --------------------------------------------------------------------
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
     exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
     exposuresOfInterest <- exposuresOfInterest[order(exposuresOfInterest$conceptId), ]
-    exposureCombis <- expand.grid(exposureId1 = exposuresOfInterest$conceptId, exposureId2 = exposuresOfInterest$conceptId)
-    exposureCombis <- exposureCombis[exposureCombis$exposureId1 < exposureCombis$exposureId2, ]
-    exposureCombis$cohortDefinitionId <- 1:nrow(exposureCombis)
-    if (any(exposureCombis$cohortDefinitionId %in% exposuresOfInterest$conceptId)) {
-        stop("Collision between exposure concept IDs and exposure combination IDs")
-    }
-    namedExposureCombis <- exposureCombis
-    namedExposureCombis$exposureName1 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId1, exposuresOfInterest$conceptId)]
-    namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId2, exposuresOfInterest$conceptId)]
-    namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1, namedExposureCombis$exposureName2, sep = " & ")
-    write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)
+    # exposureCombis <- expand.grid(exposureId1 = exposuresOfInterest$conceptId, exposureId2 = exposuresOfInterest$conceptId)
+    # exposureCombis <- exposureCombis[exposureCombis$exposureId1 < exposureCombis$exposureId2, ]
+    # exposureCombis$cohortDefinitionId <- 1:nrow(exposureCombis)
+    # if (any(exposureCombis$cohortDefinitionId %in% exposuresOfInterest$conceptId)) {
+    #     stop("Collision between exposure concept IDs and exposure combination IDs")
+    # }
+    # namedExposureCombis <- exposureCombis
+    # namedExposureCombis$exposureName1 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId1, exposuresOfInterest$conceptId)]
+    # namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match( namedExposureCombis$exposureId2, exposuresOfInterest$conceptId)]
+    # namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1, namedExposureCombis$exposureName2, sep = " & ")
+    # write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)
 
-    # Upload combis and procedure groups -----------------------------------------------------------
-    colnames(exposureCombis) <- SqlRender::camelCaseToSnakeCase(colnames(exposureCombis))
-    DatabaseConnector::insertTable(connection = conn,
-                                   tableName = "#exposure_combi",
-                                   dropTableIfExists = TRUE,
-                                   createTable = TRUE,
-                                   tempTable = TRUE,
-                                   oracleTempSchema = oracleTempSchema,
-                                   data = exposureCombis)
-
-    procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
-    procedureAncestor <- data.frame()
-    for (i in 1:nrow(procedures)) {
-        descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
-        procedureAncestor <- rbind(procedureAncestor, data.frame(ancestorConceptId = procedures$conceptId[i],
-                                                                 descendantConceptId = descendantConceptIds))
-    }
-    colnames(procedureAncestor) <- SqlRender::camelCaseToSnakeCase(colnames(procedureAncestor))
-    DatabaseConnector::insertTable(connection = conn,
-                                   tableName = "#procedure_ancestor",
-                                   dropTableIfExists = TRUE,
-                                   createTable = TRUE,
-                                   tempTable = TRUE,
-                                   oracleTempSchema = oracleTempSchema,
-                                   data = procedureAncestor)
+    # colnames(exposureCombis) <- SqlRender::camelCaseToSnakeCase(colnames(exposureCombis))
+    # DatabaseConnector::insertTable(connection = conn,
+    #                                tableName = "#exposure_combi",
+    #                                dropTableIfExists = TRUE,
+    #                                createTable = TRUE,
+    #                                tempTable = TRUE,
+    #                                oracleTempSchema = oracleTempSchema,
+    #                                data = exposureCombis)
 
     # Create nesting cohort table ------------------------------------------------------------------------
     ParallelLogger::logInfo("- Creating nesting cohort")
@@ -123,25 +106,51 @@ createExposureCohorts <- function(connectionDetails,
 
     # Create exposure eras and cohorts ------------------------------------------------------
     ParallelLogger::logInfo("- Populating tables ", exposureEraTable, " and ", exposureCohortTable)
-    drugConceptIds <- exposuresOfInterest$conceptId[exposuresOfInterest$type == "Drug"]
-    sql <- SqlRender::loadRenderTranslateSql("CreateExposureCohorts.sql",
-                                             "Legend",
-                                             dbms = connectionDetails$dbms,
-                                             oracleTempSchema = oracleTempSchema,
-                                             cdm_database_schema = cdmDatabaseSchema,
-                                             cohort_database_schema = cohortDatabaseSchema,
-                                             exposure_era_table = exposureEraTable,
-                                             exposure_cohort_table = exposureCohortTable,
-                                             attrition_table = attritionTable,
-                                             drug_concept_ids = drugConceptIds,
-                                             include_procedures = TRUE,
-                                             procedure_ancestor_table = "#procedure_ancestor",
-                                             procedure_duration = 30,
-                                             max_gap = 30,
-                                             exposure_combi_table = "#exposure_combi",
-                                             nesting_cohort_table = "#nesting_cohort",
-                                             washout_period = 365)
-    DatabaseConnector::executeSql(conn, sql)
+
+    if (indicationId == "Depression") {
+        # Upload procedure groups
+        procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
+        procedureAncestor <- data.frame()
+        for (i in 1:nrow(procedures)) {
+            descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
+            procedureAncestor <- rbind(procedureAncestor, data.frame(ancestorConceptId = procedures$conceptId[i],
+                                                                     descendantConceptId = descendantConceptIds))
+        }
+        colnames(procedureAncestor) <- SqlRender::camelCaseToSnakeCase(colnames(procedureAncestor))
+        DatabaseConnector::insertTable(connection = conn,
+                                       tableName = "#procedure_ancestor",
+                                       dropTableIfExists = TRUE,
+                                       createTable = TRUE,
+                                       tempTable = TRUE,
+                                       oracleTempSchema = oracleTempSchema,
+                                       data = procedureAncestor)
+
+        drugConceptIds <- exposuresOfInterest$conceptId[exposuresOfInterest$type == "Drug"]
+        sql <- SqlRender::loadRenderTranslateSql("CreateExposureCohortsDepression.sql",
+                                                 "Legend",
+                                                 dbms = connectionDetails$dbms,
+                                                 oracleTempSchema = oracleTempSchema,
+                                                 cdm_database_schema = cdmDatabaseSchema,
+                                                 cohort_database_schema = cohortDatabaseSchema,
+                                                 exposure_era_table = exposureEraTable,
+                                                 exposure_cohort_table = exposureCohortTable,
+                                                 attrition_table = attritionTable,
+                                                 drug_concept_ids = drugConceptIds,
+                                                 include_procedures = TRUE,
+                                                 procedure_ancestor_table = "#procedure_ancestor",
+                                                 procedure_duration = 30,
+                                                 max_gap = 30,
+                                                 nesting_cohort_table = "#nesting_cohort",
+                                                 washout_period = 365)
+        DatabaseConnector::executeSql(conn, sql)
+
+        sql <- "TRUNCATE TABLE #procedure_ancestor; DROP TABLE #procedure_ancestor;"
+        sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+        DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+    } else {
+        stop("Indication ", indicationId, " not implemented")
+    }
+
 
     # Create cohort pairs ----------------------------------------------------------------------
     ParallelLogger::logInfo("- Pairing exposure cohorts")
@@ -153,7 +162,6 @@ createExposureCohorts <- function(connectionDetails,
                                              cohort_database_schema = cohortDatabaseSchema,
                                              exposure_cohort_table = exposureCohortTable,
                                              attrition_table = attritionTable,
-                                             exposure_combi_table = "#exposure_combi",
                                              paired_cohort_table = pairedCohortTable,
                                              paired_cohort_summary_table = pairedCohortSummaryTable)
     DatabaseConnector::executeSql(conn, sql)
@@ -178,10 +186,8 @@ createExposureCohorts <- function(connectionDetails,
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     pairedExposureSummary <- DatabaseConnector::querySql(conn, sql)
     colnames(pairedExposureSummary) <- SqlRender::snakeCaseToCamelCase(colnames(pairedExposureSummary))
-    cohortNames <- rbind(data.frame(cohortDefinitionId = exposuresOfInterest$conceptId,
-                                                      cohortName = exposuresOfInterest$name),
-                         data.frame(cohortDefinitionId = namedExposureCombis$cohortDefinitionId,
-                                                     cohortName = namedExposureCombis$cohortName))
+    cohortNames <- data.frame(cohortDefinitionId = exposuresOfInterest$conceptId,
+                                    cohortName = exposuresOfInterest$name)
     pairedExposureSummary <- merge(pairedExposureSummary, data.frame(targetId = cohortNames$cohortDefinitionId,
                                                                      targetName = cohortNames$cohortName))
     pairedExposureSummary <- merge(pairedExposureSummary, data.frame(comparatorId = cohortNames$cohortDefinitionId,
@@ -189,13 +195,10 @@ createExposureCohorts <- function(connectionDetails,
     write.csv(pairedExposureSummary, file.path(indicationFolder, "pairedExposureSummary.csv"), row.names = FALSE)
 
     # Drop temp tables -----------------------------------------------------------------------
-    sql <- "TRUNCATE TABLE #procedure_ancestor; DROP TABLE #procedure_ancestor;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
-    sql <- "TRUNCATE TABLE #exposure_combi; DROP TABLE #exposure_combi;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+    # sql <- "TRUNCATE TABLE #exposure_combi; DROP TABLE #exposure_combi;"
+    # sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    # DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     sql <- "TRUNCATE TABLE #nesting_cohort; DROP TABLE #nesting_cohort;"
     sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql

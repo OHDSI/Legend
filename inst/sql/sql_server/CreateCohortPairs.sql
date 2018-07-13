@@ -17,7 +17,6 @@ limitations under the License.
 ************************************************************************/
 {DEFAULT @cdm_database_schema = 'cdm.dbo'}
 {DEFAULT @cohort_database_schema = 'scratch.dbo'}
-{DEFAULT @exposure_combi_table = '#exposure_combi'}
 {DEFAULT @exposure_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_summary_table = 'exposure_cohort_summary'}
@@ -63,57 +62,6 @@ FROM (
 	) t1;
 
 	
--- Identify single target exposures that are part of comparator combi exposure
--- Note: this has no effect because target cohort IDs are defined to be lower than 
--- comparator cohort IDs, and therefore the target will always be the combi. But did
--- not want to put that explicit requirement in.
-IF OBJECT_ID('tempdb..#target_remove', 'U') IS NOT NULL
-	DROP TABLE #target_remove;
-
---HINT DISTRIBUTE_ON_KEY(subject_id)
-SELECT cohort_pair.target_id,
-    cohort_pair.comparator_id,
-	exposure_cohort_1.subject_id
-INTO #target_remove
-FROM #ec_pairs cohort_pair
-INNER JOIN @exposure_combi_table exposure_combi
-	ON (
-			cohort_pair.target_id = exposure_combi.exposure_id_1
-			OR cohort_pair.target_id = exposure_combi.exposure_id_2
-			)
-		AND cohort_pair.comparator_id = exposure_combi.cohort_definition_id
-INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_1
-	ON cohort_pair.target_id = exposure_cohort_1.cohort_definition_id
-INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_2
-	ON cohort_pair.comparator_id = exposure_cohort_2.cohort_definition_id
-		AND exposure_cohort_1.subject_id = exposure_cohort_2.subject_id
-		AND exposure_cohort_1.cohort_start_date = exposure_cohort_2.cohort_start_date;
-
-		
--- Identify single comparator exposures that are part of target combi exposure
-IF OBJECT_ID('tempdb..#comparator_remove', 'U') IS NOT NULL
-	DROP TABLE #comparator_remove;
-	
---HINT DISTRIBUTE_ON_KEY(subject_id)
-SELECT cohort_pair.target_id,
-    cohort_pair.comparator_id,
-	exposure_cohort_1.subject_id
-INTO #comparator_remove
-FROM #ec_pairs cohort_pair
-INNER JOIN @exposure_combi_table exposure_combi
-	ON cohort_pair.target_id = exposure_combi.cohort_definition_id
-		AND (
-			cohort_pair.comparator_id = exposure_combi.exposure_id_1
-			OR cohort_pair.comparator_id = exposure_combi.exposure_id_2
-			)
-INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_1
-	ON cohort_pair.target_id = exposure_cohort_1.cohort_definition_id
-INNER JOIN @cohort_database_schema.@exposure_cohort_table exposure_cohort_2
-	ON cohort_pair.comparator_id = exposure_cohort_2.cohort_definition_id
-	AND exposure_cohort_1.subject_id = exposure_cohort_2.subject_id
-	AND exposure_cohort_1.cohort_start_date = exposure_cohort_2.cohort_start_date;
-	
-
 -- Construct all cohorts as pairs. Store in @cohort_database_schema.@paired_cohort_table
 IF OBJECT_ID('@cohort_database_schema.@paired_cohort_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@paired_cohort_table;
@@ -128,7 +76,7 @@ SELECT cohort_definition_id,
 	cohort_end_date
 INTO @cohort_database_schema.@paired_cohort_table
 FROM (
-	-- Target filtered to common time, remove target single exposures that are part of comparator combi exposure
+	-- Target filtered to common time
 	SELECT cp1.target_id AS cohort_definition_id,
 		cp1.target_id,
 		cp1.comparator_id,
@@ -140,15 +88,10 @@ FROM (
 		ON cp1.target_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
-	LEFT JOIN #target_remove tr
-		ON tr.target_id = cp1.target_id
-			AND tr.comparator_id = cp1.comparator_id
-			AND tr.subject_id = ec1.subject_id
-	WHERE tr.subject_id IS NULL
 	
 	UNION ALL
 	
-	-- Comparator filtered to common time, remove comparator single exposures that are part of target combi exposure
+	-- Comparator filtered to common time
 	SELECT cp1.comparator_id AS cohort_definition_id,
 		cp1.target_id,
 		cp1.comparator_id,
@@ -160,11 +103,6 @@ FROM (
 		ON cp1.comparator_id = ec1.cohort_definition_id
 			AND ec1.cohort_start_date >= cp1.min_cohort_date
 			AND ec1.cohort_start_date <= cp1.max_cohort_date
-	LEFT JOIN #comparator_remove cr
-		ON cr.target_id = cp1.target_id
-			AND cr.comparator_id = cp1.comparator_id
-			AND cr.subject_id = ec1.subject_id
-	WHERE cr.subject_id IS NULL
 	) tmp;
 
 	
@@ -230,53 +168,12 @@ SELECT exposure_id,
 	description,
 	subjects
 FROM (
-	-- Restricted to common period: take final number and add removed count (if any)
+	-- Restricted to common period: take final number
 	SELECT epcs.cohort_definition_id AS exposure_id,
 		epcs.target_id,
 		epcs.comparator_id,
 		CAST(4 AS INT) AS sequence_number,
 		CAST('Restricted to common period' AS VARCHAR(255)) AS description,
-		CASE 
-			WHEN removed_counts.exposure_id IS NULL THEN epcs.num_persons
-			ELSE epcs.num_persons + removed
-		END AS subjects
-	FROM #ep_cohort_summary epcs
-	LEFT JOIN (
-		SELECT exposure_id,
-			target_id,
-			comparator_id,
-			COUNT(*) AS removed
-		FROM (
-			SELECT target_id AS exposure_id,
-				target_id,
-				comparator_id,
-				subject_id
-			FROM #target_remove
-			
-			UNION ALL
-			
-			SELECT comparator_id AS exposure_id,
-				target_id,
-				comparator_id,
-				subject_id
-			FROM #comparator_remove
-		) temp
-		GROUP BY exposure_id,
-			target_id,
-			comparator_id
-	) removed_counts
-	ON removed_counts.exposure_id = epcs.cohort_definition_id
-		AND removed_counts.target_id = epcs.target_id
-		AND removed_counts.comparator_id = epcs.comparator_id 
-
-	UNION ALL
-	
-	-- Final count
-	SELECT epcs.cohort_definition_id AS exposure_id,
-		epcs.target_id,
-		epcs.comparator_id,
-		CAST(5 AS INT) AS sequence_number,
-		CAST('Removed single exposures part of comparator combination exposures' AS VARCHAR(255)) AS description,
 		epcs.num_persons AS subjects
 	FROM #ep_cohort_summary epcs	
 ) temp;
@@ -290,9 +187,3 @@ DROP TABLE #ec_pairs;
 
 TRUNCATE TABLE #ep_cohort_summary;
 DROP TABLE #ep_cohort_summary;
-
-TRUNCATE TABLE #target_remove;
-DROP TABLE #target_remove;
-
-TRUNCATE TABLE #comparator_remove;
-DROP TABLE #comparator_remove;
