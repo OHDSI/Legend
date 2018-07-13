@@ -1,0 +1,117 @@
+---
+csl: pnas.csl
+
+output:
+  pdf_document:
+    fig_caption: yes
+  html_document: default
+bibliography: bibliography.bib
+params: 
+  databaseId: "MDCR"
+  targetId: 106
+  comparatorId: 107
+  outcomeId: 18
+  setTitle: "A Comparison of Trazodone & Psychotherapy to Amitriptyline & Psychotherapy for the Risk of Stroke in the MDCR Database."
+title: "`r params$setTitle`"
+---
+
+
+```{r, echo=FALSE, message=FALSE, comment=FALSE, results='hide'}
+library(DatabaseConnector)
+library(knitr) 
+source("DataPulls.R")
+source("PlotsAndTables.R")
+options(knitr.kable.NA = '')
+
+# params <- list(databaseId = "MDCR",
+#                targetId = 739138,
+#                comparatorId =  715259,
+#                outcomeId = 18)
+
+connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                             server = "localhost/ohdsi",
+                                             user = "postgres",
+                                             password = Sys.getenv("pwPostgres"),
+                                             schema = "legend")
+connection <- connect(connectionDetails)
+targetName <- getExposureName(connection, params$targetId)
+comparatorName <- getExposureName(connection, params$comparatorId)
+outcomeName <- getOutcomeName(connection, params$outcomeId)
+analyses <- getAnalyses(connection)
+mainResults <- getMainResults(connection, 
+                              targetIds = params$targetId,
+                              comparatorIds = params$comparatorId,
+                              outcomeIds = params$outcomeId,
+                              databaseIds = params$databaseId)
+
+balance <- getCovariateBalance(connection, 
+                              targetId = params$targetId,
+                              comparatorId = params$comparatorId,
+                              databaseId = params$databaseId)
+
+ps <- getPs(connection, 
+            targetId = params$targetId,
+            comparatorId = params$comparatorId,
+            databaseId = params$databaseId)
+
+```
+
+\centerline{Martijn J. Schuemie$^{1,2}$}
+\centerline{Marc A. Suchard$^{1,3,4,5}$}
+\centerline{George M. Hripcsak$^{1,6}$}
+\centerline{Patrick B. Ryan$^{1,2,6}$}
+\centerline{David Madigan$^{1,7}$}
+
+$^{1}$ Observational Health Data Sciences and Informatics, New York, NY  
+$^{2}$ Janssen Research & Development, Titusville, NJ  
+$^{3}$ Department of Biomathematics, University of Califoria, Los Angeles, CA  
+$^{4}$ Department of Biostatistics, University of Califoria, Los Angeles, CA  
+$^{5}$ Department of Human Genetics, University of Califoria, Los Angeles, CA  
+$^{6}$ Department of Biomedical Informatics, Columbia University, New York, NY  
+$^{7}$ Department of Statistics, Columbia University, New York, NY  
+
+Corresponding author: Martijn J. Schuemie, Janssen R&D, 1125 Trenton Harbourton Road, Titusville, NJ, 08560, Phone: +31 631793897, schuemie@ohdsi.org
+
+# Abstract
+
+To do
+
+# Introduction
+
+This is a very important study. Here's a really cool paper @pmid23900808.
+
+# Methods
+
+# Results
+**Table 1**. Select population characteristics
+\fontsize{6.5}{6.5}
+\selectfont
+```{r, echo = FALSE}
+table <- prepareTable1(balance)
+kable(table, row.names = FALSE)
+```
+
+\fontsize{10}{12}
+\selectfont
+
+```{r, echo = FALSE, fig.width=6, fig.height=4, fig.align='center'}
+plotPs(ps, targetName, comparatorName)
+```
+**Figure 1**. Preference score distribution. The preference score is a transformation of the propensity score that adjusts for differences in the sizes of the two treatment groups. A higher overlap indicates subjects in the two groups were more similar in terms of their predicted probability of receiving one treatment over the other.
+
+**Table 2**. Hazard ratios, 95% confidence intervals, uncalibrated and empirically calibrated, for various analyses.
+```{r, echo = FALSE}
+table <- mainResults
+table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+table$p <- sprintf("%.2f", table$p)
+table$calHr <- sprintf("%.2f (%.2f - %.2f)", mainResults$calibratedRr, mainResults$calibratedCi95Lb, mainResults$calibratedCi95Ub)
+table$calibratedP <- sprintf("%.2f", table$calibratedP)
+table <- merge(table, analyses)
+table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
+colnames(table) <- c("Analysis", "HR (95% CI)", "P", "Cal. HR (95% CI)", "Cal. p")
+kable(table, row.names = FALSE)
+```
+
+# Conclusions
+
+# References
