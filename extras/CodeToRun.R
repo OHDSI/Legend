@@ -15,9 +15,9 @@
 # limitations under the License.
 
 library(Legend)
-options(fftempdir = "r:/fftemp")
+options(fftempdir = "c:/fftemp")
 maxCores <- 30
-studyFolder <- "r:/Legend"
+studyFolder <- "c:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL

@@ -1,6 +1,6 @@
 [
   {
-    "analysisId": 5,
+    "analysisId": 3,
     "description": "PS matching, on-treatment",
     "getDbCohortMethodDataArgs": {
       "studyStartDate": "",
@@ -139,7 +139,7 @@
     "attr_class": "cmAnalysis"
   },
   {
-    "analysisId": 6,
+    "analysisId": 4,
     "description": "PS matching, intent-to-treat",
     "getDbCohortMethodDataArgs": {
       "studyStartDate": "",
