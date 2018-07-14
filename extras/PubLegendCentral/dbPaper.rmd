@@ -8,8 +8,8 @@ output:
 bibliography: bibliography.bib
 params: 
   databaseId: "MDCR"
-  targetId: 106
-  comparatorId: 107
+  targetId: 739138
+  comparatorId: 715259
   outcomeId: 18
   setTitle: "A Comparison of Trazodone & Psychotherapy to Amitriptyline & Psychotherapy for the Risk of Stroke in the MDCR Database."
 title: "`r params$setTitle`"
@@ -53,6 +53,13 @@ ps <- getPs(connection,
             targetId = params$targetId,
             comparatorId = params$comparatorId,
             databaseId = params$databaseId)
+
+kaplanMeier <- getKaplanMeier(connection, 
+                              targetId = params$targetId,
+                              comparatorId = params$comparatorId,
+                              outcomeId = params$outcomeId,
+                              databaseId = params$databaseId,
+                              analysisId = 2) 
 
 ```
 
@@ -111,6 +118,16 @@ table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
 colnames(table) <- c("Analysis", "HR (95% CI)", "P", "Cal. HR (95% CI)", "Cal. p")
 kable(table, row.names = FALSE)
 ```
+
+```{r, echo = FALSE, fig.width=6, fig.height=5.5, fig.align='center', results='hide'}
+plotKaplanMeier(kaplanMeier, targetName, comparatorName)
+```
+**Figure 2**. Kaplan Meier plot, showing survival as a function of time. This plot
+      is adjusted for the propensity score stratification: The target curve (<em>`r targetName`</em>) shows the actual observed survival. The
+      comparator curve (<em>`r comparatorName`</em>) applies reweighting to approximate the counterfactual of what the target survival
+      would look like had the target cohort been exposed to the comparator instead. The shaded area denotes 
+      the 95 percent confidence interval.
+
 
 # Conclusions
 

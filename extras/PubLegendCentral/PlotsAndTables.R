@@ -148,3 +148,70 @@ plotPs <- function(ps, targetName, comparatorName) {
                    axis.title = theme)
   return(plot)
 }
+
+plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
+  data <- rbind(data.frame(time = kaplanMeier$time,
+                           s = kaplanMeier$targetSurvival,
+                           lower = kaplanMeier$targetSurvivalLb,
+                           upper = kaplanMeier$targetSurvivalUb,
+                           strata = targetName),
+                data.frame(time = kaplanMeier$time,
+                           s = kaplanMeier$comparatorSurvival,
+                           lower = kaplanMeier$comparatorSurvivalLb,
+                           upper = kaplanMeier$comparatorSurvivalUb,
+                           strata = comparatorName))
+  
+  xlims <- c(-max(data$time)/40, max(data$time))
+  ylims <- c(min(data$lower), 1)
+  xLabel <- "Time in days"
+  yLabel <- "Survival probability"
+  xBreaks <- kaplanMeier$time[!is.na(kaplanMeier$targetAtRisk)]
+  plot <- ggplot2::ggplot(data, ggplot2::aes(x = time,
+                                             y = s,
+                                             color = strata,
+                                             fill = strata,
+                                             ymin = lower,
+                                             ymax = upper)) +
+    ggplot2::geom_ribbon(color = rgb(0, 0, 0, alpha = 0)) +
+    ggplot2::geom_step(size = 1) +
+    ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.8),
+                                           rgb(0, 0, 0.8, alpha = 0.8))) +
+    ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.3),
+                                          rgb(0, 0, 0.8, alpha = 0.3))) +
+    ggplot2::scale_x_continuous(xLabel, limits = xlims, breaks = xBreaks) +
+    ggplot2::scale_y_continuous(yLabel, limits = ylims) +
+    ggplot2::theme(legend.title = ggplot2::element_blank(),
+                   legend.position = "top",
+                   plot.title = ggplot2::element_text(hjust = 0.5))
+ 
+    targetAtRisk <- kaplanMeier$targetAtRisk[!is.na(kaplanMeier$targetAtRisk)]
+    comparatorAtRisk <- kaplanMeier$comparatorAtRisk[!is.na(kaplanMeier$comparatorAtRisk)]
+    labels <- data.frame(x = c(0, xBreaks, xBreaks),
+                         y = as.factor(c("Number at risk", rep(targetName, length(xBreaks)), rep(comparatorName, length(xBreaks)))),
+                         label = c("", formatC(targetAtRisk, big.mark = ",", mode = "integer"), formatC(comparatorAtRisk, big.mark = ",", mode = "integer")))
+    labels$y <- factor(labels$y, levels = c(comparatorName, targetName, "Number at risk"))
+    dataTable <- ggplot2::ggplot(labels, ggplot2::aes(x = x, y = y, label = label)) +
+      ggplot2::geom_text(size = 3.5, vjust = 0.5) +
+      ggplot2::scale_x_continuous(xLabel, limits = xlims, breaks = xBreaks) +
+      ggplot2::theme(panel.grid.major = ggplot2::element_blank(),
+                     panel.grid.minor = ggplot2::element_blank(),
+                     legend.position = "none",
+                     panel.border = ggplot2::element_blank(),
+                     panel.background = ggplot2::element_blank(),
+                     axis.text.x = ggplot2::element_text(color = "white"),
+                     axis.title.x = ggplot2::element_text(color = "white"),
+                     axis.title.y = ggplot2::element_blank(),
+                     axis.ticks = ggplot2::element_line(color = "white"))
+    plots <- list(plot, dataTable)
+    grobs <- widths <- list()
+    for (i in 1:length(plots)) {
+      grobs[[i]] <- ggplot2::ggplotGrob(plots[[i]])
+      widths[[i]] <- grobs[[i]]$widths[2:5]
+    }
+    maxwidth <- do.call(grid::unit.pmax, widths)
+    for (i in 1:length(grobs)) {
+      grobs[[i]]$widths[2:5] <- as.list(maxwidth)
+    }
+    plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]], heights = c(400,100))
+    return(plot)
+}

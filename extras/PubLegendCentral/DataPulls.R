@@ -153,7 +153,6 @@ getCovariateBalance <- function(connection, targetId, comparatorId, databaseId) 
   return(balance)
 }
 
-
 getPs <- function(connection, targetId, comparatorId, databaseId) {
   sql <- "SELECT preference_score,
             target_density,
@@ -171,3 +170,32 @@ getPs <- function(connection, targetId, comparatorId, databaseId) {
   colnames(ps) <- SqlRender::snakeCaseToCamelCase(colnames(ps))
   return(ps)
 }
+
+getKaplanMeier <- function(connection, targetId, comparatorId, outcomeId, databaseId, analysisId) {
+  sql <- "SELECT time,
+    target_at_risk,
+    comparator_at_risk,
+    target_survival,
+    target_survival_lb,
+    target_survival_ub,
+    comparator_survival,
+    comparator_survival_lb,
+    comparator_survival_ub
+  FROM kaplan_meier_dist
+  WHERE target_id = @target_id
+  AND comparator_id = @comparator_id
+  AND outcome_id = @outcome_id
+  AND database_id = '@database_id'
+  AND analysis_id = @analysis_id"
+  sql <- SqlRender::renderSql(sql, 
+                              target_id = targetId,
+                              comparator_id = comparatorId,
+                              outcome_id = outcomeId,
+                              database_id = databaseId,
+                              analysis_id = analysisId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  ps <- querySql(connection, sql)  
+  colnames(ps) <- SqlRender::snakeCaseToCamelCase(colnames(ps))
+  return(ps)
+}
+

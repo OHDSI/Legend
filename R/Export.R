@@ -980,12 +980,12 @@ prepareKaplanMeier <- function(population) {
         data$comparatorSurvivalUb[idx] <- data$comparatorSurvivalUb[idx - 1]
         idx <- which(is.na(data$comparatorSurvival))
     }
-    data$targetSurvival <- round(data$targetSurvival, 2)
-    data$targetSurvivalLb <- round(data$targetSurvivalLb, 2)
-    data$targetSurvivalUb <- round(data$targetSurvivalUb, 2)
-    data$comparatorSurvival <- round(data$comparatorSurvival, 2)
-    data$comparatorSurvivalLb <- round(data$comparatorSurvivalLb, 2)
-    data$comparatorSurvivalUb <- round(data$comparatorSurvivalUb, 2)
+    data$targetSurvival <- round(data$targetSurvival, 4)
+    data$targetSurvivalLb <- round(data$targetSurvivalLb, 4)
+    data$targetSurvivalUb <- round(data$targetSurvivalUb, 4)
+    data$comparatorSurvival <- round(data$comparatorSurvival, 4)
+    data$comparatorSurvivalLb <- round(data$comparatorSurvivalLb, 4)
+    data$comparatorSurvivalUb <- round(data$comparatorSurvivalUb, 4)
 
     # Remove duplicate (except time) entries:
     data <- data[order(data$time), ]
