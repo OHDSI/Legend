@@ -56,6 +56,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     # First run: no interaction terms, include positive controls ---------------------------------
 
     tcos <- lapply(1:nrow(exposureSummary), createTcos)
+    # tcos <- lapply(1:5, createTcos)
     cmAnalysisListFile <- system.file("settings",
                                       "cmAnalysisListDepression.json",
                                       package = "Legend")
@@ -95,7 +96,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     reference <- reference[!duplicated(reference$cohortMethodDataFolder), ]
     ParallelLogger::logInfo("Making cohortMethodData and ps objects symmetrical")
     addOtherHalf <- function(i) {
-        sourceFolder <- reference$cohortMethodDataFolder[i]
+        sourceFolder <- file.path(cmFolder, reference$cohortMethodDataFolder[i])
         targetFolder <- gsub(paste0("_t", reference$targetId[i]),
                              paste0("_t", reference$comparatorId[i]),
                              gsub(paste0("_c", reference$comparatorId[i]),
@@ -117,7 +118,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
             attr(cohortMethodData$cohorts, "metaData") <- metaData
             CohortMethod::saveCohortMethodData(cohortMethodData, targetFolder)
         }
-        sourceFile <- reference$sharedPsFile[i]
+        sourceFile <- file.path(cmFolder, reference$sharedPsFile[i])
         targetFile <- gsub(paste0("_t", reference$targetId[i]),
                            paste0("_t", reference$comparatorId[i]),
                            gsub(paste0("_c", reference$comparatorId[i]),
