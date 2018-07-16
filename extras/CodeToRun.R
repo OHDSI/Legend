@@ -15,9 +15,9 @@
 # limitations under the License.
 
 library(Legend)
-options(fftempdir = "c:/fftemp")
+options(fftempdir = "r:/fftemp")
 maxCores <- 30
-studyFolder <- "c:/Legend"
+studyFolder <- "r:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -89,11 +89,11 @@ OhdsiRTools::runAndNotify({
             outputFolder = outputFolder,
             indicationId = indicationId,
             tablePrefix = tablePrefix,
-            createExposureCohorts = FALSE,
-            createOutcomeCohorts = FALSE,
-            fetchAllDataFromServer = FALSE,
-            synthesizePositiveControls = FALSE,
-            generateAllCohortMethodDataObjects = FALSE,
+            createExposureCohorts = TRUE,
+            createOutcomeCohorts = TRUE,
+            fetchAllDataFromServer = TRUE,
+            synthesizePositiveControls = TRUE,
+            generateAllCohortMethodDataObjects = TRUE,
             runCohortMethod = TRUE,
             computeIncidence = TRUE,
             fetchChronographData = TRUE,

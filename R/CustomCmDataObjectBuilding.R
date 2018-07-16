@@ -167,15 +167,17 @@ fetchAllDataFromServer <- function(connectionDetails,
     filterConcepts <- merge(ancestor, data.frame(descendantConceptId = filterConcepts$conceptId,
                                                  filterConceptId = filterConcepts$filterConceptId,
                                                  filterConceptName = filterConcepts$filterConceptName))
-    exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
-    cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
-                                        ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
-    cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
-                                   data.frame(cohortId = exposuresOfInterest$conceptId,
-                                              ancestorConceptId = exposuresOfInterest$conceptId))
+    # exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
+    # cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
+                                        # ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
+    # cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
+    #                                data.frame(cohortId = exposuresOfInterest$conceptId,
+    #                                           ancestorConceptId = exposuresOfInterest$conceptId))
+    cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
+                                        ancestorConceptId = exposuresOfInterest$conceptId)
     filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
-    filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
-                                                       cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
+    # filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
+    #                                                    cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
     saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
 }
 
