@@ -87,7 +87,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
                 to = file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
 
-    # Two run: no interaction terms, asymmetrical (matching) ------------------------------------
+    # Second run: no interaction terms, asymmetrical (matching) ------------------------------------
 
     # Make cohortMethodData and ps objects symmetrical:
     pathToRds <- file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds")
@@ -189,9 +189,9 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 prefilterCovariates = TRUE,
                                 outcomeIdsOfInterest = hois$cohortId)
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
-                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
 
-    # third run: only interaction terms, exclude positive controls ---------------------------------
+    # Third run: only interaction terms, exclude positive controls ---------------------------------
 
     tcos <- lapply(1:nrow(exposureSummary), createTcos, excludePositiveControls = TRUE)
     cmAnalysisListFile <- system.file("settings",
@@ -222,7 +222,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 prefilterCovariates = TRUE,
                                 outcomeIdsOfInterest = hois$cohortId)
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
-                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
 
     # Create analysis summaries -------------------------------------------------------------------
     outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
@@ -231,11 +231,11 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
 
     outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
     analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
-    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryInteractions.csv"), row.names = FALSE)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryAsym.csv"), row.names = FALSE)
 
     outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
     analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
-    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryAsym.csv"), row.names = FALSE)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryInteractions.csv"), row.names = FALSE)
 }
 
 #' Create the analyses details

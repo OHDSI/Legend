@@ -38,7 +38,7 @@ computeCovariateBalance <- function(indicationId = "Depression",
         dir.create(balanceFolder, recursive = TRUE)
     }
     cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisList.json",
+                                      "cmAnalysisListDepression.json",
                                       package = "Legend")
     cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
 
