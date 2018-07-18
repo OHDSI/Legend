@@ -1,2 +1,3 @@
 indicationId,indicationName,filterConceptIds,positiveControlIdOffset
 Depression,Pharmaceutically treated major depressive disorder,43527992;900000010,10000
+Hypertension,Hypertension,,100000

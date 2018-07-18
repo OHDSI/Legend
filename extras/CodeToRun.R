@@ -73,6 +73,8 @@ outputFolder <- file.path(studyFolder, "synpuf")
 
 indicationId <- "Depression"
 
+indicationId <- "Hypertension"
+
 mailSettings <- list(from = Sys.getenv("mailAddress"),
                      to = c(Sys.getenv("mailAddress")),
                      smtp = list(host.name = "smtp.gmail.com", port = 465,
