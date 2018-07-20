@@ -99,10 +99,16 @@ fetchAllDataFromServer <- function(connectionDetails,
     defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings(excludedCovariateConceptIds = filterConceptIds,
                                                                                   addDescendantsToExclude = TRUE)
     exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
-    priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
-                                                                           exposureEraTable = exposureEraTable)
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
-    covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
+    if (indicationId == "Hypertension") {
+        covariateSettings <- list(subgroupCovariateSettings, defaultCovariateSettings)
+    } else {
+        priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
+                                                                               exposureEraTable = exposureEraTable)
+
+        covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
+    }
+
     covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
                                                         oracleTempSchema = oracleTempSchema,
                                                         cdmDatabaseSchema = cdmDatabaseSchema,
@@ -144,41 +150,49 @@ fetchAllDataFromServer <- function(connectionDetails,
     ff::close.ffdf(outcomes)
 
     # Retrieve filter concepts ---------------------------------------------------------
-    ParallelLogger::logInfo("Retrieving filter concepts")
-    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
-    exposuresOfInterest <- read.csv(pathToCsv)
-    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
-    procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
-    ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$conceptId,
-                           descendantConceptId = exposuresOfInterest$conceptId)
-    for (i in 1:nrow(procedures)) {
-        descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
-        ancestor <- rbind(ancestor, data.frame(ancestorConceptId = procedures$conceptId[i],
-                                               descendantConceptId = descendantConceptIds))
+    if (indicationId == "Hypertension") {
+        # First-line therapy only: hypertension drugs already filtered at data fetch
+        filterConcepts <- data.frame(conceptId = -1,
+                                     filterConceptId = -1,
+                                     filterConceptName = "")
+        saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
+    } else {
+        ParallelLogger::logInfo("Retrieving filter concepts")
+        pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+        exposuresOfInterest <- read.csv(pathToCsv)
+        exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
+        procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
+        ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$conceptId,
+                               descendantConceptId = exposuresOfInterest$conceptId)
+        for (i in 1:nrow(procedures)) {
+            descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
+            ancestor <- rbind(ancestor, data.frame(ancestorConceptId = procedures$conceptId[i],
+                                                   descendantConceptId = descendantConceptIds))
+        }
+        sql <- SqlRender::loadRenderTranslateSql("GetFilterConcepts.sql",
+                                                 "Legend",
+                                                 dbms = connectionDetails$dbms,
+                                                 oracleTempSchema = oracleTempSchema,
+                                                 cdm_database_schema = cdmDatabaseSchema,
+                                                 exposure_concept_ids = unique(ancestor$descendantConceptId))
+        filterConcepts <- DatabaseConnector::querySql(conn, sql)
+        colnames(filterConcepts) <- SqlRender::snakeCaseToCamelCase(colnames(filterConcepts))
+        filterConcepts <- merge(ancestor, data.frame(descendantConceptId = filterConcepts$conceptId,
+                                                     filterConceptId = filterConcepts$filterConceptId,
+                                                     filterConceptName = filterConcepts$filterConceptName))
+        # exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
+        # cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
+        # ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
+        # cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
+        #                                data.frame(cohortId = exposuresOfInterest$conceptId,
+        #                                           ancestorConceptId = exposuresOfInterest$conceptId))
+        cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
+                                            ancestorConceptId = exposuresOfInterest$conceptId)
+        filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
+        # filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
+        #                                                    cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
+        saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
     }
-    sql <- SqlRender::loadRenderTranslateSql("GetFilterConcepts.sql",
-                                             "Legend",
-                                             dbms = connectionDetails$dbms,
-                                             oracleTempSchema = oracleTempSchema,
-                                             cdm_database_schema = cdmDatabaseSchema,
-                                             exposure_concept_ids = unique(ancestor$descendantConceptId))
-    filterConcepts <- DatabaseConnector::querySql(conn, sql)
-    colnames(filterConcepts) <- SqlRender::snakeCaseToCamelCase(colnames(filterConcepts))
-    filterConcepts <- merge(ancestor, data.frame(descendantConceptId = filterConcepts$conceptId,
-                                                 filterConceptId = filterConcepts$filterConceptId,
-                                                 filterConceptName = filterConcepts$filterConceptName))
-    # exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
-    # cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
-                                        # ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
-    # cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
-    #                                data.frame(cohortId = exposuresOfInterest$conceptId,
-    #                                           ancestorConceptId = exposuresOfInterest$conceptId))
-    cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
-                                        ancestorConceptId = exposuresOfInterest$conceptId)
-    filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
-    # filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
-    #                                                    cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
-    saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
 }
 
 constructCohortMethodDataObject <- function(targetId,
@@ -249,12 +263,15 @@ constructCohortMethodDataObject <- function(targetId,
     filterConcepts <- readRDS(file.path(indicationFolder, "filterConceps.rds"))
     filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetId, comparatorId),]
     filterConceptIds <- unique(filterConcepts$filterConceptId)
-    idx <- ffbase::`%in%`(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds))
-    covariateRef <- covariateData$covariateRef[!idx, ]
-    filterCovariateIds <- covariateData$covariateRef$covariateId[idx, ]
-    idx <- !ffbase::`%in%`(covariates$covariateId, filterCovariateIds)
-    covariates <- covariates[idx, ]
-
+    if (length(filterConceptIds) == 0) {
+        covariateRef <- covariateData$covariateRef
+    } else {
+        idx <- ffbase::`%in%`(covariateData$covariateRef$conceptId, ff::as.ff(filterConceptIds))
+        covariateRef <- covariateData$covariateRef[!idx, ]
+        filterCovariateIds <- covariateData$covariateRef$covariateId[idx, ]
+        idx <- !ffbase::`%in%`(covariates$covariateId, filterCovariateIds)
+        covariates <- covariates[idx, ]
+    }
     result <- list(cohorts = cohorts,
                    outcomes = outcomes,
                    covariates = covariates,

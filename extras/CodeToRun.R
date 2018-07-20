@@ -104,10 +104,6 @@ OhdsiRTools::runAndNotify({
 },  mailSettings = mailSettings, label = "Legend")
 
 
-
-
-
-
 createExposureCohorts(connectionDetails = connectionDetails,
                       cdmDatabaseSchema = cdmDatabaseSchema,
                       cohortDatabaseSchema = cohortDatabaseSchema,
