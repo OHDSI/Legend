@@ -123,6 +123,7 @@ createExposureCohorts <- function(connectionDetails,
         # Create drug and drug class combinations
         drugsOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug", ]
         classesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug class", ]
+        majorClassesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug major class", ]
 
         drugPairs <- expand.grid(exposureId1 = drugsOfInterest$cohortId,
                                  exposureId2 = drugsOfInterest$cohortId)
@@ -130,7 +131,11 @@ createExposureCohorts <- function(connectionDetails,
         classPairs <- expand.grid(exposureId1 = classesOfInterest$cohortId,
                                   exposureId2 = classesOfInterest$cohortId)
         classPairs$exposureType <- "Drug class"
-        exposurePairs <- rbind(drugPairs, classPairs)
+        majorclassPairs <- expand.grid(exposureId1 = majorClassesOfInterest$cohortId,
+                                  exposureId2 = majorClassesOfInterest$cohortId)
+        majorclassPairs$exposureType <- "Drug major class"
+
+        exposurePairs <- rbind(drugPairs, classPairs, majorclassPairs)
         exposurePairs <- exposurePairs[exposurePairs$exposureId1 < exposurePairs$exposureId2, ]
         exposurePairs$exposureId3 <- -1
 
@@ -142,12 +147,17 @@ createExposureCohorts <- function(connectionDetails,
                                      exposureId2 = classesOfInterest$cohortId,
                                      exposureId3 = classesOfInterest$cohortId)
         classTriplets$exposureType <- "Drug class"
-        exposureTriplets <- rbind(drugTriplets, classTriplets)
+        majorClassTriplets <- expand.grid(exposureId1 = majorClassesOfInterest$cohortId,
+                                          exposureId2 = majorClassesOfInterest$cohortId,
+                                          exposureId3 = majorClassesOfInterest$cohortId)
+        majorClassTriplets$exposureType <- "Drug major class"
+
+
+        exposureTriplets <- rbind(drugTriplets, classTriplets, majorClassTriplets)
         exposureTriplets <- exposureTriplets[exposureTriplets$exposureId1 < exposureTriplets$exposureId2 &
                                                  exposureTriplets$exposureId2 < exposureTriplets$exposureId3, ]
 
         exposureCombis <- rbind(exposurePairs, exposureTriplets)
-        # exposureCombis <- exposurePairs
         exposureCombis$cohortDefinitionId <- 1000 + 1:nrow(exposureCombis)
         if (any(exposureCombis$cohortDefinitionId %in% exposuresOfInterest$cohortId)) {
             stop("Collision between exposure concept IDs and exposure combination IDs")
@@ -190,7 +200,10 @@ createExposureCohorts <- function(connectionDetails,
                                        data = eoi)
 
         # Upload custom drug ancestor table
-        classesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug class", ]
+        classesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug class" |
+                                                     exposuresOfInterest$type == "Drug major class", ]
+        classesOfInterest <- classesOfInterest[, c("cohortId", "includedConceptIds")]
+        classesOfInterest <- unique(classesOfInterest)
         drugAncestor <- data.frame()
         for (i in 1:nrow(classesOfInterest)) {
             descendantConceptIds <- as.numeric(strsplit(as.character(classesOfInterest$includedConceptIds[i]), ";")[[1]])
@@ -298,10 +311,11 @@ createExposureCohorts <- function(connectionDetails,
     colnames(pairedExposureSummary) <- SqlRender::snakeCaseToCamelCase(colnames(pairedExposureSummary))
     cohortNames <- data.frame(cohortDefinitionId = exposuresOfInterest$cohortId,
                               cohortName = exposuresOfInterest$name)
-    if (!is.null(namedExposureCombis)) {
+    if (!is.null(exposureCombis)) {
         cohortNames <- rbind(cohortNames, data.frame(cohortDefinitionId = namedExposureCombis$cohortDefinitionId,
                                                      cohortName = namedExposureCombis$cohortName))
     }
+    cohortNames <- unique(cohortNames)
     pairedExposureSummary <- merge(pairedExposureSummary, data.frame(targetId = cohortNames$cohortDefinitionId,
                                                                      targetName = cohortNames$cohortName))
     pairedExposureSummary <- merge(pairedExposureSummary, data.frame(comparatorId = cohortNames$cohortDefinitionId,

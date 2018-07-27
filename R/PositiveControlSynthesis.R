@@ -63,6 +63,7 @@ synthesizePositiveControls <- function(connectionDetails,
     # to make sure new outcome IDs translate across databases:
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
     exposureIds <- unique(exposuresOfInterest$cohortId)
     if (indicationId == "Hypertension") {
         exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))

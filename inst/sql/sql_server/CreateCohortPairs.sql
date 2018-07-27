@@ -39,7 +39,7 @@ GROUP BY cohort_definition_id;
 IF OBJECT_ID('tempdb..#ec_pairs', 'U') IS NOT NULL
 	DROP TABLE #ec_pairs;
 
-SELECT target_id,
+SELECT DISTINCT target_id,
 	comparator_id,
 	min_cohort_date,
 	max_cohort_date

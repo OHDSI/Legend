@@ -98,14 +98,13 @@ fetchAllDataFromServer <- function(connectionDetails,
     filterConceptIds <- as.numeric(strsplit(filterConceptIds, split = ";")[[1]])
     defaultCovariateSettings <- FeatureExtraction::createDefaultCovariateSettings(excludedCovariateConceptIds = filterConceptIds,
                                                                                   addDescendantsToExclude = TRUE)
-    exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
     if (indicationId == "Hypertension") {
         covariateSettings <- list(subgroupCovariateSettings, defaultCovariateSettings)
     } else {
+        exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
         priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
                                                                                exposureEraTable = exposureEraTable)
-
         covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
     }
 

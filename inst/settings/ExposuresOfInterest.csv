@@ -89,4 +89,10 @@ Hypertension,Drug class,Loop diuretics,12,,932745;956874;942350
 Hypertension,Drug class,Nodihydropyridine calcium channel blockers (ndCCB),13,,1328165;1307863
 Hypertension,Drug class,Potassium sparing diurectics,14,,991382;904542
 Hypertension,Drug class,Thiazide or thiazide-like diuretics,15,,1395058;974166;978555;907013
-,,,,,
+Hypertension,Drug major class,ACE inhibitors,1,,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
+Hypertension,Drug major class,Diuretics,16,,991382;932745;1309799;956874;970250;942350;904542
+Hypertension,Drug major class,Alpha-1 blockers,3,,1363053;1350489;1341238
+Hypertension,Drug major class,Angiotensin receptor blockers (ARBs),4,,40235485;1351557;1346686;1347384;1367500;40226742;1317640;1308842
+Hypertension,Drug major class,Beta blockers,17,,1319998;1314002;1322081;1338005;1346823;1386957;1307046;1313200;1314577;1327978;1345858;1353766
+Hypertension,Drug major class,Calcium channel blockers (CCB),18,,1332418;1328165;1353776;1326012;1318137;1318853;1319880;1307863
+Hypertension,Drug major class,Direct vasodilators,11,,1373928;1309068

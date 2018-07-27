@@ -4,19 +4,22 @@ diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
+cmFolder <- file.path(indicationFolder, "cmOutput")
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
 # datas <- list()
 # for (i in 1:nrow(exposureSummary)) {
+i = 22
+
 preparePlot <- function(i, exposureSummary, outcomeModelReference) {
-    treatmentId <- exposureSummary$tprimeCohortDefinitionId[i]
-    comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
+    treatmentId <- exposureSummary$targetId[i]
+    comparatorId <- exposureSummary$comparatorId[i]
     idx <- outcomeModelReference$targetId == treatmentId &
         outcomeModelReference$comparatorId == comparatorId &
         outcomeModelReference$analysisId == 1
     psFileName <- outcomeModelReference$sharedPsFile[idx][1]
-    if (file.exists(psFileName)) {
-        ps <- readRDS(psFileName)
+    if (file.exists(file.path(cmFolder, psFileName))) {
+        ps <- readRDS(file.path(cmFolder, psFileName))
         if (min(ps$propensityScore) < max(ps$propensityScore)) {
             ps <- CohortMethod:::computePreferenceScore(ps)
 
@@ -26,15 +29,15 @@ preparePlot <- function(i, exposureSummary, outcomeModelReference) {
             d <- data.frame(x = c(d1$x, d0$x), y = c(d1$y, d0$y), treatment = c(rep(1, length(d1$x)),
                                                                                 rep(0, length(d0$x))))
             d$y <- d$y/max(d$y)
-            d$treatmentName <- as.character(exposureSummary$tName[i])
-            d$comparatorName <- as.character(exposureSummary$cName[i])
+            d$treatmentName <- as.character(exposureSummary$targetName[i])
+            d$comparatorName <- as.character(exposureSummary$comparatorName[i])
             # datas[[length(datas) + 1]] <- d
             result <- d
 
             d$x <- 1 - d$x
             d$treatment <- 1 - d$treatment
-            d$treatmentName <- as.character(exposureSummary$cName[i])
-            d$comparatorName <- as.character(exposureSummary$tName[i])
+            d$treatmentName <- as.character(exposureSummary$comparatorName[i])
+            d$comparatorName <- as.character(exposureSummary$targetName[i])
             # datas[[length(datas) + 1]] <- d
             result <- rbind(result, d)
 
@@ -298,29 +301,30 @@ counts <- aggregate(covariateValue ~ covariateId, covSubset, sum)
 counts <- merge(counts, ref[, c("covariateId", "covariateName")])
 covariateData$metaData$populationSize
 
-# Propensiy models --------------------------------------------------------------------------------------
+1# Propensiy models --------------------------------------------------------------------------------------
 indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+cmFolder <- file.path(indicationFolder, "cmOutput")
 
 # for (i in 1:nrow(exposureSummary)) {
 getModel <- function(i, exposureSummary, outcomeModelReference) {
-    treatmentId <- exposureSummary$tprimeCohortDefinitionId[i]
-    comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
+    treatmentId <- exposureSummary$targetId[i]
+    comparatorId <- exposureSummary$comparatorId[i]
     idx <- outcomeModelReference$targetId == treatmentId &
         outcomeModelReference$comparatorId == comparatorId &
         outcomeModelReference$analysisId == 1
     psFileName <- outcomeModelReference$sharedPsFile[idx][1]
-    if (file.exists(psFileName)) {
-        ps <- readRDS(psFileName)
+    if (file.exists(file.path(cmFolder, psFileName))) {
+        ps <- readRDS(file.path(cmFolder, psFileName))
         metaData <- attr(ps, "metaData")
         if (is.null(metaData$psError)) {
             cmDataFile <- outcomeModelReference$cohortMethodDataFolder[idx][1]
-            cmData <- CohortMethod::loadCohortMethodData(cmDataFile)
+            cmData <- CohortMethod::loadCohortMethodData(file.path(cmFolder, cmDataFile))
             model <- CohortMethod::getPsModel(ps, cmData)
             ff::close.ffdf(cmData$covariates)
             ff::close.ffdf(cmData$covariateRef)
@@ -334,8 +338,8 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
                                 covariateId = NA,
                                 covariateName = paste("Error:", metaData$psError))
         }
-        targetName <- exposureSummary$tName[i]
-        comparatorName <- exposureSummary$cName[i]
+        targetName <- exposureSummary$targetName[i]
+        comparatorName <- exposureSummary$comparatorName[i]
         model$targetId <- treatmentId
         model$targetName <- targetName
         model$comparatorId <- comparatorId
@@ -347,9 +351,6 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
 }
 
 data <- plyr::llply(1:nrow(exposureSummary), getModel, exposureSummary = exposureSummary, outcomeModelReference = outcomeModelReference, .progress = "text")
-
-# data <- plyr::llply(40:60, getModel, exposureSummary = exposureSummary, outcomeModelReference = outcomeModelReference, .progress = "text")
-
 data <- do.call("rbind", data)
 write.csv(data, file.path(diagnosticsFolder, "propensityModels.csv"), row.names = FALSE)
 
