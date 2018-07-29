@@ -44,6 +44,14 @@ mainResults <- getMainResults(connection,
                               outcomeIds = params$outcomeId,
                               databaseIds = params$databaseId)
 
+attrition <- getAttrition(connection, 
+                          targetId = params$targetId,
+                          comparatorId = params$comparatorId,
+                          outcomeId = params$outcomeId,
+                          analysisId = 1,
+                          databaseId = params$databaseId)
+
+
 balance <- getCovariateBalance(connection, 
                               targetId = params$targetId,
                               comparatorId = params$comparatorId,
@@ -90,6 +98,13 @@ This is a very important study. Here's a really cool paper @pmid23900808.
 # Methods
 
 # Results
+
+```{r, echo = FALSE, fig.width=6, fig.height=7.5, fig.align='center'}
+drawAttritionDiagram(attrition, targetName, comparatorName)
+```
+**Figure 1**. Attrition diagram.
+
+
 **Table 1**. Select population characteristics
 \fontsize{6.5}{6.5}
 \selectfont
@@ -104,7 +119,7 @@ kable(table, row.names = FALSE)
 ```{r, echo = FALSE, fig.width=6, fig.height=4, fig.align='center'}
 plotPs(ps, targetName, comparatorName)
 ```
-**Figure 1**. Preference score distribution. The preference score is a transformation of the propensity score that adjusts for differences in the sizes of the two treatment groups. A higher overlap indicates subjects in the two groups were more similar in terms of their predicted probability of receiving one treatment over the other.
+**Figure 2**. Preference score distribution. The preference score is a transformation of the propensity score that adjusts for differences in the sizes of the two treatment groups. A higher overlap indicates subjects in the two groups were more similar in terms of their predicted probability of receiving one treatment over the other.
 
 **Table 2**. Hazard ratios, 95% confidence intervals, uncalibrated and empirically calibrated, for various analyses.
 ```{r, echo = FALSE}
@@ -122,7 +137,7 @@ kable(table, row.names = FALSE)
 ```{r, echo = FALSE, fig.width=6, fig.height=5.5, fig.align='center', results='hide'}
 plotKaplanMeier(kaplanMeier, targetName, comparatorName)
 ```
-**Figure 2**. Kaplan Meier plot, showing survival as a function of time. This plot
+**Figure 3**. Kaplan Meier plot, showing survival as a function of time. This plot
       is adjusted for the propensity score stratification: The target curve (<em>`r targetName`</em>) shows the actual observed survival. The
       comparator curve (<em>`r comparatorName`</em>) applies reweighting to approximate the counterfactual of what the target survival
       would look like had the target cohort been exposed to the comparator instead. The shaded area denotes 

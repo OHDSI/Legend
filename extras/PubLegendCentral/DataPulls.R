@@ -199,3 +199,34 @@ getKaplanMeier <- function(connection, targetId, comparatorId, outcomeId, databa
   return(ps)
 }
 
+getAttrition <- function(connection, targetId, comparatorId, outcomeId, analysisId, databaseId) {
+  sql <- "SELECT exposure_id,
+    sequence_number,
+    description,
+    subjects
+  FROM attrition
+  WHERE (target_id = -1 OR target_id = @target_id)
+    AND (comparator_id = -1 OR comparator_id = @comparator_id)
+    AND (outcome_id = -1 OR outcome_id = @outcome_id)
+    AND (exposure_id = @target_id OR exposure_id = @comparator_id)  
+    AND (analysis_id = -1 OR analysis_id = @analysis_id)
+    AND database_id = '@database_id'"
+  sql <- SqlRender::renderSql(sql, 
+                              target_id = targetId,
+                              comparator_id = comparatorId,
+                              outcome_id = outcomeId,
+                              analysis_id = analysisId,
+                              database_id = databaseId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  attrition <- querySql(connection, sql) 
+  colnames(attrition) <- SqlRender::snakeCaseToCamelCase(colnames(attrition))
+  targetAttrition <- attrition[attrition$exposureId == targetId, ]
+  comparatorAttrition <- attrition[attrition$exposureId == comparatorId, ]
+  colnames(targetAttrition)[colnames(targetAttrition) == "subjects"] <- "targetPersons"
+  targetAttrition$exposureId <- NULL
+  colnames(comparatorAttrition)[colnames(comparatorAttrition) == "subjects"] <- "comparatorPersons"
+  comparatorAttrition$exposureId <- NULL
+  attrition <- merge(targetAttrition, comparatorAttrition)
+  attrition <- attrition[order(attrition$sequenceNumber), ] 
+  return(attrition)
+}
