@@ -30,6 +30,10 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 password = pw,
                                                                 port = port)
 
+indicationId <- "Depression"
+
+indicationId <- "Hypertension"
+
 # CCAE settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_truven_ccae_v750.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
@@ -71,10 +75,28 @@ databaseName <- "Medicare Claims Synthetic Public Use Files (SynPUFs)"
 outputFolder <- file.path(studyFolder, "synpuf")
 
 
-indicationId <- "Depression"
 
-indicationId <- "Hypertension"
+# Feasibility assessment ---------------------------------------------------------
+assessPhenotypes(connectionDetails = connectionDetails,
+                 cdmDatabaseSchema = cdmDatabaseSchema,
+                 oracleTempSchema = oracleTempSchema,
+                 cohortDatabaseSchema = cohortDatabaseSchema,
+                 outputFolder = outputFolder,
+                 indicationId = indicationId,
+                 tablePrefix = tablePrefix,
+                 databaseId = databaseId)
 
+assessPropensityModels(connectionDetails = connectionDetails,
+                       cdmDatabaseSchema = cdmDatabaseSchema,
+                       oracleTempSchema = oracleTempSchema,
+                       cohortDatabaseSchema = cohortDatabaseSchema,
+                       outputFolder = outputFolder,
+                       indicationId = indicationId,
+                       tablePrefix = tablePrefix,
+                       databaseId = databaseId,
+                       maxCores = maxCores)
+
+# Run main study -----------------------------------------------------------------
 mailSettings <- list(from = Sys.getenv("mailAddress"),
                      to = c(Sys.getenv("mailAddress")),
                      smtp = list(host.name = "smtp.gmail.com", port = 465,

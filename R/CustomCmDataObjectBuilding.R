@@ -32,6 +32,8 @@
 #'                             priviliges for storing temporary tables.
 #' @param indicationId         A string denoting the indicationId.
 #' @param tablePrefix          A prefix to be used for all table names created for this study.
+#' @param useSample            Use the sampled cohort table instead of the main cohort table (for PS model
+#'                             feasibility).
 #' @param outputFolder         Schema name where intermediate data can be stored. You will need to have
 #'                             write priviliges in this schema. Note that for SQL Server, this should
 #'                             include both the database and schema name, for example 'cdm_data.dbo'.
@@ -43,6 +45,7 @@ fetchAllDataFromServer <- function(connectionDetails,
                                    oracleTempSchema,
                                    indicationId = "Depression",
                                    tablePrefix = "legend",
+                                   useSample = FALSE,
                                    outputFolder) {
     # Some ad-hoc nomenclature:
     #
@@ -58,6 +61,19 @@ fetchAllDataFromServer <- function(connectionDetails,
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
     outcomeIds <- counts$cohortDefinitionId
+
+    if (useSample) {
+        pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "sample_cohort", sep = "_")
+        covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
+        cohortsFolder <- file.path(indicationFolder, "sampleCohorts")
+        outcomesFolder <- file.path(indicationFolder, "sampleOutcomes")
+
+    } else {
+        pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
+        covariatesFolder <- file.path(indicationFolder, "allCovariates")
+        cohortsFolder <- file.path(indicationFolder, "allCohorts")
+        outcomesFolder <- file.path(indicationFolder, "allOutcomes")
+    }
 
     conn <- DatabaseConnector::connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
@@ -75,7 +91,6 @@ fetchAllDataFromServer <- function(connectionDetails,
 
 
     # Lump persons of interest into one table -----------------------------------------------------
-    pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("UnionExposureCohorts.sql",
                                              "Legend",
                                              dbms = connectionDetails$dbms,
@@ -117,7 +132,7 @@ fetchAllDataFromServer <- function(connectionDetails,
                                                         rowIdField = "row_id",
                                                         covariateSettings = covariateSettings,
                                                         aggregated = FALSE)
-    FeatureExtraction::saveCovariateData(covariates, file.path(indicationFolder, "allCovariates"))
+    FeatureExtraction::saveCovariateData(covariates, covariatesFolder)
 
     # Retrieve cohorts -------------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving cohorts")
@@ -130,9 +145,10 @@ fetchAllDataFromServer <- function(connectionDetails,
                                              paired_cohort_table = pairedCohortTable)
     cohorts <- DatabaseConnector::querySql.ffdf(conn, sql)
     colnames(cohorts) <- SqlRender::snakeCaseToCamelCase(colnames(cohorts))
-    ffbase::save.ffdf(cohorts, dir = file.path(indicationFolder, "allCohorts"))
+    ffbase::save.ffdf(cohorts, dir = cohortsFolder)
     ff::close.ffdf(cohorts)
 
+    # Retrieve outcomes -------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving outcomes")
     outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
     sql <- SqlRender::loadRenderTranslateSql("GetOutcomes.sql",
@@ -145,7 +161,7 @@ fetchAllDataFromServer <- function(connectionDetails,
                                              outcome_ids = outcomeIds)
     outcomes <- DatabaseConnector::querySql.ffdf(conn, sql)
     colnames(outcomes) <- SqlRender::snakeCaseToCamelCase(colnames(outcomes))
-    ffbase::save.ffdf(outcomes, dir = file.path(indicationFolder, "allOutcomes"))
+    ffbase::save.ffdf(outcomes, dir = outcomesFolder)
     ff::close.ffdf(outcomes)
 
     # Retrieve filter concepts ---------------------------------------------------------
@@ -196,10 +212,20 @@ fetchAllDataFromServer <- function(connectionDetails,
 
 constructCohortMethodDataObject <- function(targetId,
                                             comparatorId,
-                                            indicationFolder) {
+                                            indicationFolder,
+                                            useSample) {
+    if (useSample) {
+        covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
+        cohortsFolder <- file.path(indicationFolder, "sampleCohorts")
+        outcomesFolder <- file.path(indicationFolder, "sampleOutcomes")
+    } else {
+        covariatesFolder <- file.path(indicationFolder, "allCovariates")
+        cohortsFolder <- file.path(indicationFolder, "allCohorts")
+        outcomesFolder <- file.path(indicationFolder, "allOutcomes")
+    }
     # Subsetting cohorts
     cohorts <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
+    ffbase::load.ffdf(dir = cohortsFolder) # Loads cohorts
     ff::open.ffdf(cohorts, readonly = TRUE)
     idx <- cohorts$targetId == targetId & cohorts$comparatorId == comparatorId
     cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
@@ -224,7 +250,7 @@ constructCohortMethodDataObject <- function(targetId,
 
     # Subsetting outcomes
     outcomes <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes")) # Loads outcomes
+    ffbase::load.ffdf(dir = outcomesFolder) # Loads outcomes
     ff::open.ffdf(outcomes, readonly = TRUE)
     idx <- ffbase::`%in%`(outcomes$rowId, ff::as.ff(cohorts$rowId))
     if (ffbase::any.ff(idx)) {
@@ -233,28 +259,30 @@ constructCohortMethodDataObject <- function(targetId,
         outcomes <- as.data.frame(outcomes[1, ])
         outcomes <- outcomes[T == F,]
     }
-    # Add injected outcomes
-    injectedOutcomes <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes")) # Loads injectedOutcomes
-    ff::open.ffdf(injectedOutcomes, readonly = TRUE)
-    injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
-    injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetId, comparatorId), ]
-    idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
-    idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
-    idx <- idx1 & idx2
-    if (ffbase::any.ff(idx)) {
-        injectedOutcomes <- ff::as.ram(injectedOutcomes[idx, ])
-        colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
-        colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
-        injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
-        injectedOutcomes$daysToEvent = injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
-        outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
+    if (!useSample) {
+        # Add injected outcomes (no signal injection when doing sampling)
+        injectedOutcomes <- NULL
+        ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes")) # Loads injectedOutcomes
+        ff::open.ffdf(injectedOutcomes, readonly = TRUE)
+        injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
+        injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetId, comparatorId), ]
+        idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
+        idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
+        idx <- idx1 & idx2
+        if (ffbase::any.ff(idx)) {
+            injectedOutcomes <- ff::as.ram(injectedOutcomes[idx, ])
+            colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
+            colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
+            injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
+            injectedOutcomes$daysToEvent = injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
+            outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
+        }
     }
     metaData <- data.frame(outcomeIds = unique(outcomes$outcomeId))
     attr(outcomes, "metaData") <- metaData
 
     # Subsetting covariates
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
+    covariateData <- FeatureExtraction::loadCovariateData(covariatesFolder)
     idx <- ffbase::`%in%`(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId))
     covariates <- covariateData$covariates[idx, ]
 
@@ -291,9 +319,11 @@ constructCohortMethodDataObject <- function(targetId,
 #' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #' @param indicationId         A string denoting the indicationId.
+#' @param useSample            Use the sampled cohort table instead of the main cohort table (for PS model
+#'                             feasibility).
 #'
 #' @export
-generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Depression") {
+generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Depression", useSample = FALSE) {
     ParallelLogger::logInfo("Constructing CohortMethodData objects")
     indicationFolder <- file.path(outputFolder, indicationId)
     start <- Sys.time()
@@ -302,11 +332,16 @@ generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Dep
     for (i in 1:nrow(exposureSummary)) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        if (useSample) {
+            folderName <- file.path(indicationFolder, "cmSampleOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        } else {
+            folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        }
         if (!file.exists(folderName)) {
             cmData <- constructCohortMethodDataObject(targetId = targetId,
                                                       comparatorId = comparatorId,
-                                                      indicationFolder = indicationFolder)
+                                                      indicationFolder = indicationFolder,
+                                                      useSample = useSample)
             CohortMethod::saveCohortMethodData(cmData, folderName)
         }
         setTxtProgressBar(pb, i/nrow(exposureSummary))
