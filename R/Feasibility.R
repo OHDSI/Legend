@@ -103,7 +103,6 @@ assessPhenotypes <- function(connectionDetails,
                                              sample_size = sampleSize)
     conn <- DatabaseConnector::connect(connectionDetails)
     DatabaseConnector::executeSql(conn, sql)
-    DatabaseConnector::disconnect(conn)
 
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
     subgroupCovs <- FeatureExtraction::getDbCovariateData(connection = conn,
@@ -114,6 +113,7 @@ assessPhenotypes <- function(connectionDetails,
                                                           cohortTableIsTemp = FALSE,
                                                           covariateSettings = subgroupCovariateSettings,
                                                           aggregated = FALSE)
+    DatabaseConnector::disconnect(conn)
     covs <- ff::as.ram(subgroupCovs$covariates)
     covs <- aggregate(covariateValue ~ covariateId, covs, sum)
     covs <- merge(covs, data.frame(covariateId = ff::as.ram(subgroupCovs$covariateRef$covariateId),
@@ -174,6 +174,7 @@ assessPropensityModels <- function(connectionDetails,
                                    databaseId) {
     pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     sampledCohortTable <- paste(tablePrefix, tolower(indicationId), "sample_cohort", sep = "_")
+    indicationFolder <- file.path(outputFolder, indicationId)
     assessmentExportFolder <- file.path(indicationFolder, "assessmentOfPropensityScores")
     if (!file.exists(assessmentExportFolder)) {
         dir.create(assessmentExportFolder, recursive = TRUE)
@@ -274,7 +275,7 @@ assessPropensityModels <- function(connectionDetails,
             }
             targetName <- exposureSummary$targetName[i]
             comparatorName <- exposureSummary$comparatorName[i]
-            model$targetId <- treatmentId
+            model$targetId <- targetId
             model$targetName <- targetName
             model$comparatorId <- comparatorId
             model$comparatorName <- comparatorName
@@ -300,7 +301,7 @@ assessPropensityModels <- function(connectionDetails,
             targetName <- exposureSummary$targetName[i]
             comparatorName <- exposureSummary$comparatorName[i]
             auc <- data.frame(auc = CohortMethod::computePsAuc(ps),
-                              targetId = treatmentId,
+                              targetId = targetId,
                               targetName = targetName,
                               comparatorId = comparatorId,
                               comparatorName = comparatorName,

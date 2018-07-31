@@ -176,14 +176,19 @@ fetchAllDataFromServer <- function(connectionDetails,
         pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
         exposuresOfInterest <- read.csv(pathToCsv)
         exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
-        procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
-        ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$conceptId,
-                               descendantConceptId = exposuresOfInterest$conceptId)
-        for (i in 1:nrow(procedures)) {
-            descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
-            ancestor <- rbind(ancestor, data.frame(ancestorConceptId = procedures$conceptId[i],
-                                                   descendantConceptId = descendantConceptIds))
+        getDescendants <- function(i) {
+            if (exposuresOfInterest$includedConceptIds[i] == "") {
+                ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$cohortId[i],
+                                       descendantConceptId = exposuresOfInterest$conceptId[i])
+            } else {
+                descendantConceptIds <- as.numeric(strsplit(as.character(exposuresOfInterest$includedConceptIds[i]), ";")[[1]])
+                ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$cohortId[i],
+                                       descendantConceptId = descendantConceptIds)
+            }
+            return(ancestor)
         }
+        ancestor <- lapply(1:nrow(exposuresOfInterest), getDescendants)
+        ancestor <- do.call("rbind", ancestor)
         sql <- SqlRender::loadRenderTranslateSql("GetFilterConcepts.sql",
                                                  "Legend",
                                                  dbms = connectionDetails$dbms,
@@ -195,15 +200,18 @@ fetchAllDataFromServer <- function(connectionDetails,
         filterConcepts <- merge(ancestor, data.frame(descendantConceptId = filterConcepts$conceptId,
                                                      filterConceptId = filterConcepts$filterConceptId,
                                                      filterConceptName = filterConcepts$filterConceptName))
+        filterConcepts <- data.frame(cohortId = filterConcepts$ancestorConceptId,
+                                     filterConceptId = filterConcepts$filterConceptId,
+                                     filterConceptName = filterConcepts$filterConceptName)
         # exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
         # cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
         # ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
         # cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
         #                                data.frame(cohortId = exposuresOfInterest$conceptId,
         #                                           ancestorConceptId = exposuresOfInterest$conceptId))
-        cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
-                                            ancestorConceptId = exposuresOfInterest$conceptId)
-        filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
+        # cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
+        #                                     ancestorConceptId = exposuresOfInterest$conceptId)
+        # filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
         # filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
         #                                                    cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
         saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
