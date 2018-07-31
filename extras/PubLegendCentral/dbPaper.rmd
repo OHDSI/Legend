@@ -28,38 +28,44 @@ options(knitr.kable.NA = '')
 #                comparatorId =  715259,
 #                outcomeId = 18)
 
-connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                             server = "localhost/ohdsi",
-                                             user = "postgres",
-                                             password = Sys.getenv("pwPostgres"),
-                                             schema = "legend")
-connection <- connect(connectionDetails)
-targetName <- getExposureName(connection, params$targetId)
-comparatorName <- getExposureName(connection, params$comparatorId)
-outcomeName <- getOutcomeName(connection, params$outcomeId)
-analyses <- getAnalyses(connection)
-mainResults <- getMainResults(connection, 
-                              targetIds = params$targetId,
-                              comparatorIds = params$comparatorId,
-                              outcomeIds = params$outcomeId,
-                              databaseIds = params$databaseId)
+useStoredObject <- TRUE
 
-balance <- getCovariateBalance(connection, 
-                              targetId = params$targetId,
-                              comparatorId = params$comparatorId,
-                              databaseId = params$databaseId)
-
-ps <- getPs(connection, 
-            targetId = params$targetId,
-            comparatorId = params$comparatorId,
-            databaseId = params$databaseId)
-
-kaplanMeier <- getKaplanMeier(connection, 
-                              targetId = params$targetId,
-                              comparatorId = params$comparatorId,
-                              outcomeId = params$outcomeId,
-                              databaseId = params$databaseId,
-                              analysisId = 2) 
+if (!useStoredObject) {
+    connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                                 server = "localhost/ohdsi",
+                                                 user = "postgres",
+                                                 password = Sys.getenv("pwPostgres"),
+                                                 schema = "legend")
+    connection <- connect(connectionDetails)
+    targetName <- getExposureName(connection, params$targetId)
+    comparatorName <- getExposureName(connection, params$comparatorId)
+    outcomeName <- getOutcomeName(connection, params$outcomeId)
+    analyses <- getAnalyses(connection)
+    mainResults <- getMainResults(connection, 
+                                  targetIds = params$targetId,
+                                  comparatorIds = params$comparatorId,
+                                  outcomeIds = params$outcomeId,
+                                  databaseIds = params$databaseId)
+    
+    balance <- getCovariateBalance(connection, 
+                                   targetId = params$targetId,
+                                   comparatorId = params$comparatorId,
+                                   databaseId = params$databaseId)
+    
+    ps <- getPs(connection, 
+                targetId = params$targetId,
+                comparatorId = params$comparatorId,
+                databaseId = params$databaseId)
+    
+    kaplanMeier <- getKaplanMeier(connection, 
+                                  targetId = params$targetId,
+                                  comparatorId = params$comparatorId,
+                                  outcomeId = params$outcomeId,
+                                  databaseId = params$databaseId,
+                                  analysisId = 2) 
+} else {
+    load("paperData.rda")
+}
 
 ```
 
