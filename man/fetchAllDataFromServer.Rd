@@ -6,7 +6,7 @@
 \usage{
 fetchAllDataFromServer(connectionDetails, cdmDatabaseSchema,
   cohortDatabaseSchema, oracleTempSchema, indicationId = "Depression",
-  tablePrefix = "legend", outputFolder)
+  tablePrefix = "legend", useSample = FALSE, outputFolder)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -27,6 +27,9 @@ priviliges for storing temporary tables.}
 \item{indicationId}{A string denoting the indicationId.}
 
 \item{tablePrefix}{A prefix to be used for all table names created for this study.}
+
+\item{useSample}{Use the sampled cohort table instead of the main cohort table (for PS model
+feasibility).}
 
 \item{outputFolder}{Schema name where intermediate data can be stored. You will need to have
 write priviliges in this schema. Note that for SQL Server, this should

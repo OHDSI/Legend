@@ -27,7 +27,7 @@ shell("R CMD Rd2pdf ./ --output=extras/Legend.pdf")
 OhdsiRTools::insertCohortDefinitionSetInPackage(fileName = "OutcomesOfInterest.csv",
                                                 baseUrl = Sys.getenv("baseUrl"),
                                                 insertTableSql = TRUE,
-                                                insertCohortCreationR = TRUE,
+                                                insertCohortCreationR = FALSE,
                                                 generateStats = FALSE,
                                                 packageName = "Legend")
 

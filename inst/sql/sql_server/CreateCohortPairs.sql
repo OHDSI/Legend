@@ -21,6 +21,7 @@ limitations under the License.
 {DEFAULT @paired_cohort_table = 'cohort'}
 {DEFAULT @paired_cohort_summary_table = 'exposure_cohort_summary'}
 {DEFAULT @attrition_table = 'attrition'}
+{DEFAULT @exposure_group_table = ''}
 
 IF OBJECT_ID('tempdb..#ec_summary', 'U') IS NOT NULL
 	DROP TABLE #ec_summary;
@@ -38,7 +39,7 @@ GROUP BY cohort_definition_id;
 IF OBJECT_ID('tempdb..#ec_pairs', 'U') IS NOT NULL
 	DROP TABLE #ec_pairs;
 
-SELECT target_id,
+SELECT DISTINCT target_id,
 	comparator_id,
 	min_cohort_date,
 	max_cohort_date
@@ -59,7 +60,16 @@ FROM (
 	FROM #ec_summary s1,
 		#ec_summary s2
 	WHERE s1.cohort_definition_id < s2.cohort_definition_id
-	) t1;
+	) t1
+{@exposure_group_table != ''} ? {
+-- Require target and comparator to be in same group (e.g. only compare drugs to drugs and classes to classes):
+INNER JOIN @exposure_group_table group_1
+	ON group_1.exposure_id = target_id
+INNER JOIN @exposure_group_table group_2
+	ON group_2.exposure_id = comparator_id
+WHERE group_1.exposure_group = group_2.exposure_group
+}
+;
 
 	
 -- Construct all cohorts as pairs. Store in @cohort_database_schema.@paired_cohort_table

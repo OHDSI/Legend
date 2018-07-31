@@ -1,18 +1,98 @@
-indicationId,type,class,name,conceptId,includedConceptIds
-Depression,Drug,Atypical,Bupropion,750982,
-Depression,Drug,Atypical,Mirtazapine,725131,
-Depression,Procedure,ECT,Electroconvulsive therapy,4030840,2007727;2007728;2108578;2108579;2213552;4004830;4020981;4030840;4111663;4210144;4210145;4332436;4336318;44508134
-Depression,Procedure,Psychotherapy,Psychotherapy,4327941,2007730;2007731;2007746;2007747;2007748;2007749;2007750;2007763;2108571;2213520;2213521;2213522;2213523;2213524;2213525;2213526;2213527;2213528;2213529;2213530;2213531;2213532;2213533;2213534;2213535;2213536;2213537;2213538;2213539;2213540;2213541;2213542;2213543;2213544;2213546;2213547;2213548;2213549;2213550;2213554;2213555;2617477;2617478;4012488;4028920;4035812;4048385;4048387;4079500;4079608;4079938;4079939;4080044;4080048;4083129;4083130;4083131;4083133;4083706;4084195;4084201;4084202;4088889;4100341;4103512;4114491;4117915;4118797;4118798;4118800;4118801;4119334;4119335;4121662;4126653;4128268;4128406;4132436;4136352;4137086;4143316;4148398;4148765;4151904;4164790;4173581;4179241;4196062;4199042;4202234;4208314;4219683;4221997;4225728;4226275;4226276;4233181;4234402;4234476;4242119;4249602;4258834;4262582;4263758;4265313;4268909;4272803;4278094;4295027;4296166;4299728;4311943;4327941;40482841;43527904;43527905;43527986;43527987;43527988;43527989;43527990;43527991;44791916;44792695;44808259;44808677;45763911;45765516;45887728;45887951;45888237;45889353;46286330;46286403
-Depression,Drug,SARI,Trazodone,703547,
-Depression,Drug,SNRI,Desvenlafaxine,717607,
-Depression,Drug,SNRI,duloxetine,715259,
-Depression,Drug,SNRI,venlafaxine,743670,
-Depression,Drug,SSRI,Citalopram,797617,
-Depression,Drug,SSRI,Escitalopram,715939,
-Depression,Drug,SSRI,Fluoxetine,755695,
-Depression,Drug,SSRI,Paroxetine,722031,
-Depression,Drug,SSRI,Sertraline,739138,
-Depression,Drug,SSRI,vilazodone,40234834,
-Depression,Drug,TCA,Amitriptyline,710062,
-Depression,Drug,TCA,Doxepin,738156,
-Depression,Drug,TCA,Nortriptyline,721724,
+indicationId,type,name,cohortId,conceptId,includedConceptIds
+Depression,Drug,Bupropion,750982,750982,
+Depression,Drug,Mirtazapine,725131,725131,
+Depression,Procedure,Electroconvulsive therapy,4030840,4030840,2007727;2007728;2108578;2108579;2213552;4004830;4020981;4030840;4111663;4210144;4210145;4332436;4336318;44508134
+Depression,Procedure,Psychotherapy,4327941,4327941,2007730;2007731;2007746;2007747;2007748;2007749;2007750;2007763;2108571;2213520;2213521;2213522;2213523;2213524;2213525;2213526;2213527;2213528;2213529;2213530;2213531;2213532;2213533;2213534;2213535;2213536;2213537;2213538;2213539;2213540;2213541;2213542;2213543;2213544;2213546;2213547;2213548;2213549;2213550;2213554;2213555;2617477;2617478;4012488;4028920;4035812;4048385;4048387;4079500;4079608;4079938;4079939;4080044;4080048;4083129;4083130;4083131;4083133;4083706;4084195;4084201;4084202;4088889;4100341;4103512;4114491;4117915;4118797;4118798;4118800;4118801;4119334;4119335;4121662;4126653;4128268;4128406;4132436;4136352;4137086;4143316;4148398;4148765;4151904;4164790;4173581;4179241;4196062;4199042;4202234;4208314;4219683;4221997;4225728;4226275;4226276;4233181;4234402;4234476;4242119;4249602;4258834;4262582;4263758;4265313;4268909;4272803;4278094;4295027;4296166;4299728;4311943;4327941;40482841;43527904;43527905;43527986;43527987;43527988;43527989;43527990;43527991;44791916;44792695;44808259;44808677;45763911;45765516;45887728;45887951;45888237;45889353;46286330;46286403
+Depression,Drug,Trazodone,703547,703547,
+Depression,Drug,Desvenlafaxine,717607,717607,
+Depression,Drug,Duloxetine,715259,715259,
+Depression,Drug,Venlafaxine,743670,743670,
+Depression,Drug,Citalopram,797617,797617,
+Depression,Drug,Escitalopram,715939,715939,
+Depression,Drug,Fluoxetine,755695,755695,
+Depression,Drug,Paroxetine,722031,722031,
+Depression,Drug,Sertraline,739138,739138,
+Depression,Drug,Vilazodone,40234834,40234834,
+Depression,Drug,Amitriptyline,710062,710062,
+Depression,Drug,Doxepin,738156,738156,
+Depression,Drug,Nortriptyline,721724,721724,
+Hypertension,Drug,Acebutolol,1319998,1319998,
+Hypertension,Drug,Aliskiren,1317967,1317967,
+Hypertension,Drug,Amiloride,991382,991382,
+Hypertension,Drug,Amlodipine,1332418,1332418,
+Hypertension,Drug,Atenolol,1314002,1314002,
+Hypertension,Drug,Azilsartan,40235485,40235485,
+Hypertension,Drug,Benazepril,1335471,1335471,
+Hypertension,Drug,Betaxolol,1322081,1322081,
+Hypertension,Drug,Bisoprolol,1338005,1338005,
+Hypertension,Drug,Bumetanide,932745,932745,
+Hypertension,Drug,Candesartan,1351557,1351557,
+Hypertension,Drug,Captopril,1340128,1340128,
+Hypertension,Drug,Carvedilol,1346823,1346823,
+Hypertension,Drug,Chlorthalidone,1395058,1395058,
+Hypertension,Drug,Clonidine,1398937,1398937,
+Hypertension,Drug,Diltiazem,1328165,1328165,
+Hypertension,Drug,Doxazosin,1363053,1363053,
+Hypertension,Drug,Enalapril,1341927,1341927,
+Hypertension,Drug,Eplerenone,1309799,1309799,
+Hypertension,Drug,Eprosartan,1346686,1346686,
+Hypertension,Drug,Felodipine,1353776,1353776,
+Hypertension,Drug,Fosinopril,1363749,1363749,
+Hypertension,Drug,Furosemide,956874,956874,
+Hypertension,Drug,Guanfacine,1344965,1344965,
+Hypertension,Drug,Hydralazine,1373928,1373928,
+Hypertension,Drug,Hydrochlorothiazide,974166,974166,
+Hypertension,Drug,Indapamide,978555,978555,
+Hypertension,Drug,irbesartan,1347384,1347384,
+Hypertension,Drug,Isradipine,1326012,1326012,
+Hypertension,Drug,Labetalol,1386957,1386957,
+Hypertension,Drug,Lisinopril,1308216,1308216,
+Hypertension,Drug,Losartan,1367500,1367500,
+Hypertension,Drug,Methyldopa,1305447,1305447,
+Hypertension,Drug,Metolazone,907013,907013,
+Hypertension,Drug,Metoprolol,1307046,1307046,
+Hypertension,Drug,Minoxidil,1309068,1309068,
+Hypertension,Drug,Moexipril,1310756,1310756,
+Hypertension,Drug,Nadolol,1313200,1313200,
+Hypertension,Drug,Nebivolol,1314577,1314577,
+Hypertension,Drug,Nicardipine,1318137,1318137,
+Hypertension,Drug,Nifedipine,1318853,1318853,
+Hypertension,Drug,Nisoldipine,1319880,1319880,
+Hypertension,Drug,Olmesartan,40226742,40226742,
+Hypertension,Drug,Penbutolol,1327978,1327978,
+Hypertension,Drug,Perindopril,1373225,1373225,
+Hypertension,Drug,Pindolol,1345858,1345858,
+Hypertension,Drug,Prazosin,1350489,1350489,
+Hypertension,Drug,Propranolol,1353766,1353766,
+Hypertension,Drug,Quinapril,1331235,1331235,
+Hypertension,Drug,Ramipril,1334456,1334456,
+Hypertension,Drug,Spironolactone,970250,970250,
+Hypertension,Drug,Telmisartan,1317640,1317640,
+Hypertension,Drug,Terazosin,1341238,1341238,
+Hypertension,Drug,Torsemide,942350,942350,
+Hypertension,Drug,Trandolapril,1342439,1342439,
+Hypertension,Drug,Triamterene,904542,904542,
+Hypertension,Drug,Valsartan,1308842,1308842,
+Hypertension,Drug,Verapamil,1307863,1307863,
+Hypertension,Drug class,ACE inhibitors,1,,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
+Hypertension,Drug class,Aldosterone antagonist diuretics,2,,1309799;970250
+Hypertension,Drug class,Alpha-1 blockers,3,,1363053;1350489;1341238
+Hypertension,Drug class,Angiotensin receptor blockers (ARBs),4,,40235485;1351557;1346686;1347384;1367500;40226742;1317640;1308842
+Hypertension,Drug class,Beta blockers - cardioselective,5,,1314002;1322081;1338005;1307046
+Hypertension,Drug class,Beta blockers - cardioselective and vasodilatory,6,,1314577
+Hypertension,Drug class,Beta blockers - combined alpha and beta receptor,7,,1346823;1386957
+Hypertension,Drug class,Beta blockers - intrinsic sympathomimetic activity,8,,1319998;1327978;1345858
+Hypertension,Drug class,Beta blockers - noncardioselective,9,,1313200;1353766
+Hypertension,Drug class,Dihydropyridine calcium channel blockers (dCCB),10,,1332418;1353776;1326012;1318137;1318853;1319880
+Hypertension,Drug class,Direct vasodilators,11,,1373928;1309068
+Hypertension,Drug class,Loop diuretics,12,,932745;956874;942350
+Hypertension,Drug class,Nodihydropyridine calcium channel blockers (ndCCB),13,,1328165;1307863
+Hypertension,Drug class,Potassium sparing diurectics,14,,991382;904542
+Hypertension,Drug class,Thiazide or thiazide-like diuretics,15,,1395058;974166;978555;907013
+Hypertension,Drug major class,ACE inhibitors,1,,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
+Hypertension,Drug major class,Diuretics,16,,991382;932745;1309799;956874;970250;942350;904542
+Hypertension,Drug major class,Alpha-1 blockers,3,,1363053;1350489;1341238
+Hypertension,Drug major class,Angiotensin receptor blockers (ARBs),4,,40235485;1351557;1346686;1347384;1367500;40226742;1317640;1308842
+Hypertension,Drug major class,Beta blockers,17,,1319998;1314002;1322081;1338005;1346823;1386957;1307046;1313200;1314577;1327978;1345858;1353766
+Hypertension,Drug major class,Calcium channel blockers (CCB),18,,1332418;1328165;1353776;1326012;1318137;1318853;1319880;1307863
+Hypertension,Drug major class,Direct vasodilators,11,,1373928;1309068

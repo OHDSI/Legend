@@ -4,13 +4,17 @@
 \alias{generateAllCohortMethodDataObjects}
 \title{Construct all cohortMethodData object}
 \usage{
-generateAllCohortMethodDataObjects(outputFolder, indicationId = "Depression")
+generateAllCohortMethodDataObjects(outputFolder, indicationId = "Depression",
+  useSample = FALSE)
 }
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}
 
 \item{indicationId}{A string denoting the indicationId.}
+
+\item{useSample}{Use the sampled cohort table instead of the main cohort table (for PS model
+feasibility).}
 }
 \description{
 Construct all cohortMethodData object

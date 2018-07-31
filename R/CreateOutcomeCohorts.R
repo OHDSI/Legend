@@ -62,7 +62,8 @@ createOutcomeCohorts <- function(connectionDetails,
                    cohortDatabaseSchema = cohortDatabaseSchema,
                    cohortTable = outcomeCohortTable,
                    oracleTempSchema = oracleTempSchema,
-                   outputFolder = indicationFolder)
+                   outputFolder = indicationFolder,
+                   indicationId = indicationId)
 
     # Creating negative control outcome cohorts ------------------------------------------------------------
     ParallelLogger::logInfo("- Creating negative control outcome cohorts")
@@ -110,5 +111,6 @@ createOutcomeCohorts <- function(connectionDetails,
     countsNegativeControls <- merge(counts, data.frame(cohortDefinitionId = negativeControls$cohortId,
                                                        cohortName = negativeControls$name))
     counts <- rbind(countsOutcomesOfInterest, countsNegativeControls)
+    counts <- unique(counts)
     write.csv(counts, file.path(indicationFolder, "outcomeCohortCounts.csv"), row.names = FALSE)
 }

@@ -15,9 +15,9 @@
 # limitations under the License.
 
 library(Legend)
-options(fftempdir = "c:/fftemp")
+options(fftempdir = "r:/fftemp")
 maxCores <- 30
-studyFolder <- "c:/Legend"
+studyFolder <- "r:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -29,6 +29,10 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
+
+indicationId <- "Depression"
+
+indicationId <- "Hypertension"
 
 # CCAE settings ----------------------------------------------------------------
 cdmDatabaseSchema <- "cdm_truven_ccae_v750.dbo"
@@ -71,8 +75,28 @@ databaseName <- "Medicare Claims Synthetic Public Use Files (SynPUFs)"
 outputFolder <- file.path(studyFolder, "synpuf")
 
 
-indicationId <- "Depression"
 
+# Feasibility assessment ---------------------------------------------------------
+assessPhenotypes(connectionDetails = connectionDetails,
+                 cdmDatabaseSchema = cdmDatabaseSchema,
+                 oracleTempSchema = oracleTempSchema,
+                 cohortDatabaseSchema = cohortDatabaseSchema,
+                 outputFolder = outputFolder,
+                 indicationId = indicationId,
+                 tablePrefix = tablePrefix,
+                 databaseId = databaseId)
+
+assessPropensityModels(connectionDetails = connectionDetails,
+                       cdmDatabaseSchema = cdmDatabaseSchema,
+                       oracleTempSchema = oracleTempSchema,
+                       cohortDatabaseSchema = cohortDatabaseSchema,
+                       outputFolder = outputFolder,
+                       indicationId = indicationId,
+                       tablePrefix = tablePrefix,
+                       databaseId = databaseId,
+                       maxCores = maxCores)
+
+# Run main study -----------------------------------------------------------------
 mailSettings <- list(from = Sys.getenv("mailAddress"),
                      to = c(Sys.getenv("mailAddress")),
                      smtp = list(host.name = "smtp.gmail.com", port = 465,
@@ -89,21 +113,17 @@ OhdsiRTools::runAndNotify({
             outputFolder = outputFolder,
             indicationId = indicationId,
             tablePrefix = tablePrefix,
-            createExposureCohorts = FALSE,
-            createOutcomeCohorts = FALSE,
-            fetchAllDataFromServer = FALSE,
-            synthesizePositiveControls = FALSE,
-            generateAllCohortMethodDataObjects = FALSE,
+            createExposureCohorts = TRUE,
+            createOutcomeCohorts = TRUE,
+            fetchAllDataFromServer = TRUE,
+            synthesizePositiveControls = TRUE,
+            generateAllCohortMethodDataObjects = TRUE,
             runCohortMethod = TRUE,
             computeIncidence = TRUE,
             fetchChronographData = TRUE,
             computeCovariateBalance = TRUE,
             maxCores = maxCores)
 },  mailSettings = mailSettings, label = "Legend")
-
-
-
-
 
 
 createExposureCohorts(connectionDetails = connectionDetails,
