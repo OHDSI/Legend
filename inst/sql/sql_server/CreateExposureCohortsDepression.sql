@@ -20,9 +20,10 @@ limitations under the License.
 {DEFAULT @exposure_era_table = 'exposure_era'}
 {DEFAULT @exposure_cohort_table = 'exposure'}
 {DEFAULT @attrition_table = 'attrition'}
-{DEFAULT @drug_concept_ids = 123, 456}
-{DEFAULT @include_procedures = FALSE}
-{DEFAULT @procedure_ancestor_table = '#procedure_ancestor'}
+{DEFAULT @drug_cohort_ids = 1, 2}
+{DEFAULT @procedure_cohort_ids = 3, 4}
+{DEFAULT @drug_class_cohort_ids = 5, 6}
+{DEFAULT @custom_ancestor_table = '#custom_ancestor'}
 {DEFAULT @procedure_duration = 30}
 {DEFAULT @washout_period = 365} 
 {DEFAULT @max_gap = 30} 
@@ -71,7 +72,7 @@ LEFT JOIN (
 WHERE other_start_date IS NULL
 	OR depression_start_date < other_start_date;
 
--- Find drugs (and procedures) of interest. Store them in #exposure
+-- Find drugs, procedures , and classes of interest. Store them in #exposure
 IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
 	DROP TABLE #exposure;	
 	
@@ -82,6 +83,7 @@ SELECT person_id,
 	exposure_end_date
 INTO #exposure	
 FROM (
+	-- drugs
 	SELECT person_id,
 		ancestor_concept_id AS concept_id,
 		drug_exposure_start_date AS exposure_start_date,
@@ -94,21 +96,38 @@ FROM (
 	FROM @cdm_database_schema.drug_exposure
 	INNER JOIN @cdm_database_schema.concept_ancestor
 		ON drug_concept_id = descendant_concept_id
-	WHERE ancestor_concept_id IN (@drug_concept_ids)
+	WHERE ancestor_concept_id IN (@drug_cohort_ids)
 	
-{@include_procedures} ? {	
 	UNION ALL
 	
+	-- procedures (assume 30 day exposure)
 	SELECT person_id,
 		ancestor_concept_id AS concept_id,
 		procedure_date AS exposure_start_date,
 		DATEADD(DAY, @procedure_duration, procedure_date) AS exposure_end_date
 	FROM @cdm_database_schema.procedure_occurrence
-	INNER JOIN @procedure_ancestor_table
+	INNER JOIN @custom_ancestor_table
 		ON procedure_concept_id = descendant_concept_id
 		OR procedure_source_concept_id = descendant_concept_id
-}
-
+	WHERE ancestor_concept_id IN (@procedure_cohort_ids)
+		
+	UNION ALL
+	
+	-- drug classes
+	SELECT person_id,
+		custom_ancestor.ancestor_concept_id AS concept_id,
+		drug_exposure_start_date AS exposure_start_date,
+		CASE 
+			WHEN drug_exposure_end_date IS NULL
+				THEN DATEADD(DAY, days_supply, drug_exposure_start_date)
+			ELSE drug_exposure_end_date
+			END AS exposure_end_date
+	FROM @cdm_database_schema.drug_exposure
+	INNER JOIN @cdm_database_schema.concept_ancestor
+		ON drug_concept_id = concept_ancestor.descendant_concept_id
+	INNER JOIN  @custom_ancestor_table custom_ancestor
+		ON concept_ancestor.ancestor_concept_id = custom_ancestor.descendant_concept_id
+	WHERE custom_ancestor.ancestor_concept_id IN (@drug_class_cohort_ids)
 ) all_exposures;
 
 -- Create eras of continuous exposure. Store them in @cohort_database_schema.@exposure_era_table

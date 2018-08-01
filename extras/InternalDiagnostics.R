@@ -7,14 +7,13 @@ if (!file.exists(diagnosticsFolder)) {
 cmFolder <- file.path(indicationFolder, "cmOutput")
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
-# datas <- list()
-# for (i in 1:nrow(exposureSummary)) {
+
 i = 22
 
 preparePlot <- function(i, exposureSummary, outcomeModelReference) {
-    treatmentId <- exposureSummary$targetId[i]
+    targetId <- exposureSummary$targetId[i]
     comparatorId <- exposureSummary$comparatorId[i]
-    idx <- outcomeModelReference$targetId == treatmentId &
+    idx <- outcomeModelReference$targetId == targetId &
         outcomeModelReference$comparatorId == comparatorId &
         outcomeModelReference$analysisId == 1
     psFileName <- outcomeModelReference$sharedPsFile[idx][1]
@@ -22,25 +21,23 @@ preparePlot <- function(i, exposureSummary, outcomeModelReference) {
         ps <- readRDS(file.path(cmFolder, psFileName))
         if (min(ps$propensityScore) < max(ps$propensityScore)) {
             ps <- CohortMethod:::computePreferenceScore(ps)
-
             d1 <- density(ps$preferenceScore[ps$treatment == 1], from = 0, to = 1, n = 100)
             d0 <- density(ps$preferenceScore[ps$treatment == 0], from = 0, to = 1, n = 100)
-
             d <- data.frame(x = c(d1$x, d0$x), y = c(d1$y, d0$y), treatment = c(rep(1, length(d1$x)),
                                                                                 rep(0, length(d0$x))))
             d$y <- d$y/max(d$y)
-            d$treatmentName <- as.character(exposureSummary$targetName[i])
+            d$targetId <- targetId
+            d$targetName <- as.character(exposureSummary$targetName[i])
+            d$comparatorId <- comparatorId
             d$comparatorName <- as.character(exposureSummary$comparatorName[i])
-            # datas[[length(datas) + 1]] <- d
             result <- d
-
             d$x <- 1 - d$x
             d$treatment <- 1 - d$treatment
-            d$treatmentName <- as.character(exposureSummary$comparatorName[i])
+            d$targetId <- comparatorId
+            d$targetName <- as.character(exposureSummary$comparatorName[i])
+            d$comparatorId <- targetId
             d$comparatorName <- as.character(exposureSummary$targetName[i])
-            # datas[[length(datas) + 1]] <- d
             result <- rbind(result, d)
-
             return(result)
         }
     }
@@ -50,35 +47,59 @@ preparePlot <- function(i, exposureSummary, outcomeModelReference) {
 data <- plyr::llply(1:nrow(exposureSummary), preparePlot, exposureSummary = exposureSummary, outcomeModelReference = outcomeModelReference, .progress = "text")
 data <- do.call("rbind", data)
 saveRDS(data, file.path(diagnosticsFolder, "ps.rds"))
-# data <- ps
-data$GROUP <- "Target"
-data$GROUP[data$treatment == 0] <- "Comparator"
-data$GROUP <- factor(data$GROUP, levels = c("Target", "Comparator"))
-library(ggplot2)
-plot <- ggplot(data, aes(x = x,
-                         y = y,
-                         color = GROUP,
-                         group = GROUP,
-                         fill = GROUP)) +
-    geom_density(stat = "identity") +
-    scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-    scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-    scale_x_continuous("Preference score", limits = c(0, 1)) + scale_y_continuous("Density") +
-    facet_grid(treatmentName ~ comparatorName) +
-    theme(legend.title = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.x = element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.title.y = element_blank(),
-          axis.text.y = element_blank(),
-          axis.ticks.y = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          strip.text.x = element_text(size = 8, angle = 90, vjust = 0),
-          strip.text.y = element_text(size = 8, angle = 0, hjust = 0),
-          panel.spacing = unit(0.1, "lines"),
-          legend.position = "none")
-ggsave(plot = plot, filename = file.path(diagnosticsFolder, "allPs.png"), width = 15, height = 9, dpi = 500)
+
+plotAllPs <- function(data, fileName) {
+    data$GROUP <- "Target"
+    data$GROUP[data$treatment == 0] <- "Comparator"
+    data$GROUP <- factor(data$GROUP, levels = c("Target", "Comparator"))
+    library(ggplot2)
+    plot <- ggplot(data, aes(x = x,
+                             y = y,
+                             color = GROUP,
+                             group = GROUP,
+                             fill = GROUP)) +
+        geom_density(stat = "identity") +
+        scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+        scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+        scale_x_continuous("Preference score", limits = c(0, 1)) + scale_y_continuous("Density") +
+        facet_grid(targetName ~ comparatorName) +
+        theme(legend.title = element_blank(),
+              axis.title.x = element_blank(),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.title.y = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              strip.text.x = element_text(size = 8, angle = 90, vjust = 0),
+              strip.text.y = element_text(size = 8, angle = 0, hjust = 0),
+              panel.spacing = unit(0.1, "lines"),
+              legend.position = "none")
+    ggsave(plot = plot, filename = fileName, width = 15, height = 9, dpi = 500)
+}
+if (indicationId == "Hypertension") {
+    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+    exposuresOfInterest <- read.csv(pathToCsv)
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
+    exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
+    # exposureCombis$type <- exposuresOfInterest$type[match(exposureCombis$exposureId1, exposuresOfInterest$cohortId)]
+    exposureTypes <- exposuresOfInterest[, c("cohortId", "type")]
+    exposureTypes <- rbind(exposureTypes, data.frame(cohortId = exposureCombis$cohortDefinitionId,
+                                                     type = exposureCombis$exposureType))
+    dataDrugs <- data[data$targetId %in% exposureTypes$cohortId[exposureTypes$type == "Drug"], ]
+    dataDrugClasses <- data[data$targetId %in% exposureTypes$cohortId[exposureTypes$type == "Drug class"] &
+                                data$comparatorId %in% exposureTypes$cohortId[exposureTypes$type == "Drug class"], ]
+    dataDrugMajorClasses <- data[data$targetId %in% exposureTypes$cohortId[exposureTypes$type == "Drug major class"] &
+                                     data$comparatorId %in% exposureTypes$cohortId[exposureTypes$type == "Drug major class"], ]
+    plotAllPs(dataDrugs, file.path(diagnosticsFolder, "allPsDrugLevel.png"))
+    plotAllPs(dataDrugClasses, file.path(diagnosticsFolder, "allPsClassLevel.png"))
+    plotAllPs(dataDrugMajorClasses, file.path(diagnosticsFolder, "allPsMajorClassLevel.png"))
+} else {
+    plotAllPs(data, file.path(diagnosticsFolder, "allPs.png"))
+}
+
+
 
 
 # Calibration plots -----------------------------------------------------------------------------------

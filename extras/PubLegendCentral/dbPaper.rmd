@@ -6,7 +6,7 @@ output:
     fig_caption: yes
   html_document: default
 bibliography: bibliography.bib
-params: 
+params:
   databaseId: "MDCR"
   targetId: 739138
   comparatorId: 715259
@@ -18,7 +18,7 @@ title: "`r params$setTitle`"
 
 ```{r, echo=FALSE, message=FALSE, comment=FALSE, results='hide'}
 library(DatabaseConnector)
-library(knitr) 
+library(knitr)
 source("DataPulls.R")
 source("PlotsAndTables.R")
 options(knitr.kable.NA = '')
@@ -28,47 +28,51 @@ options(knitr.kable.NA = '')
 #                comparatorId =  715259,
 #                outcomeId = 18)
 
-connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                             server = "localhost/ohdsi",
-                                             user = "postgres",
-                                             password = Sys.getenv("pwPostgres"),
-                                             schema = "legend")
-connection <- connect(connectionDetails)
-targetName <- getExposureName(connection, params$targetId)
-comparatorName <- getExposureName(connection, params$comparatorId)
-outcomeName <- getOutcomeName(connection, params$outcomeId)
-analyses <- getAnalyses(connection)
-mainResults <- getMainResults(connection, 
-                              targetIds = params$targetId,
-                              comparatorIds = params$comparatorId,
-                              outcomeIds = params$outcomeId,
-                              databaseIds = params$databaseId)
+useStoredObject <- FALSE
 
-attrition <- getAttrition(connection, 
-                          targetId = params$targetId,
-                          comparatorId = params$comparatorId,
-                          outcomeId = params$outcomeId,
-                          analysisId = 1,
-                          databaseId = params$databaseId)
+if (!useStoredObject) {
+    connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                                 server = "localhost/ohdsi",
+                                                 user = "postgres",
+                                                 password = Sys.getenv("pwPostgres"),
+                                                 schema = "legend")
+    connection <- connect(connectionDetails)
+    targetName <- getExposureName(connection, params$targetId)
+    comparatorName <- getExposureName(connection, params$comparatorId)
+    outcomeName <- getOutcomeName(connection, params$outcomeId)
+    analyses <- getAnalyses(connection)
+    mainResults <- getMainResults(connection,
+                                  targetIds = params$targetId,
+                                  comparatorIds = params$comparatorId,
+                                  outcomeIds = params$outcomeId,
+                                  databaseIds = params$databaseId)
 
-
-balance <- getCovariateBalance(connection, 
-                              targetId = params$targetId,
-                              comparatorId = params$comparatorId,
-                              databaseId = params$databaseId)
-
-ps <- getPs(connection, 
-            targetId = params$targetId,
-            comparatorId = params$comparatorId,
-            databaseId = params$databaseId)
-
-kaplanMeier <- getKaplanMeier(connection, 
+    attrition <- getAttrition(connection,
                               targetId = params$targetId,
                               comparatorId = params$comparatorId,
                               outcomeId = params$outcomeId,
-                              databaseId = params$databaseId,
-                              analysisId = 2) 
+                              analysisId = 1,
+                              databaseId = params$databaseId)
 
+    balance <- getCovariateBalance(connection,
+                                   targetId = params$targetId,
+                                   comparatorId = params$comparatorId,
+                                   databaseId = params$databaseId)
+
+    ps <- getPs(connection,
+                targetId = params$targetId,
+                comparatorId = params$comparatorId,
+                databaseId = params$databaseId)
+
+    kaplanMeier <- getKaplanMeier(connection,
+                                  targetId = params$targetId,
+                                  comparatorId = params$comparatorId,
+                                  outcomeId = params$outcomeId,
+                                  databaseId = params$databaseId,
+                                  analysisId = 2)
+} else {
+    load("paperData.rda")
+}
 ```
 
 \centerline{Martijn J. Schuemie$^{1,2}$}
@@ -77,13 +81,13 @@ kaplanMeier <- getKaplanMeier(connection,
 \centerline{Patrick B. Ryan$^{1,2,6}$}
 \centerline{David Madigan$^{1,7}$}
 
-$^{1}$ Observational Health Data Sciences and Informatics, New York, NY  
-$^{2}$ Janssen Research & Development, Titusville, NJ  
-$^{3}$ Department of Biomathematics, University of Califoria, Los Angeles, CA  
-$^{4}$ Department of Biostatistics, University of Califoria, Los Angeles, CA  
-$^{5}$ Department of Human Genetics, University of Califoria, Los Angeles, CA  
-$^{6}$ Department of Biomedical Informatics, Columbia University, New York, NY  
-$^{7}$ Department of Statistics, Columbia University, New York, NY  
+$^{1}$ Observational Health Data Sciences and Informatics, New York, NY
+$^{2}$ Janssen Research & Development, Titusville, NJ
+$^{3}$ Department of Biomathematics, University of Califoria, Los Angeles, CA
+$^{4}$ Department of Biostatistics, University of Califoria, Los Angeles, CA
+$^{5}$ Department of Human Genetics, University of Califoria, Los Angeles, CA
+$^{6}$ Department of Biomedical Informatics, Columbia University, New York, NY
+$^{7}$ Department of Statistics, Columbia University, New York, NY
 
 Corresponding author: Martijn J. Schuemie, Janssen R&D, 1125 Trenton Harbourton Road, Titusville, NJ, 08560, Phone: +31 631793897, schuemie@ohdsi.org
 
@@ -140,7 +144,7 @@ plotKaplanMeier(kaplanMeier, targetName, comparatorName)
 **Figure 3**. Kaplan Meier plot, showing survival as a function of time. This plot
       is adjusted for the propensity score stratification: The target curve (<em>`r targetName`</em>) shows the actual observed survival. The
       comparator curve (<em>`r comparatorName`</em>) applies reweighting to approximate the counterfactual of what the target survival
-      would look like had the target cohort been exposed to the comparator instead. The shaded area denotes 
+      would look like had the target cohort been exposed to the comparator instead. The shaded area denotes
       the 95 percent confidence interval.
 
 

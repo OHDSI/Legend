@@ -79,24 +79,28 @@ createExposureCohorts <- function(connectionDetails,
     exposureGroupTable <- ""
     exposureCombis <- NULL
     if (indicationId == "Depression") {
-        # Upload procedure groups
-        procedures <- exposuresOfInterest[exposuresOfInterest$type == "Procedure", ]
-        procedureAncestor <- data.frame()
-        for (i in 1:nrow(procedures)) {
-            descendantConceptIds <- as.numeric(strsplit(as.character(procedures$includedConceptIds[i]), ";")[[1]])
-            procedureAncestor <- rbind(procedureAncestor, data.frame(ancestorConceptId = procedures$conceptId[i],
-                                                                     descendantConceptId = descendantConceptIds))
+        # Upload custom ancestor tables
+        subset <- exposuresOfInterest[exposuresOfInterest$includedConceptIds != "", ]
+        customAncestor <- data.frame()
+        for (i in 1:nrow(subset)) {
+            descendantConceptIds <- as.numeric(strsplit(as.character(subset$includedConceptIds[i]), ";")[[1]])
+            customAncestor <- rbind(customAncestor, data.frame(ancestorConceptId = subset$cohortId[i],
+                                                               descendantConceptId = descendantConceptIds))
         }
-        colnames(procedureAncestor) <- SqlRender::camelCaseToSnakeCase(colnames(procedureAncestor))
+        customAncestor <- unique(customAncestor)
+        colnames(customAncestor) <- SqlRender::camelCaseToSnakeCase(colnames(customAncestor))
         DatabaseConnector::insertTable(connection = conn,
-                                       tableName = "#procedure_ancestor",
+                                       tableName = "#custom_ancestor",
                                        dropTableIfExists = TRUE,
                                        createTable = TRUE,
                                        tempTable = TRUE,
                                        oracleTempSchema = oracleTempSchema,
-                                       data = procedureAncestor)
+                                       data = customAncestor)
 
-        drugConceptIds <- exposuresOfInterest$conceptId[exposuresOfInterest$type == "Drug"]
+        drugCohortIds <- exposuresOfInterest$cohortId[exposuresOfInterest$type == "Drug"]
+        procedureCohortIds <- exposuresOfInterest$cohortId[exposuresOfInterest$type == "Procedure"]
+        drugClassCohortIds <- exposuresOfInterest$cohortId[exposuresOfInterest$type == "Drug class"]
+        drugClassCohortIds <- drugClassCohortIds[!(drugClassCohortIds %in% procedureCohortIds)]
         sql <- SqlRender::loadRenderTranslateSql("CreateExposureCohortsDepression.sql",
                                                  "Legend",
                                                  dbms = connectionDetails$dbms,
@@ -106,19 +110,34 @@ createExposureCohorts <- function(connectionDetails,
                                                  exposure_era_table = exposureEraTable,
                                                  exposure_cohort_table = exposureCohortTable,
                                                  attrition_table = attritionTable,
-                                                 drug_concept_ids = drugConceptIds,
-                                                 include_procedures = TRUE,
-                                                 procedure_ancestor_table = "#procedure_ancestor",
+                                                 drug_cohort_ids = drugCohortIds,
+                                                 procedure_cohort_ids = procedureCohortIds,
+                                                 drug_class_cohort_ids = drugClassCohortIds,
+                                                 custom_ancestor_table = "#custom_ancestor",
                                                  procedure_duration = 30,
                                                  max_gap = 30,
                                                  washout_period = 365)
         DatabaseConnector::executeSql(conn, sql)
 
-        sql <- "TRUNCATE TABLE #procedure_ancestor; DROP TABLE #procedure_ancestor;"
+        sql <- "TRUNCATE TABLE #custom_ancestor; DROP TABLE #custom_ancestor;"
         sql <- SqlRender::translateSql(sql = sql,
                                        targetDialect = connectionDetails$dbms,
                                        oracleTempSchema = oracleTempSchema)$sql
         DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+        # Upload exposure group table (determines which exposures can be paired)
+        exposureGroups <- data.frame(exposureId = exposuresOfInterest$cohortId,
+                                           exposureGroup = exposuresOfInterest$type)
+        exposureGroups$exposureGroup[exposureGroups$exposureGroup == "Procedure"] <- "Drug"
+        colnames(exposureGroups) <- SqlRender::camelCaseToSnakeCase(colnames(exposureGroups))
+        DatabaseConnector::insertTable(connection = conn,
+                                       tableName = "#exposure_group",
+                                       dropTableIfExists = TRUE,
+                                       createTable = TRUE,
+                                       tempTable = TRUE,
+                                       oracleTempSchema = oracleTempSchema,
+                                       data = exposureGroups)
+        exposureGroupTable <- "#exposure_group"
     } else if (indicationId == "Hypertension") {
         # Create drug and drug class combinations
         drugsOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug", ]
