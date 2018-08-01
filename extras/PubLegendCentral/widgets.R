@@ -8,5 +8,5 @@ searchButton <- function(inputId, label, queryInput, ...) {
     return false;
   "
   script <- gsub("%id%", queryInput, script)
-  tags$button(class = "btn btn-default action-button", type = "button", onclick = script, label, ...)
+  tags$button(type = "button", onclick = script, label, ...)
 }
