@@ -2,13 +2,14 @@ library(shiny)
 library(ggplot2)
 library(DT)
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
-  selectedTcoDbs <- reactive({
-    if (nchar(input$search) < 3) {
+  searchResults <- reactive({
+    query <- parseQueryString(session$clientData$url_search)
+    if (is.null(query$term)) {
       return(NULL)
-    } else{
-      parts <- strsplit(input$search, " ")[[1]]
+    } else {
+      parts <- strsplit(query$term, " ")[[1]]
       outcomeIds <- c()
       exposureIds <- c()
       for (part in parts) {
@@ -20,7 +21,6 @@ shinyServer(function(input, output) {
                          exposures$exposureId[agrepl(part, 
                                                      exposures$exposureName,
                                                      max.distance = 0.1)])
-        
       }
       tcoDbs <- getTcoDbs(connection, 
                           targetIds = exposureIds,
@@ -31,38 +31,74 @@ shinyServer(function(input, output) {
   })
   
   selectedTcoDb <- reactive({
-    idx <- input$searchResults_rows_selected
-    if (is.null(idx)) {
+    query <- parseQueryString(session$clientData$url_search)
+    if (is.null(query$targetId)) {
       return(NULL)
     } else {
-      return(selectedTcoDbs()[idx, ])  
+      tcoDb <- getTcoDbs(connection, 
+                         targetIds = query$targetId,
+                         comparatorIds = query$comparatorId,
+                         outcomeIds = query$outcomeId)  
+      return(tcoDb)
     }
   })
-  
-  output$rowIsSelected <- reactive({
-    return(!is.null(selectedTcoDb()))
+
+  # Maintain contents of search box:
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    if (!is.null(query$term))
+      updateTextInput(session, "query",
+                      value = query$term)
   })
-  outputOptions(output, "rowIsSelected", suspendWhenHidden = FALSE)
+  
+  output$isSearchPage <- reactive({
+    query <- parseQueryString(session$clientData$url_search)
+    return(is.null(query$targetId) && is.null(query$term))
+  })
+  outputOptions(output, "isSearchPage", suspendWhenHidden = FALSE)
+
+  output$isSearchResultPage <- reactive({
+    query <- parseQueryString(session$clientData$url_search)
+    return(is.null(query$targetId) && !is.null(query$term))
+  })
+  outputOptions(output, "isSearchResultPage", suspendWhenHidden = FALSE)
+  
+  output$isAbstractPage <- reactive({
+    query <- parseQueryString(session$clientData$url_search)
+    return(!is.null(query$targetId))
+  })
+  outputOptions(output, "isAbstractPage", suspendWhenHidden = FALSE)
   
   
   output$searchResults <- renderDataTable({
-    tcoDbs <- selectedTcoDbs()
+    tcoDbs <- searchResults()
     if (is.null(tcoDbs)) {
       return(NULL)
     } else {
       titles <- createTitle(tcoDbs)
+      titles <- paste0("<a href = '?targetId=", 
+                       tcoDbs$targetId, 
+                       "&comparatorId=",
+                       tcoDbs$comparatorId,
+                       "&outcomeId=",
+                       tcoDbs$outcomeId,
+                       "&term=",
+                       URLencode(input$query),
+                       "'>",
+                       titles, 
+                       "</a></br><i>Annals of OHDSI</i>, October, 2018</br>") 
       options = list(pageLength = 15,
                      searching = FALSE,
                      lengthChange = TRUE,
-                     ordering = TRUE,
-                     paging = TRUE)
-      selection = list(mode = "single", target = "row")
-      table <- datatable(data.frame(Title = titles),
+                     paging = TRUE,
+                     dom = '<"top"ip>rt<"bottom"flp><"clear">')
+      data <- data.frame(title = titles)
+      colnames(data) <- "Search results"
+      table <- datatable(data,
                          options = options,
-                         selection = selection,
-                         rownames = FALSE,
+                         rownames = TRUE,
                          escape = FALSE,
-                         class = "stripe nowrap compact")
+                         class = "compact")
       return(table)
     }
   })
@@ -72,23 +108,24 @@ shinyServer(function(input, output) {
     if (is.null(tcoDb)) {
       return(NULL)
     } else {
-      results <- getMainResults(connection, 
-                                targetIds = tcoDb$targetId, 
+      results <- getMainResults(connection,
+                                targetIds = tcoDb$targetId,
                                 comparatorIds = tcoDb$comparatorId,
                                 outcomeIds = tcoDb$outcomeId,
                                 databaseIds = tcoDb$databaseId)
       mainResult <- results[results$analysisId == 1, ]
       hr <- sprintf("%.2f (%.2f - %.2f).", mainResult$rr, mainResult$ci95lb, mainResult$ci95ub)
-      
+
       title <- createTitle(tcoDb)
-      abstract <- div(h1(title),
-                      h2("Abstract"),
+      abstract <- div(em("Annals of OHDSI"),
+                      h2(title),
+                      h3("Abstract"),
                       p("This is a really cool paper"),
                       p(paste("We observed a hazard ratio of", hr)))
       return(abstract)
     }
   })
-  
+
   output$pdf <- downloadHandler(
     filename = function() {
       return("Paper.pdf")
