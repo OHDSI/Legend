@@ -96,7 +96,17 @@ if (indicationId == "Hypertension") {
     plotAllPs(dataDrugClasses, file.path(diagnosticsFolder, "allPsClassLevel.png"))
     plotAllPs(dataDrugMajorClasses, file.path(diagnosticsFolder, "allPsMajorClassLevel.png"))
 } else {
-    plotAllPs(data, file.path(diagnosticsFolder, "allPs.png"))
+    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+    exposuresOfInterest <- read.csv(pathToCsv)
+    exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
+    exposureTypes <- exposuresOfInterest[, c("cohortId", "type")]
+    dataDrugs <- data[data$targetId %in% exposureTypes$cohortId[exposureTypes$type != "Drug class"] &
+                          data$comparatorId %in% exposureTypes$cohortId[exposureTypes$type != "Drug class"], ]
+    dataDrugClasses <- data[data$targetId %in% exposureTypes$cohortId[exposureTypes$type == "Drug class"] &
+                                data$comparatorId %in% exposureTypes$cohortId[exposureTypes$type == "Drug class"], ]
+    plotAllPs(dataDrugs, file.path(diagnosticsFolder, "allPsDrugLevel.png"))
+    plotAllPs(dataDrugClasses, file.path(diagnosticsFolder, "allPsClassLevel.png"))
+
 }
 
 

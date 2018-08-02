@@ -97,13 +97,7 @@ exportIndications <- function(outputFolder,
     ParallelLogger::logInfo("- indication table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
-    for (i in 1:nrow(indications)) {
-        pathToSql <- system.file("sql",
-                                 "sql_server",
-                                 sprintf("NestingCohort%s.sql", indications$indicationId[i]),
-                                 package = "Legend")
-        indications$definition[i] <- SqlRender::readSql(pathToSql)
-    }
+    indications$definition <- ""
     indicationTable <- indications[, c("indicationId", "indicationName", "definition")]
     colnames(indicationTable) <- SqlRender::camelCaseToSnakeCase(colnames(indicationTable))
     fileName <- file.path(exportFolder, "indication.csv")
@@ -117,29 +111,38 @@ exportAnalyses <- function(outputFolder,
     ParallelLogger::logInfo("- cohort_method_analysis table")
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
     indications <- read.csv(pathToCsv)
-    cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisList.json",
-                                      package = "Legend")
-    cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
-    cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListInteractions.json",
-                                      package = "Legend")
-    cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
-    cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListAsym.json",
-                                      package = "Legend")
-    cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
-    cmAnalysisToRow <- function(cmAnalysis) {
-        tempFileName <- tempfile()
-        ParallelLogger::saveSettingsToJson(cmAnalysis, tempFileName)
-        row <- data.frame(analysisId = cmAnalysis$analysisId,
-                          description = cmAnalysis$description,
-                          definition = readChar(tempFileName, file.info(tempFileName)$size))
-        unlink(tempFileName)
-        return(row)
+
+    tempFileName <- tempfile()
+    loadCmAnalyses <- function(indicationId) {
+        cmAnalysisListFile <- system.file("settings",
+                                          sprintf("cmAnalysisList%s.json", indicationId),
+                                          package = "Legend")
+        if (cmAnalysisListFile == "") {
+            return(NULL)
+        }
+        cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+        cmAnalysisListFile <- system.file("settings",
+                                          sprintf("cmAnalysisListInteractions%s.json", indicationId),
+                                          package = "Legend")
+        cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
+        cmAnalysisListFile <- system.file("settings",
+                                          sprintf("cmAnalysisListAsym%s.json", indicationId),
+                                          package = "Legend")
+        cmAnalysisList <- c(cmAnalysisList, CohortMethod::loadCmAnalysisList(cmAnalysisListFile))
+        cmAnalysisToRow <- function(cmAnalysis) {
+            ParallelLogger::saveSettingsToJson(cmAnalysis, tempFileName)
+            row <- data.frame(analysisId = cmAnalysis$analysisId,
+                              description = cmAnalysis$description,
+                              definition = readChar(tempFileName, file.info(tempFileName)$size))
+            return(row)
+        }
+        cohortMethodAnalysis <- lapply(cmAnalysisList, cmAnalysisToRow)
+        cohortMethodAnalysis <- do.call("rbind", cohortMethodAnalysis)
+        return(cohortMethodAnalysis)
     }
-    cohortMethodAnalysis <- lapply(cmAnalysisList, cmAnalysisToRow)
+    cohortMethodAnalysis <- lapply(indications$indicationId, loadCmAnalyses)
     cohortMethodAnalysis <- do.call("rbind", cohortMethodAnalysis)
+    unlink(tempFileName)
     colnames(cohortMethodAnalysis) <- SqlRender::camelCaseToSnakeCase(colnames(cohortMethodAnalysis))
     fileName <- file.path(exportFolder, "cohort_method_analysis.csv")
     write.csv(cohortMethodAnalysis, fileName, row.names = FALSE)
@@ -191,6 +194,14 @@ exportExposures <- function(outputFolder,
     }
     combiExposures <- lapply(indications$indicationId, loadCombiExposures)
     combiExposures <- do.call("rbind", combiExposures)
+    if (is.null(combiExposures) || nrow(combiExposures) == 0) {
+        combiExposures <- data.frame(exposure_id = -1,
+                                     exposure_name = "dummy",
+                                     single_exposure_id_1 = -1,
+                                     single_exposure_id_2 = -1,
+                                     single_exposure_id_3 = -1,
+                                     indication_id = "Dummy")
+    }
     fileName <- file.path(exportFolder, "combi_exposure_of_interest.csv")
     write.csv(combiExposures, fileName, row.names = FALSE)
 }
@@ -291,6 +302,9 @@ exportMetadata <- function(outputFolder,
     write.csv(exposurePairs, fileName, row.names = FALSE)
 
     ParallelLogger::logInfo("- attrition table")
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+
     fileName <- file.path(exportFolder, "attrition.csv")
     if (file.exists(fileName)) {
         unlink(fileName)
@@ -298,6 +312,10 @@ exportMetadata <- function(outputFolder,
     loadAttrition <- function(indicationId) {
         ParallelLogger::logInfo("   compiling attrition table for ", indicationId)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
+        if (!file.exists(pathToRds)) {
+            warning("Cannot find ", pathToRds)
+            return(NULL)
+        }
         outcomeModelReference1 <- readRDS(pathToRds)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference2 <- readRDS(pathToRds)
@@ -307,10 +325,11 @@ exportMetadata <- function(outputFolder,
         outcomeModelReference3 <- readRDS(pathToRds)
         outcomeModelReference3$symmetrical <- FALSE
         outcomeModelReference <- rbind(outcomeModelReference, outcomeModelReference3)
+        outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
         first <- !file.exists(fileName)
         pb <- txtProgressBar(style = 3)
         for (i in 1:nrow(outcomeModelReference)) {
-            outcomeModel <- readRDS(outcomeModelReference$outcomeModelFile[i])
+            outcomeModel <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$outcomeModelFile[i]))
             attrition <- outcomeModel$attrition[, c("description", "targetPersons", "comparatorPersons")]
             attrition <- attrition[2:nrow(attrition), ] # First row is duplicate of last row from DB pull
             attrition$sequenceNumber <- 1:nrow(attrition) + 5
@@ -331,6 +350,7 @@ exportMetadata <- function(outputFolder,
             attrition$databaseId <- databaseId
             attrition <- attrition[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")]
             attrition <- Legend:::enforceMinCellValue(attrition, "subjects", minCellCount, silent = TRUE)
+
             colnames(attrition) <- SqlRender::camelCaseToSnakeCase(colnames(attrition))
             write.table(x = attrition,
                         file = fileName,
@@ -350,6 +370,8 @@ exportMetadata <- function(outputFolder,
 
         pathToCsv <- file.path(outputFolder, indicationId, "attrition.csv")
         attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+        attritionFromDb$targetId[attritionFromDb$targetId == -1] <- NA
+        attritionFromDb$comparatorId[attritionFromDb$comparatorId == -1] <- NA
         attritionFromDbTc <- attritionFromDb[attritionFromDb$targetId != -1, ]
         attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc, "targetId", "comparatorId"))
         attritionFromDb$analysisId <- -1
@@ -371,7 +393,12 @@ exportMetadata <- function(outputFolder,
 
     ParallelLogger::logInfo("- covariate table")
     loadCovariateNames <- function(indicationId) {
-        covariateData <- FeatureExtraction::loadCovariateData(file.path(outputFolder, indicationId, "allCovariates"))
+        covariateFolder <- file.path(outputFolder, indicationId, "allCovariates")
+        if (!file.exists(covariateFolder)) {
+            warning("Cannot find ", covariateFolder)
+            return(NULL)
+        }
+        covariateData <- FeatureExtraction::loadCovariateData(covariateFolder)
         covariateNames <- ff::as.ram(covariateData$covariateRef[, c("covariateId", "covariateName", "analysisId")])
         return(covariateNames)
     }
@@ -384,6 +411,63 @@ exportMetadata <- function(outputFolder,
     fileName <- file.path(exportFolder, "covariate.csv")
     write.csv(covariateNames, fileName, row.names = FALSE)
     rm(covariateNames) # Free up memory
+
+    ParallelLogger::logInfo("- cm_follow_up_dist table")
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+
+    loadCmFollowUpDist <- function(indicationId) {
+        ParallelLogger::logInfo("   fetching cohort method follow up distributions for ", indicationId)
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
+        if (!file.exists(pathToRds)) {
+            warning("Cannot find ", pathToRds)
+            return(NULL)
+        }
+        outcomeModelReference1 <- readRDS(pathToRds)
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
+        outcomeModelReference2 <- readRDS(pathToRds)
+        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
+        outcomeModelReference$symmetrical <- TRUE
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
+        outcomeModelReference3 <- readRDS(pathToRds)
+        outcomeModelReference3$symmetrical <- FALSE
+        outcomeModelReference <- rbind(outcomeModelReference, outcomeModelReference3)
+        outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
+        getResult <- function(i) {
+            strataPop <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$strataFile[i]))
+            targetDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
+            comparatorDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
+            row <- data.frame(targetId = outcomeModelReference$targetId[i],
+                              comparatorId = outcomeModelReference$comparatorId[i],
+                              outcomeId = outcomeModelReference$outcomeId[i],
+                              analysisId = outcomeModelReference$analysisId[i],
+                              target_min = targetDist[1],
+                              target_p10 = targetDist[2],
+                              target_p25 = targetDist[3],
+                              target_median = targetDist[4],
+                              target_p75 = targetDist[5],
+                              target_p90 = targetDist[6],
+                              target_max = targetDist[7],
+                              comparator_min = comparatorDist[1],
+                              comparator_p10 = comparatorDist[2],
+                              comparator_p25 = comparatorDist[3],
+                              comparator_median = comparatorDist[4],
+                              comparator_p75 = comparatorDist[5],
+                              comparator_p90 = comparatorDist[6],
+                              comparator_max = comparatorDist[7])
+            return(row)
+        }
+        results <- plyr::llply(1:nrow(outcomeModelReference), getResult, .progress = "text")
+        results <- do.call("rbind", results)
+        return(results)
+    }
+    results <- lapply(indications$indicationId, loadCmFollowUpDist)
+    results <- do.call("rbind", results)
+    results$databaseId <- databaseId
+    colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
+    fileName <- file.path(exportFolder, "cm_follow_up_dist.csv")
+    write.csv(results, fileName, row.names = FALSE)
+    rm(results) # Free up memory
 }
 
 enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
@@ -391,12 +475,12 @@ enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
     if (!silent) {
         percent <- round(100 * sum(toCensor) / nrow(data), 1)
         ParallelLogger::logInfo("   censoring ",
-                             sum(toCensor),
-                             " values (",
-                             percent,
-                             "%) from ",
-                             fieldName,
-                             " because value below minimum")
+                                sum(toCensor),
+                                " values (",
+                                percent,
+                                "%) from ",
+                                fieldName,
+                                " because value below minimum")
     }
     if (length(minValues) == 1) {
         data[toCensor, fieldName] <- -minValues
@@ -420,8 +504,14 @@ exportMainResults <- function(outputFolder,
     colnames(positiveControls) <- SqlRender::snakeCaseToCamelCase(colnames(positiveControls))
     negativeControls <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
     colnames(negativeControls) <- SqlRender::snakeCaseToCamelCase(colnames(negativeControls))
+
     loadCmResults <- function(indicationId) {
-        analysesSum <- read.csv(file.path(outputFolder, indicationId, "analysisSummary.csv"))
+        summaryFile <- file.path(outputFolder, indicationId, "analysisSummary.csv")
+        if (!file.exists(summaryFile)) {
+            warning("Cannot find ", summaryFile)
+            return(NULL)
+        }
+        analysesSum <- read.csv(summaryFile)
         analysesSum2 <- read.csv(file.path(outputFolder, indicationId, "analysisSummaryInteractions.csv"))
         analysesSum <- rbind(analysesSum, analysesSum2[, colnames(analysesSum)])
         analysesSum$symmetrical <- TRUE
@@ -438,10 +528,10 @@ exportMainResults <- function(outputFolder,
     subsets <- split(cmResults, paste(cmResults$targetId, cmResults$comparatorId, cmResults$analysisId))
     rm(cmResults) # Free up memory
     results <- ParallelLogger::clusterApply(cluster,
-                                         subsets,
-                                         Legend:::calibrate,
-                                         negativeControls = negativeControls,
-                                         positiveControls = positiveControls)
+                                            subsets,
+                                            Legend:::calibrate,
+                                            negativeControls = negativeControls,
+                                            positiveControls = positiveControls)
     ParallelLogger::stopCluster(cluster)
     rm(subsets) # Free up memory
     results <- do.call("rbind", results)
@@ -458,10 +548,10 @@ exportMainResults <- function(outputFolder,
     ParallelLogger::logInfo("- cm_interaction_result table")
     loadInteractionEffects <- function(indicationId) {
         ParallelLogger::logInfo("   compiling interaction results for ", indicationId)
-        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
         outcomeModelReference <- readRDS(pathToRds)
         loadInteractionsFromOutcomeModel <- function(i) {
-            outcomeModel <- readRDS(outcomeModelReference$outcomeModelFile[i])
+            outcomeModel <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$outcomeModelFile[i]))
             if (!is.null(outcomeModel$subgroupCounts)) {
                 rows <- data.frame(targetId = outcomeModelReference$targetId[i],
                                    comparatorId = outcomeModelReference$comparatorId[i],
@@ -510,9 +600,9 @@ exportMainResults <- function(outputFolder,
     cluster <- ParallelLogger::makeCluster(min(6, maxCores))
     subsets <- split(interactions, paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
     interactions <- ParallelLogger::clusterApply(cluster,
-                                              subsets,
-                                              Legend:::calibrateInteractions,
-                                              negativeControls = negativeControls)
+                                                 subsets,
+                                                 Legend:::calibrateInteractions,
+                                                 negativeControls = negativeControls)
     ParallelLogger::stopCluster(cluster)
     rm(subsets) # Free up memory
     interactions <- do.call("rbind", interactions)
@@ -539,7 +629,12 @@ exportMainResults <- function(outputFolder,
     ParallelLogger::logInfo("- incidence table")
     loadIncidence <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "incidence.csv")
+        if (!file.exists(pathToCsv)) {
+            warning("Cannot find ", pathToCsv)
+            return(NULL)
+        }
         incidence <- read.csv(pathToCsv)
+        return(incidence)
     }
 
     incidence <- lapply(indications$indicationId, loadIncidence)
@@ -554,6 +649,10 @@ exportMainResults <- function(outputFolder,
     ParallelLogger::logInfo("- chronograph table")
     loadChronograph <- function(indicationId) {
         pathToCsv <- file.path(outputFolder, indicationId, "chronographData.csv")
+        if (!file.exists(pathToCsv)) {
+            warning("Cannot find ", pathToCsv)
+            return(NULL)
+        }
         chronograph <- read.csv(pathToCsv)
     }
 
@@ -570,10 +669,10 @@ exportMainResults <- function(outputFolder,
     chronograph$icLb[toCensor] <- NA
     chronograph$icUb[toCensor] <- NA
     ParallelLogger::logInfo("   censoring ",
-                         sum(toCensor),
-                         " values (",
-                         percent,
-                         "%) from outcomes, ic, icLb, icUb because value below minimum")
+                            sum(toCensor),
+                            " values (",
+                            percent,
+                            "%) from outcomes, ic, icLb, icUb because value below minimum")
 
     colnames(chronograph) <- SqlRender::camelCaseToSnakeCase(colnames(chronograph))
     fileName <- file.path(exportFolder, "chronograph.csv")
@@ -709,7 +808,6 @@ exportDiagnostics <- function(outputFolder,
             }
             balance <- readRDS(files[i])
 
-
             inferredTargetBeforeSize <- mean(balance$beforeMatchingSumTarget/balance$beforeMatchingMeanTarget, na.rm = TRUE)
             inferredComparatorBeforeSize <- mean(balance$beforeMatchingSumComparator/balance$beforeMatchingMeanComparator, na.rm = TRUE)
             inferredTargetAfterSize <- mean(balance$afterMatchingSumTarget/balance$afterMatchingMeanTarget, na.rm = TRUE)
@@ -726,14 +824,10 @@ exportDiagnostics <- function(outputFolder,
                                    "targetMeanBefore", "comparatorMeanBefore", "stdDiffBefore",
                                    "targetMeanAfter", "comparatorMeanAfter", "stdDiffAfter")
             balance$targetMeanBefore[is.na(balance$targetMeanBefore)] <- 0
-            balance$targetMeanBefore <- round(balance$targetMeanBefore, 3)
             balance$comparatorMeanBefore[is.na(balance$comparatorMeanBefore)] <- 0
-            balance$comparatorMeanBefore <- round(balance$comparatorMeanBefore, 3)
             balance$stdDiffBefore <- round(balance$stdDiffBefore, 3)
             balance$targetMeanAfter[is.na(balance$targetMeanAfter)] <- 0
-            balance$targetMeanAfter <- round(balance$targetMeanAfter, 3)
             balance$comparatorMeanAfter[is.na(balance$comparatorMeanAfter)] <- 0
-            balance$comparatorMeanAfter <- round(balance$comparatorMeanAfter, 3)
             balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
 
             balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
@@ -748,6 +842,18 @@ exportDiagnostics <- function(outputFolder,
             balance <- enforceMinCellValue(balance, "targetMeanAfter",  minCellCount / inferredTargetAfterSize, TRUE)
             balance <- enforceMinCellValue(balance, "comparatorMeanAfter",  minCellCount / inferredComparatorAfterSize, TRUE)
 
+            balance$targetMeanBefore <- round(balance$targetMeanBefore, 3)
+            balance$comparatorMeanBefore <- round(balance$comparatorMeanBefore, 3)
+            balance$targetMeanAfter <- round(balance$targetMeanAfter, 3)
+            balance$comparatorMeanAfter <- round(balance$comparatorMeanAfter, 3)
+
+
+            balance <- balance[balance$targetMeanBefore != 0 &
+                                   balance$comparatorMeanBefore != 0 &
+                                   balance$targetMeanAfter != 0 &
+                                   balance$comparatorMeanAfter != 0 &
+                                   balance$stdDiffBefore != 0 &
+                                   balance$stdDiffAfter != 0, ]
             colnames(balance) <- SqlRender::camelCaseToSnakeCase(colnames(balance))
             write.table(x = balance,
                         file = fileName,
@@ -767,10 +873,14 @@ exportDiagnostics <- function(outputFolder,
 
     ParallelLogger::logInfo("- preference_score_dist table")
     preparePlots <- function(indicationId) {
+        if (!file.exists(file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))) {
+            warning("Cannot find ", file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))
+            return(NULL)
+        }
         ParallelLogger::logInfo("   compiling preference score distributions for ", indicationId)
 
         preparePlot <- function(i, outcomeModelReference) {
-            psFileName <- outcomeModelReference$sharedPsFile[i]
+            psFileName <- file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$sharedPsFile[i])
             if (file.exists(psFileName)) {
                 ps <- readRDS(psFileName)
                 if (min(ps$propensityScore) < max(ps$propensityScore)) {
@@ -811,14 +921,18 @@ exportDiagnostics <- function(outputFolder,
     ParallelLogger::logInfo("- propensity_model table")
     getPsModels <- function(indicationId) {
         ParallelLogger::logInfo("   compiling propensity models for ", indicationId)
+        if (!file.exists(file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))) {
+            warning("Cannot find ", file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))
+            return(NULL)
+        }
 
         getPsModel <- function(i, outcomeModelReference) {
-            psFileName <- outcomeModelReference$sharedPsFile[i]
+            psFileName <- file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$sharedPsFile[i])
             if (file.exists(psFileName)) {
                 ps <- readRDS(psFileName)
                 metaData <- attr(ps, "metaData")
                 if (is.null(metaData$psError)) {
-                    cmDataFile <- outcomeModelReference$cohortMethodDataFolder[i]
+                    cmDataFile <- file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$cohortMethodDataFolder[i])
                     cmData <- CohortMethod::loadCohortMethodData(cmDataFile)
                     model <- CohortMethod::getPsModel(ps, cmData)
                     model$covariateId[is.na(model$covariateId)] <- 0
@@ -853,6 +967,11 @@ exportDiagnostics <- function(outputFolder,
     ParallelLogger::logInfo("- kaplan_meier_dist table")
     prepareKms <- function(indicationId) {
         ParallelLogger::logInfo("   preparing Kaplan-Meier plots for ", indicationId)
+        if (!file.exists(file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))) {
+            warning("Cannot find ", file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds"))
+            return(NULL)
+        }
+
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
         outcomeModelReference1 <- readRDS(pathToRds)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
@@ -864,9 +983,11 @@ exportDiagnostics <- function(outputFolder,
         outcomeModelReference <- outcomeModelReference[, c("strataFile", "targetId", "comparatorId", "outcomeId", "analysisId")]
         cluster <- ParallelLogger::makeCluster(min(6, maxCores))
         data <- ParallelLogger::clusterApply(cluster,
-                                          1:nrow(outcomeModelReference),
-                                          Legend:::prepareKm,
-                                          outcomeModelReference = outcomeModelReference)
+                                             1:nrow(outcomeModelReference),
+                                             Legend:::prepareKm,
+                                             outcomeModelReference = outcomeModelReference,
+                                             outputFolder = outputFolder,
+                                             indicationId = indicationId)
         ParallelLogger::stopCluster(cluster)
         data <- do.call("rbind", data)
         data$databaseId <- databaseId
@@ -882,8 +1003,12 @@ exportDiagnostics <- function(outputFolder,
     rm(data) # Free up memory
 }
 
-prepareKm <- function(i, outcomeModelReference) {
-    population <- readRDS(outcomeModelReference$strataFile[i])
+prepareKm <- function(i, outcomeModelReference, outputFolder, indicationId) {
+    population <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$strataFile[i]))
+    if (nrow(population) == 0) {
+        # Can happen when matching and treatment is predictable
+        return(NULL)
+    }
     dataTc <- prepareKaplanMeier(population)
     dataTc$targetId <- outcomeModelReference$targetId[i]
     dataTc$comparatorId <- outcomeModelReference$comparatorId[i]
