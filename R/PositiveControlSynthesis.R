@@ -57,7 +57,6 @@ synthesizePositiveControls <- function(connectionDetails,
     outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
 
     createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = sampleSize)
-    # Legend:::createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = 10000)
 
     # Get all possible exposure IDs, including ones not found in this database
     # to make sure new outcome IDs translate across databases:
@@ -94,9 +93,10 @@ synthesizePositiveControls <- function(connectionDetails,
                                 cohort_database_schema = cohortDatabaseSchema,
                                 table_prefix = tablePrefix)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    DatabaseConnector::executeSql(conn, sql)
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     DatabaseConnector::disconnect(conn)
 
+    #exposureOutcomePairs <- exposureOutcomePairs[1,]
     ParallelLogger::logTrace("Calling injectSignals function")
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
@@ -191,26 +191,54 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
 
     # Create exposures file ----------------------------------------------------------
     ParallelLogger::logTrace("Create exposures file")
-    cohorts <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-    ff::open.ffdf(cohorts)
-    cohortIds <- ff::as.ram(ffbase::unique.ff(cohorts$cohortDefinitionId))
-    dedupe <- function(cohortId, data) {
-        data <- data[data$cohortDefinitionId == cohortId,]
-        data <- ff::as.ram(data)
-        data$targetId <- NULL
-        data$comparatorId <- NULL
-        data <- data[order(data$rowId), ]
-        data <- data[!duplicated(data$rowId), ]
-        return(data)
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    cohortIds <- unique(exposureSummary$targetId, exposureSummary$comparatorId)
+    exposures <- plyr::llply(cohortIds,
+                             getCohort,
+                             exposureSummary = exposureSummary,
+                             indicationFolder = indicationFolder,
+                             .progress = "text")
+    cohortsFolder <- file.path(indicationFolder, "allCohorts")
+    exposures <- data.frame()
+    for (i in 1:nrow(exposureSummary)) {
+        print(i)
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
+        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
+        cohorts <- readRDS(fileName)
+        # idx <- !(cohorts$rowId %in% exposures$rowId)
+        idxTarget <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == targetId]) & cohorts$treatment == 1
+        idxComparator <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == comparatorId]) & cohorts$treatment == 0
+        if (any(idxTarget) | any(idxComparator)) {
+            cohorts$cohortId <- targetId
+            cohorts$cohortId[cohorts$treatment == 0] <- comparatorId
+            cohorts$treatment <- NULL
+            exposures <- rbind(exposures, cohorts[idxTarget | idxComparator, ])
+        }
     }
-    exposures <- sapply(cohortIds, dedupe, data = cohorts, simplify = FALSE)
-    exposures <- do.call("rbind", exposures)
+#
+#
+#     cohorts <- NULL
+#     ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
+#     ff::open.ffdf(cohorts)
+#     cohortIds <- ff::as.ram(ffbase::unique.ff(cohorts$cohortDefinitionId))
+#     dedupe <- function(cohortId, data) {
+#         data <- data[data$cohortDefinitionId == cohortId,]
+#         data <- ff::as.ram(data)
+#         data$targetId <- NULL
+#         data$comparatorId <- NULL
+#         data <- data[order(data$rowId), ]
+#         data <- data[!duplicated(data$rowId), ]
+#         return(data)
+#     }
+#     exposures <- sapply(cohortIds, dedupe, data = cohorts, simplify = FALSE)
+#     exposures <- do.call("rbind", exposures)
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
 
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
     colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
-    colnames(exposures)[colnames(exposures) == "cohortDefinitionId"] <- "exposureId"
+    # colnames(exposures)[colnames(exposures) == "cohortDefinitionId"] <- "exposureId"
+    colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1
     exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "daysObserved", "eraNumber")]

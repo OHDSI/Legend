@@ -136,17 +136,32 @@ fetchAllDataFromServer <- function(connectionDetails,
 
     # Retrieve cohorts -------------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving cohorts")
-    sql <- SqlRender::loadRenderTranslateSql("GetExposureCohorts.sql",
-                                             "Legend",
-                                             dbms = connectionDetails$dbms,
-                                             oracleTempSchema = oracleTempSchema,
-                                             cdm_database_schema = cdmDatabaseSchema,
-                                             cohort_database_schema = cohortDatabaseSchema,
-                                             paired_cohort_table = pairedCohortTable)
-    cohorts <- DatabaseConnector::querySql.ffdf(conn, sql)
-    colnames(cohorts) <- SqlRender::snakeCaseToCamelCase(colnames(cohorts))
-    ffbase::save.ffdf(cohorts, dir = cohortsFolder)
-    ff::close.ffdf(cohorts)
+    if (!file.exists(cohortsFolder)) {
+       dir.create(cohortsFolder)
+    }
+    getCohorts <- function(i) {
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
+        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
+        if (!file.exists(fileName)) {
+            sql <- SqlRender::loadRenderTranslateSql("GetExposureCohorts.sql",
+                                                     "Legend",
+                                                     dbms = connectionDetails$dbms,
+                                                     oracleTempSchema = oracleTempSchema,
+                                                     cdm_database_schema = cdmDatabaseSchema,
+                                                     cohort_database_schema = cohortDatabaseSchema,
+                                                     paired_cohort_table = pairedCohortTable,
+                                                     target_id = targetId,
+                                                     comparator_id = comparatorId)
+            cohorts <- DatabaseConnector::querySql(conn, sql)
+            colnames(cohorts) <- SqlRender::snakeCaseToCamelCase(colnames(cohorts))
+            saveRDS(cohorts, fileName)
+            # ffbase::save.ffdf(cohorts, dir = cohortsFolder)
+            # ff::close.ffdf(cohorts)
+        }
+        return(NULL)
+    }
+    plyr::llply(1:nrow(exposureSummary), getCohorts, .progress = "text")
 
     # Retrieve outcomes -------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving outcomes")
@@ -231,17 +246,20 @@ constructCohortMethodDataObject <- function(targetId,
         cohortsFolder <- file.path(indicationFolder, "allCohorts")
         outcomesFolder <- file.path(indicationFolder, "allOutcomes")
     }
-    # Subsetting cohorts
-    cohorts <- NULL
-    ffbase::load.ffdf(dir = cohortsFolder) # Loads cohorts
-    ff::open.ffdf(cohorts, readonly = TRUE)
-    idx <- cohorts$targetId == targetId & cohorts$comparatorId == comparatorId
-    cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
-    cohorts$treatment <- 0
-    cohorts$treatment[cohorts$cohortDefinitionId == targetId] <- 1
-    cohorts$cohortDefinitionId <- NULL
-    cohorts$targetId <- NULL
-    cohorts$comparatorId <- NULL
+    # copying cohorts
+    fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
+    cohorts <- readRDS(fileName)
+    # # Subsetting cohorts
+    # cohorts <- NULL
+    # ffbase::load.ffdf(dir = cohortsFolder) # Loads cohorts
+    # ff::open.ffdf(cohorts, readonly = TRUE)
+    # idx <- cohorts$targetId == targetId & cohorts$comparatorId == comparatorId
+    # cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
+    # cohorts$treatment <- 0
+    # cohorts$treatment[cohorts$cohortDefinitionId == targetId] <- 1
+    # cohorts$cohortDefinitionId <- NULL
+    # cohorts$targetId <- NULL
+    # cohorts$comparatorId <- NULL
     targetPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
     comparatorPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 0]))
     targetExposures <- length(cohorts$subjectId[cohorts$treatment == 1])

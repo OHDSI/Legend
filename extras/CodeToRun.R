@@ -29,6 +29,7 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
+Sys.setenv(USE_MPP_BULK_LOAD = "TRUE")
 
 indicationId <- "Depression"
 
