@@ -356,3 +356,50 @@ drawAttritionDiagram <- function(attrition,
   
   return(p)
 }
+
+judgeHazardRatio <- function(hrLower, hrUpper) {
+  nonZeroHazardRatio(hrLower, hrUpper, c("lower","higher","similar"))
+}
+
+nonZeroHazardRatio <- function(hrLower, hrUpper, terms) {
+  if (hrUpper < 1.0) {
+    return(terms[1])
+  } else if (hrLower > 1.0) {
+    return(terms[2])
+  } else {
+    return(terms[3])
+  }
+}
+
+judgeEffectiveness <- function(hrLower, hrUpper) {
+  nonZeroHazardRatio(hrLower, hrUpper, c("less","more","as"))
+}
+
+prettyHr <- function(x) {
+  sprintf("%.2f", x)
+}
+
+goodPropensityScore <- function(value) {
+  return(value > 1.0)
+}
+
+goodSystematicBias <- function(value) {
+  return(value > 1.0)
+}
+
+judgePropensityScore <- function(ps, bias) {
+  paste0(
+    " ",
+    ifelse(goodPropensityScore(ps), "substantial", "inadequate"),
+    " control of measured confounding by propensity score adjustment, and ",
+    ifelse(goodSystematicBias(bias), "minimal", "non-negligible"),
+    " residual systematic bias through negative and positive control experiments",
+    ifelse(goodPropensityScore(ps) && goodSystematicBias(bias), 
+           ", lending credibility to our effect estimates", "")
+  )
+}
+
+capitalize <- function(x) {
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
+}

@@ -12,13 +12,18 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 
+\usepackage{longtable}
+
 <<params, echo=FALSE, message=FALSE, comment=FALSE, results=hide>>=
 params <- list(databaseId = "MDCR",
-               targetId = 739138,
-               comparatorId =  715259,
+               targetId = 715259,
+               comparatorId = 739138,
                outcomeId = 18,
                primary = 2,
-               indication = tolower("major depressive disorder"))
+               ot = 1,
+               itt = 2,
+               indication = tolower("major depressive disorder"),
+               databaseName = "Truven MarketScan Multi-State Medicaid")
 @
 
 <<setup, echo=FALSE, message=FALSE, comment=FALSE, results=hide>>=
@@ -128,7 +133,7 @@ MAS receives contract support from Janssen Research.
 
 \equalauthors{\textsuperscript{} }
 
-\correspondingauthor{\textsuperscript{\url{mschuemie@ohdsi.org}} }
+\correspondingauthor{\textsuperscript{Corresponding author contact: \url{mschuemie@ohdsi.org}} }
 
 % Keywords are not mandatory, but authors are strongly encouraged to provide them. If provided, please include two to five keywords, separated by the pipe symbol, e.g:
  % \keywords{  one |  two |  optional |  optional |  optional   }
@@ -136,14 +141,14 @@ MAS receives contract support from Janssen Research.
 \begin{abstract}
 We conduct a large-scale study on the incidence of \Sexpr{outcomeName} among new users of \Sexpr{targetName} and \Sexpr{comparatorName} from XXXX to XXXX in the \Sexpr{params$databaseId} database.
 The primary outcome of interest is an estimate of the hazard ratio (HR) for incident events between comparable new users under an intent-to-treat risk window assumption. Secondary analyses consider an on-treatment risk window assumption and entertain possible clinically relevant subgroup interaction with the HR.
-We identify \Sexpr{mainResults[1,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[1,"comparatorSubjects"]} \Sexpr{comparatorName} patients for the primary analysis, totaling \Sexpr{round(mainResults[params$primary,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$primary,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$primary,"targetOutcomes"]} and \Sexpr{mainResults[params$primary,"comparatorOutcomes"]} events respectively.
+We identify \Sexpr{mainResults[params$primary,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[params$primary,"comparatorSubjects"]} \Sexpr{comparatorName} patients for the primary analysis, totaling \Sexpr{round(mainResults[params$primary,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$primary,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$primary,"targetOutcomes"]} and \Sexpr{mainResults[params$primary,"comparatorOutcomes"]} events respectively.
 We control for measured confounding using propensity score trimming and stratification based on an expansive propensity score model that includes all measured patient features before treatment initiation.
 We account for unmeasured confounding using negative and positive controls to estimate and adjust for residual systematic bias in the study design and data source, providing calibrated confidence intervals and p-values.
 In terms of \Sexpr{outcomeName}, \Sexpr{targetName} has a 
 \Sexpr{judgeHazardRatio(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])}
 risk as \Sexpr{comparatorName} [HR: \Sexpr{prettyHr(mainResults[params$primary,"calibratedRr"])},
 95\% confidence interval (CI) \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Lb"])} - \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Ub"])}].
-We demonstrate \Sexpr{judgePropensityScore(1.1,1.1)}.
+We demonstrate (TODO) \Sexpr{judgePropensityScore(1.1,1.1)}.
 %In conclusion, we find that \Sexpr{targetName} is \Sexpr{judgeEffectiveness(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])} effective as \Sexpr{comparatorName} in preventing \Sexpr{outcomeName}.
 \end{abstract}
 
@@ -174,13 +179,76 @@ This LEGEND document reports the risk of \Sexpr{outcomeName} between new users o
 \section*{Methods}\label{methods}}
 \addcontentsline{toc}{section}{Methods}
 
+\subsection*{Data source}
+We conduct a new-user cohort study comparing new users of \Sexpr{targetName} with new users of \Sexpr{comparatorName} in the \Sexpr{params$databaseName} (\Sexpr{params$databaseId}) database encoded in the Observational Medical Outcomes Partnership (OMOP) common data model (CDM) version 5 %\citep{hripcsak2015observational,overhage2012validation,ryan2013empirical}
+.
+
+\subsection*{Study design}
+This study follows a retrospective, observational, comparative cohort design %\citep{ryan2013empirical}
+.
+We include patients 18 years old or older who are first time users of \Sexpr{targetName} or \Sexpr{comparatorName} from XXX to XXX, and who have a diagnosis of \Sexpr{params$indication} (when?) prior to treatment initation.
+We require that patients have continuous observation in the database for at least (how long?) year prior to treatment initiation.
+We exclude patients with prior \Sexpr{outcomeName} events and less than 1 day at risk.
+Full cohort details, include concept codes, are provided in the Supplementary Inforamtion (add link).
+The outcome of interest is \Sexpr{outcomeName}. 
+We begin the outcome risk window 1 day after treatment initation.
+As our primary analysis, we have pre-specified \ldots
+We end the outcome time-at-risk window when the patient is no longer observable in the database, analogous to an intent-to-treat design.
+We end the outcome time-at-risk window at first cessation of continuous drug exposure, analogous to an on-treatment design. 
+Continuous drug exposures are constructed from the available longitudinal data by considering sequential prescriptions that have fewer than 30 days gap between prescriptions.
+
+\subsection*{Statistical analysis}
+We conduct our cohort study using the open-source OHDSI CohortMethod R package %\citep{schuemie2017cohort}
+, with large-scale analytics achieved through the Cyclops R package %\citep{suchard2013high?}
+.
+We use propensity scores (PSs) -- estimates of treatment exposure probability conditional on pre-treatment baseline features in the one year prior to treatment initiation -- to control for potential measured confoudning and improve balance between the target (\Sexpr{targetName}) and comparator (\Sexpr{comparatorName}) cohorts %\citep{rosenbaum1983central}
+.
+We use an expansive PS model that includes all available patient demographics, drug, condition and procedure covariates generated through the FeatureExtraction R package %\citep{schuemie2018feature}
+ instead of a prespecified set of investigator-selected confounders.
+ We perform PS trimming and stratification and then estimate comparative \Sexpr{targetName}-vs-\Sexpr{comparatorName} hazard ratios (HRs) using a Cox proportional hazards model.
+ Detailed covariate and methods informations are provided in the Supplementary Information (add link).
+ We present PS and covariate balance metrics to assess successful confounding control, and provide HR estimates with and without prespecified subgroup intervation terms and Kaplan-Meier survival plots for the outcome of \Sexpr{outcomeName}.
+ Subgroups include \ldots (and how to know when there are insufficient patients in a subgroup to report estimate?).
+ 
+Residual study bias from unmeasured and systematic sources can exist in observational studies after controlling for measured confounding %\citep{schuemie2018reliable}
+.
+To estimate such residual bias, we conduct negative control outcome experiments with (XXX) negative control outcomes %\citep{negative-controls}
+identified through a data-rich algorithm %\citep{voss2017accuracy}
+.
+We fit the negative control estimates to an empirical null distribution that characterizes the study residual bias and is an important artifact from which to assess the study design %\citep{schuemie2014interpreting,schuemie2018empirical}
+.
+Using the empirical null distribution and synthetic positive controls %\citep{positive-controls}
+, we additionally calibrate all HR estimates, their 95\% confidence intervals (CIs) and the $p$-value to reject the null hypothesis of no differential effect (HR = 1).
+ 
 \hypertarget{results}{%
 \section*{Results}\label{results}}
 \addcontentsline{toc}{section}{Results}
 
-\begin{table*}
+\subsection*{Population characteristics}
+
+Figure \ref{fig:attrition} diagrams the inclusion of study subjects from the \Sexpr{params$databaseId} database.
+For the intent-to-treatment analysis, we identify \Sexpr{mainResults[params$itt,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[params$itt,"comparatorSubjects"]} \Sexpr{comparatorName} patients, totaling \Sexpr{round(mainResults[params$itt,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$itt,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$itt,"targetOutcomes"]} and \Sexpr{mainResults[params$itt,"comparatorOutcomes"]} events respectively.
+Similarly, for the on-treatment analylsis, we identify \Sexpr{mainResults[params$ot,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[params$ot,"comparatorSubjects"]} \Sexpr{comparatorName} patients, totaling \Sexpr{round(mainResults[params$ot,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$ot,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$ot,"targetOutcomes"]} and \Sexpr{mainResults[params$ot,"comparatorOutcomes"]} events respectively.
+<<attrition_plot, echo=FALSE, cache=TRUE>>==
+plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
+suppressMessages(ggsave("attrition.pdf", plot,
+                        width = 6, height = 10, units = "in"))
+@
+%
+\begin{figure}
+  \vspace*{-1em}
+  \centerline{\includegraphics[width=0.45\textwidth]{attrition}}
+  \vspace*{-2em}
+  \caption{\textbf{Attrition diagram for selecting new-users of \Sexpr{targetName} and \Sexpr{comparatorName} from the \Sexpr{params$databaseId} database.}}
+  \label{fig:attrition}
+\end{figure}
+%
+Table \ref{tab:demographics} compares base-line characteristics between patient cohorts.
+%
+\begin{table}
 \caption{\textbf{Patient demographics.} Target (T) population is sertaline new-users.  Comparative (C) population is dulexotine new-users.  We report the standardized difference of population means (StdDiff) before and after stratification for selected base-line patient characteristics.}\label{tab:demographics}
-\begin{center}
+\vspace*{-0.5em}
+\centerline{
 \resizebox{0.5\textwidth}{!}{
 \begin{tabular}{lrrrrrr}
 \hline
@@ -205,30 +273,89 @@ print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")
       only.contents = TRUE,
       sanitize.text.function = identity)
 @
+\hline
 \end{tabular}
 }
-\end{center}
-\end{table*}
+}
+\end{table}
 
+\subsection*{Patient characteristics balance}
+Figure \ref{fig:ps} plots the preference score distributions, re-scalings of PS estimates to adjust for differential treatment prevalences, for patients treated with \Sexpr{targetName} and \Sexpr{comparatorName}.
+We assess characteristics balance achieved through PS adjustment by comparing all characteristics' standardized difference (StdDiff) between treatment group means before and after PS trimming and stratification (Table \ref{tab:demographics}).
+Figure \ref{fig:balance} plots StdDiff for all \Sexpr{nrow(balance)} base-line patient features that serve as input for the PS model.
+Before stratification, \Sexpr{sum(na.omit(balance$beforeMatchingStdDiff) > 0.1)} features have a StdDiff $> 0.1$.  After stratification, the count is \Sexpr{sum(na.omit(balance$afterMatchingStdDiff) > 0.1)}.
+%
 <<make_ps, echo=FALSE, cache=TRUE>>==
 plot <- plotPs(ps, targetName, comparatorName)
 suppressMessages(ggsave("ps.pdf", plot,
                         width = 5, height = 5, units = "in"))
 @
-
+%
 \begin{figure}
   \centerline{
-    \includegraphics[width=0.4\textwidth]{ps}
+    \includegraphics[width=0.35\textwidth]{ps}
   }
   \caption{\textbf{Preference score distribution for sertaline and dulexotine new-users.}
-  The preference score is a transformation of the propensity score that adjusts for size differences between populations.  A higher overlap indicates that subjects in the two populations are more similar in terms of their predicted probability of receiving one treatment over the other.
+  The preference score is a transformation of the propensity score that adjusts for prevalence differences between populations.  A higher overlap indicates that subjects in the two populations are more similar in terms of their predicted probability of receiving one treatment over the other.
   }
+  \label{fig:ps}
 \end{figure}
+%
+<<make_balance, echo=FALSE, cache=TRUE>>==
+plot <- CohortMethod::plotCovariateBalanceScatterPlot(balance)
+suppressMessages(ggsave("balance.pdf", plot,
+                        width = 5, height = 5, units = "in"))
+@
+%
+\begin{figure}
+  \centerline{
+    \includegraphics[width=0.35\textwidth]{balance}
+  }
+  \caption{\textbf{Patient characteristics balance before and after stratification.} As a rule-of-thumb, all values $< 0.1$ is generally considered well-balanced (add citation).}
+  \label{fig:balance}
+\end{figure}
+%
+(TODO) Add judgement statement about measured confounding control using something like: \Sexpr{judgePropensityScore(1.1,1.1)}
+%
+Finally, Figure \ref{fig:topTen} presents the top ten most imbalanced characteristics before and after stratification.
+%
+<<make_features, echo=FALSE, cache=TRUE>>==
+plot <- CohortMethod::plotCovariateBalanceOfTopVariables(balance, n = 10,
+                                                         beforeLabel = "before",
+                                                         afterLabel = "after",
+                                                         maxNameWidth = 50)
+plot$theme$legend.direction <- "horizontal"
+suppressMessages(ggsave("top_10.pdf", plot,
+                        width = 5, height = 3.5, units = "in"))
+@
+%
+\begin{figure}
+  \centerline{
+    \includegraphics[width=0.5\textwidth]{top_10}
+  }
+  \caption{\textbf{Top ten most imbalanced patient characteristics before and after stratification.}}
+  \label{fig:topTen}
+\end{figure}
+%
 
-More text here.
 
+\subsection*{Outcome assessment}
+
+Table \ref{tab:hr} reports estimated HRs comparing \Sexpr{targetName} to \Sexpr{comparatorName} for both the intent-to-treat and on-treatment designs.
+The table also presents HRs after adjusting for possible subgroup differences (how we know which subgroups?).
+%
 \begin{table*}
+\caption{Hazard ratio (HR) estimates and their confidence intervals (CIs) and $p$-value to reject the null hypothesis of no difference (HR = 1) under various designs.}
+\label{tab:hr}
+\vspace*{-0.5em}
+\centerline{
 \begin{tabular}{lrrrr}
+\hline
+& \multicolumn{2}{c}{Uncalibrated} & \multicolumn{2}{c}{Calibrated} \\
+\multicolumn{1}{c}{Design} 
+& \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$-value}
+& \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$-value} \\
+\hline
 <<result_table, echo=FALSE, results=tex>>==
 table <- mainResults
 table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
@@ -245,182 +372,45 @@ print(xtable(table),
       only.contents = TRUE,
       sanitize.text.function = identity)
 @
+\hline
 \end{tabular}
+}
 \end{table*}
+%
+Figure \ref{fig:km} plots Kaplan-Meier survival curves for patients under the intent-to-treat design.
+\begin{itemize}
+  \item Insert KM plot
+\end{itemize}
 
-\hypertarget{guide-to-using-this-template}{%
-\section*{Guide to using this
-template}\label{guide-to-using-this-template}}
-\addcontentsline{toc}{section}{Guide to using this template}
+\subsection*{Residual bias}
+In the absense of bias, we expect 95\% of negative control estimate 95\% confidence intervals to include the presumed null hypothesis HR = 1.  Figure \ref{fig:negatives} describes the negative control estimates under both the intent-to-treat and on-treatment designs.
+%
+(TODO) Add judgement statement about residual bias control, using something like: \Sexpr{judgePropensityScore(1.1,1.1)}.
+\begin{itemize}
+  \item Insert negative control plots
+\end{itemize}
 
-Please note that whilst this template provides a preview of the typeset
-manuscript for submission, to help in this preparation, it will not
-necessarily be the final publication layout. For more detailed
-information please see the
-\href{http://www.pnas.org/site/authors/format.xhtml}{PNAS Information
-for Authors}.
+\hypertarget{conclusions}{%
+\section*{Conclusions}\label{conclusions}}
+\addcontentsline{toc}{section}{Conclusions}
 
-<<attrition_plot, echo=FALSE, cache=TRUE>>==
-plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
-suppressMessages(ggsave("attrition.pdf", plot,
-                        width = 6, height = 10, units = "in"))
-@
-
-\begin{figure*}
-  \begin{center}
-    \includegraphics[width=0.66\textwidth]{attrition}
-  \end{center}
-  \caption{Attrition diagram for selecting new-users of }\label{fig:attrition}
-\end{figure*}
-
-\hypertarget{author-affiliations}{%
-\subsection*{Author Affiliations}\label{author-affiliations}}
-\addcontentsline{toc}{subsection}{Author Affiliations}
-
-Include department, institution, and complete address, with the
-ZIP/postal code, for each author. Use lower case letters to match
-authors with institutions, as shown in the example. Authors with an
-ORCID ID may supply this information at submission.
-
-\hypertarget{submitting-manuscripts}{%
-\subsection*{Submitting Manuscripts}\label{submitting-manuscripts}}
-\addcontentsline{toc}{subsection}{Submitting Manuscripts}
-
-All authors must submit their articles at
-\href{http://www.pnascentral.org/cgi-bin/main.plex}{PNAScentral}. If you
-are using Overleaf to write your article, you can use the ``Submit to
-PNAS'' option in the top bar of the editor window.
-
-\hypertarget{format}{%
-\subsection*{Format}\label{format}}
-\addcontentsline{toc}{subsection}{Format}
-
-Many authors find it useful to organize their manuscripts with the
-following order of sections; Title, Author Affiliation, Keywords,
-Abstract, Significance Statement, Results, Discussion, Materials and
-methods, Acknowledgments, and References. Other orders and headings are
-permitted.
-
-\hypertarget{manuscript-length}{%
-\subsection*{Manuscript Length}\label{manuscript-length}}
-\addcontentsline{toc}{subsection}{Manuscript Length}
-
-PNAS generally uses a two-column format averaging 67 characters,
-including spaces, per line. The maximum length of a Direct Submission
-research article is six pages and a PNAS PLUS research article is ten
-pages including all text, spaces, and the number of characters displaced
-by figures, tables, and equations. When submitting tables, figures,
-and/or equations in addition to text, keep the text for your manuscript
-under 39,000 characters (including spaces) for Direct Submissions and
-72,000 characters (including spaces) for PNAS PLUS.
-
-\hypertarget{references}{%
-\subsection*{References}\label{references}}
-\addcontentsline{toc}{subsection}{References}
-
-References should be cited in numerical order as they appear in text;
-this will be done automatically via bibtex, e.g. (1) and (2, 3). All
-references, including for the SI, should be included in the main
-manuscript file. References appearing in both sections should not be
-duplicated. SI references included in tables should be included with the
-main reference section.
-
-\hypertarget{data-archival}{%
-\subsection*{Data Archival}\label{data-archival}}
-\addcontentsline{toc}{subsection}{Data Archival}
-
-PNAS must be able to archive the data essential to a published article.
-Where such archiving is not possible, deposition of data in public
-databases, such as GenBank, ArrayExpress, Protein Data Bank, Unidata,
-and others outlined in the Information for Authors, is acceptable.
-
-\hypertarget{language-editing-services}{%
-\subsection*{Language-Editing
-Services}\label{language-editing-services}}
-\addcontentsline{toc}{subsection}{Language-Editing Services}
-
-Prior to submission, authors who believe their manuscripts would benefit
-from professional editing are encouraged to use a language-editing
-service (see list at www.pnas.org/site/authors/language-editing.xhtml).
-PNAS does not take responsibility for or endorse these services, and
-their use has no bearing on acceptance of a manuscript for publication.
-
-% \begin{figure}
-% \centering
-% \includegraphics{frog.png}
-% \caption{Placeholder image of a frog with a long example caption to show
-% justification setting.{}}
-% \end{figure}
-
-\hypertarget{sec:figures}{%
-\subsection*{Digital Figures}\label{sec:figures}}
-\addcontentsline{toc}{subsection}{Digital Figures}
-
-Only TIFF, EPS, and high-resolution PDF for Mac or PC are allowed for
-figures that will appear in the main text, and images must be final
-size. Authors may submit U3D or PRC files for 3D images; these must be
-accompanied by 2D representations in TIFF, EPS, or high-resolution PDF
-format. Color images must be in RGB (red, green, blue) mode. Include the
-font files for any text.
-
-Figures and Tables should be labelled and referenced in the standard way
-using the \texttt{\textbackslash{}label\{\}} and
-\texttt{\textbackslash{}ref\{\}} commands.
-
-Figure \[fig:frog\] shows an example of how to insert a column-wide
-figure. To insert a figure wider than one column, please use the
-\texttt{\textbackslash{}begin\{figure*\}...\textbackslash{}end\{figure*\}}
-environment. Figures wider than one column should be sized to 11.4 cm or
-17.8 cm wide.
-
-\hypertarget{single-column-equations}{%
-\subsection*{Single column equations}\label{single-column-equations}}
-\addcontentsline{toc}{subsection}{Single column equations}
-
-Authors may use 1- or 2-column equations in their article, according to
-their preference.
-
-To allow an equation to span both columns, options are to use the
-\texttt{\textbackslash{}begin\{figure*\}...\textbackslash{}end\{figure*\}}
-environment mentioned above for figures, or to use the
-\texttt{\textbackslash{}begin\{widetext\}...\textbackslash{}end\{widetext\}}
-environment as shown in equation \[eqn:example\] below.
-
-Please note that this option may run into problems with floats and
-footnotes, as mentioned in the \href{http://texdoc.net/pkg/cuted}{cuted
-package documentation}. In the case of problems with footnotes, it may
-be possible to correct the situation using commands
-\texttt{\textbackslash{}footnotemark} and
-\texttt{\textbackslash{}footnotetext}.
-
-\[\begin{aligned}
-(x+y)^3&=(x+y)(x+y)^2\\
-       &=(x+y)(x^2+2xy+y^2) \label{eqn:example} \\
-       &=x^3+3x^2y+3xy^3+x^3.
-\end{aligned}\]
+We find that \Sexpr{targetName} has a 
+\Sexpr{judgeHazardRatio(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])}
+risk of \Sexpr{outcomeName} as \Sexpr{comparatorName} within the population that the \Sexpr{params$databaseId} represents.
+(What else?)
 
 \hypertarget{supporting-information-si}{%
 \subsection*{Supporting Information
 (SI)}\label{supporting-information-si}}
 \addcontentsline{toc}{subsection}{Supporting Information (SI)}
 
-The main text of the paper must stand on its own without the SI. Refer
-to SI in the manuscript at an appropriate point in the text. Number
-supporting figures and tables starting with S1, S2, etc. Authors are
-limited to no more than 10 SI files, not including movie files. Authors
-who place detailed materials and methods in SI must provide sufficient
-detail in the main text methods to enable a reader to follow the logic
-of the procedures and results and also must reference the online
-methods. If a paper is fundamentally a study of a new method or
-technique, then the methods must be described completely in the main
-text. Because PNAS edits SI and composes it into a single PDF, authors
-must provide the following file formats only.
+Here we provide extended details on study cohorts and design and the guiding principles of LEGEND.
 
 \hypertarget{si-principles}{%
 \subsubsection*{SI LEGEND Principles}\label{si-text}}
-\addcontentsline{toc}{subsubsection}{SI Principles}
+\addcontentsline{toc}{subsubsection}{SI Principles} (Need to re-order these)
 
-\begin{itemize}
+\begin{enumerate}[noitemsep]
   \item Evidence will be generated at large-scale.
   \item Dissemination of the evidence will not depend on the estimated effects.
   \item Evidence will be generated by consistently applying a systematic approach across all research questions.
@@ -431,75 +421,124 @@ must provide the following file formats only.
   \item LEGEND will not be used to evaluate methods.
   \item Evidence will be updated on a regular basis.
   \item No patient-level data will be shared between sites in the network, only aggregated data.
+\end{enumerate}
+
+\subsubsection*{SI \Sexpr{capitalize(targetName)} cohort definition}
+(TODO)
+
+\subsubsection*{SI \Sexpr{capitalize(comparatorName)} cohort definition}
+(TODO)
+
+\subsubsection*{SI \Sexpr{capitalize(outcomeName)} cohort definition}
+(TODO)
+
+\subsubsection*{SI Covariate sets}
+\begin{itemize}[noitemsep]
+\item Demographics (age in 5-year increments, gender, year of index date)
+\item Condition Occurrence (condition occurrence in lookback window)
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 180 days prior to index date
+  \item in 30 days prior to index date
+  \end{itemize}
+\item Condition Era (span of time when person assumed to have condition)
+  \begin{itemize}[noitemsep]
+  \item ever
+  \item overlapping with index date
+  \end{itemize}
+\item Drug Exposure (drug occurrence in lookback window)
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 30 days prior to index date
+  \end{itemize}
+\item Drug Era (span of time when person assumed to have drug)
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 30 days prior to index date
+  \item ever
+  \item overlapping with index date
+  \end{itemize}
+\item Procedure Occurrence
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 30 days prior to index date
+  \end{itemize}
+\item Observation
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 30 days prior to index date
+  \item observations count in 365 days prior to index date
+  \end{itemize}
+\item Measurement
+  \begin{itemize}[noitemsep]
+  \item in 365 days prior to index date
+  \item in 30 days prior to index date
+  \item high measurement in 180 days prior to index date
+  \item low measurement in 180 days prior to index date
+  \item measurements count in 365 days prior to index date
+  \end{itemize}
+\item Concepts Count in 365 days prior to index date
+\item Risk Scores (Charlson, DCSI, CHADS2)
 \end{itemize}
 
-\hypertarget{si-text}{%
-\subsubsection*{SI Text}\label{si-text}}
-\addcontentsline{toc}{subsubsection}{SI Text}
+\subsubsection*{SI Anticoagulants Study Negative Controls}
+Negative controls were selected using the following criteria:
+\begin{itemize}[noitemsep]
+  \item No evidence found in literature on clinical trials using the method proposed by Avillach %\citep{avillach2012design}
+  \item No evidence found in literature using the method used in SemMedDB %\citep{kilicoglu2011constructing}
+  \item No evidence found in the structured product label (US and EU).
+  \item FAERS Proportional Reporting Ratio (PRR) needed to be less than 2.
+\end{itemize}
 
-Supply Word, RTF, or LaTeX files (LaTeX files must be accompanied by a
-PDF with the same file name for visual reference).
+Negative controls were rank-ordered by prevalence in study cohort, and manually reviewed until 50 controls were selected. Negative controls with fewer than $0.02\%$ prevalence were discarded. See Table \ref{tab:negatives}
+%
+%\vspace*{-2em}
+\begin{table}
+\caption{Negative controls employed with \Sexpr{params$indication} patients.}
+\label{tab:negatives}
+\vspace*{-1em}
+\begin{tabular}{ll}
+\hline
+% \begin{table}[t]{  |p{8.1cm} | p{8.1cm} |} \hline
+Acute bronchitis & Allergic rhinitis \\
+Anxiety disorder & Arthritis of spine \\
+Arthropathy of knee joint & Atelectasis \\
+Barrett's esophagus & Blepharitis \\
+Bronchiectasis & Bundle branch block \\
+Cellulitis & Chronic sinusitis \\
+Chronic ulcer of skin & Communication disorder \\
+Crohn's disease & Curvature of spine \\
+Cutis laxa & Diabetic renal disease \\
+Diabetic retinopathy & Dislocation of joint \\
+Dyssomnia & Dysuria \\
+Effusion of joint & Fracture of upper limb \\
+Gallstone & Gammopathy \\
+Human papilloma virus infection & Hyperplasia of prostate \\
+Inflammation of sacroiliac joint & Ingrowing nail \\
+Malignant tumor of breast & Multiple sclerosis \\
+Neck pain & Neurologic disorder associated \\
+& $\quad$ with diabetes mellitus \\
+Obesity & Osteomyelitis \\
+Otitis media & Peripheral vertigo \\
+Plantar fasciitis & Presbyopia \\
+Prolapse of female genital organs & Psychotic disorder \\
+Seborrheic keratosis & Simple goiter \\
+Sleep apnea & Superficial mycosis \\
+Urge incontinence of urine & Urinary tract infectious disease \\
+Verruca vulgaris & \\
+\hline
+% \end{table}
+\end{tabular}
+\end{table}
 
-\hypertarget{si-figures}{%
-\subsubsection*{SI Figures}\label{si-figures}}
-\addcontentsline{toc}{subsubsection}{SI Figures}
-
-Provide a brief legend for each supporting figure after the supporting
-text. Provide figure images in TIFF, EPS, high-resolution PDF, JPEG, or
-GIF format; figures may not be embedded in manuscript text. When saving
-TIFF files, use only LZW compression; do not use JPEG compression. Do
-not save figure numbers, legends, or author names as part of the image.
-Composite figures must be pre-assembled.
-
-\hypertarget{d-figures}{%
-\subsubsection*{3D Figures}\label{d-figures}}
-\addcontentsline{toc}{subsubsection}{3D Figures}
-
-Supply a composable U3D or PRC file so that it may be edited and
-composed. Authors may submit a PDF file but please note it will be
-published in raw format and will not be edited or composed.
-
-\hypertarget{si-tables}{%
-\subsubsection*{SI Tables}\label{si-tables}}
-\addcontentsline{toc}{subsubsection}{SI Tables}
-
-Supply Word, RTF, or LaTeX files (LaTeX files must be accompanied by a
-PDF with the same file name for visual reference); include only one
-table per file. Do not use tabs or spaces to separate columns in Word
-tables.
-
-\hypertarget{si-datasets}{%
-\subsubsection*{SI Datasets}\label{si-datasets}}
-\addcontentsline{toc}{subsubsection}{SI Datasets}
-
-Supply Excel (.xls), RTF, or PDF files. This file type will be published
-in raw format and will not be edited or composed.
-
-\hypertarget{si-movies}{%
-\subsubsection*{SI Movies}\label{si-movies}}
-\addcontentsline{toc}{subsubsection}{SI Movies}
-
-Supply Audio Video Interleave (avi), Quicktime (mov), Windows Media
-(wmv), animated GIF (gif), or MPEG files and submit a brief legend for
-each movie in a Word or RTF file. All movies should be submitted at the
-desired reproduction size and length. Movies should be no more than 10
-MB in size.
-
-\hypertarget{still-images}{%
-\subsubsection*{Still images}\label{still-images}}
-\addcontentsline{toc}{subsubsection}{Still images}
-
-Authors must provide a still image from each video file. Supply TIFF,
-EPS, high-resolution PDF, JPEG, or GIF files.
-
-\hypertarget{appendices}{%
-\subsubsection*{Appendices}\label{appendices}}
-\addcontentsline{toc}{subsubsection}{Appendices}
-
-PNAS prefers that authors submit individual source files to ensure
-readability. If this is not possible, supply a single PDF file that
-contains all of the SI associated with the paper. This file type will be
-published in raw format and will not be edited or composed.
+% \hypertarget{appendices}{%
+% \subsubsection*{Appendices}\label{appendices}}
+% \addcontentsline{toc}{subsubsection}{Appendices}
+% 
+% PNAS prefers that authors submit individual source files to ensure
+% readability. If this is not possible, supply a single PDF file that
+% contains all of the SI associated with the paper. This file type will be
+% published in raw format and will not be edited or composed.
 
 \showmatmethods
 \showacknow
