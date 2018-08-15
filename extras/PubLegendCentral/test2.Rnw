@@ -17,6 +17,7 @@ params <- list(databaseId = "MDCR",
                targetId = 739138,
                comparatorId =  715259,
                outcomeId = 18,
+               primary = 2,
                indication = tolower("major depressive disorder"))
 @
 
@@ -75,12 +76,15 @@ if (!useStoredObject) {
                                   analysisId = 2)
 } else {
     load("paperData.rda")
+    targetName <- tolower(targetName)
+    comparatorName <- tolower(comparatorName)
+    outcomeName <- tolower(outcomeName)  
 }
 @
 
 \templatetype{pnasresearcharticle}  % Choose template
 
-\title{ \Sexpr{outcomeName} risk in new-users of \Sexpr{targetName} versus \Sexpr{comparatorName}
+\title{ \Sexpr{capitalize(outcomeName)} risk in new-users of \Sexpr{targetName} versus \Sexpr{comparatorName}
 for \Sexpr{params$indication} in the \Sexpr{params$databaseId} database}
 
 \author[a,b,c,1]{Martijn J. Schuemie}
@@ -107,36 +111,44 @@ Korea}
 \leadauthor{Schuemie}
 
 % Please add here a significance statement to explain the relevance of your work
-\significancestatement{Authors must submit a 120-word maximum statement about the significance
-of their research paper written at a level understandable to an
-undergraduate educated scientist outside their field of speciality. The
-primary goal of the Significance Statement is to explain the relevance
-of the work in broad context to a broad readership. The Significance
-Statement appears in the paper itself and is required for all research
-papers.}
+% \significancestatement{Authors must submit a 120-word maximum statement about the significance
+% of their research paper written at a level understandable to an
+% undergraduate educated scientist outside their field of speciality. The
+% primary goal of the Significance Statement is to explain the relevance
+% of the work in broad context to a broad readership. The Significance
+% Statement appears in the paper itself and is required for all research
+% papers.}
 
+% \authorcontributions{Please provide details of author contributions here.}
 
-\authorcontributions{Please provide details of author contributions here.}
-
-\authordeclaration{Please declare any conflict of interest here.}
+\authordeclaration{
+MJS and PBR are employees and share-holders of Janssen Research.
+MAS receives contract support from Janssen Research.
+}
 
 \equalauthors{\textsuperscript{} }
 
-\correspondingauthor{\textsuperscript{} }
+\correspondingauthor{\textsuperscript{\url{mschuemie@ohdsi.org}} }
 
 % Keywords are not mandatory, but authors are strongly encouraged to provide them. If provided, please include two to five keywords, separated by the pipe symbol, e.g:
- \keywords{  one |  two |  optional |  optional |  optional   }
+ % \keywords{  one |  two |  optional |  optional |  optional   }
 
 \begin{abstract}
 We conduct a large-scale study on the incidence of \Sexpr{outcomeName} among new users of \Sexpr{targetName} and \Sexpr{comparatorName} from XXXX to XXXX in the \Sexpr{params$databaseId} database.
-The primary outcome of interest is an estimate of the hazard ratio (HR) for incident events between comparable new users under an intent-to-treat risk window assumption.
+The primary outcome of interest is an estimate of the hazard ratio (HR) for incident events between comparable new users under an intent-to-treat risk window assumption. Secondary analyses consider an on-treatment risk window assumption and entertain possible clinically relevant subgroup interaction with the HR.
+We identify \Sexpr{mainResults[1,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[1,"comparatorSubjects"]} \Sexpr{comparatorName} patients for the primary analysis, totaling \Sexpr{round(mainResults[params$primary,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$primary,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$primary,"targetOutcomes"]} and \Sexpr{mainResults[params$primary,"comparatorOutcomes"]} events respectively.
 We control for measured confounding using propensity score trimming and stratification based on an expansive propensity score model that includes all measured patient features before treatment initiation.
-We account for unmeasured confounding using negative and positive controls to estimate and adjust for residual systematic bias in the study design and data source.
-We identify \Sexpr{mainResults[1,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[1,"comparatorSubjects"]} \Sexpr{comparatorName} patients for the primary analysis, totaling \Sexpr{mainResults[1,"targetDays"]/365.24} and \Sexpr{mainResults[1,"comparatorDays"]/365.24} patient-years of observation, and \Sexpr{mainResults[1,"targetOutcomes"]} and \Sexpr{mainResults[1,"comparatorOutcomes"]} events respectively.
+We account for unmeasured confounding using negative and positive controls to estimate and adjust for residual systematic bias in the study design and data source, providing calibrated confidence intervals and p-values.
+In terms of \Sexpr{outcomeName}, \Sexpr{targetName} has a 
+\Sexpr{judgeHazardRatio(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])}
+risk as \Sexpr{comparatorName} [HR: \Sexpr{prettyHr(mainResults[params$primary,"calibratedRr"])},
+95\% confidence interval (CI) \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Lb"])} - \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Ub"])}].
+We demonstrate \Sexpr{judgePropensityScore(1.1,1.1)}.
+%In conclusion, we find that \Sexpr{targetName} is \Sexpr{judgeEffectiveness(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])} effective as \Sexpr{comparatorName} in preventing \Sexpr{outcomeName}.
 \end{abstract}
 
 \dates{This manuscript was compiled on \today}
-\doi{\url{www.pnas.org/cgi/doi/10.1073/pnas.XXXXXXXXXX}}
+% \doi{\url{www.pnas.org/cgi/doi/10.1073/pnas.XXXXXXXXXX}}
 
 \begin{document}
 \SweaveOpts{concordance=TRUE}
@@ -151,12 +163,12 @@ We identify \Sexpr{mainResults[1,"targetSubjects"]} \Sexpr{targetName} and \Sexp
 
 % If your first paragraph (i.e. with the \dropcap) contains a list environment (quote, quotation, theorem, definition, enumerate, itemize...), the line after the list may have some extra indentation. If this is the case, add \parshape=0 to the end of the list environment.
 
-\acknow{Please include your acknowledgments here, set in a single paragraph.
-Please do not include any acknowledgments in the Supporting Information,
-or anywhere else in the manuscript.}
+\acknow{We are grateful for \ldots.}
 
-This document reports the risk of Stroke in new-users of Sertraline
-vs.~duloxetine.
+The Large-scale Evidence Generation and Evaluation in a Network of Databases (LEGEND) project aims to generate reliable evidence on the effects of medical interventions using observational healthcare data to support clinical decision making.
+LEGEND follows ten guiding principles (see Supplementary Material); chief among these stand that we generate evidence at large-scale to achieve completeness and faciliate analysis of the overall distribution of effect size estimates across treatments and outcomes.  
+We also generate evidence consistently by applying a systematic approach across all research questions and disseminate evidence regardless on the estimates effects to avoid publication bias. These aims help overcome the questionable reliable of observational research [schuemie2018].
+This LEGEND document reports the risk of \Sexpr{outcomeName} between new users of \Sexpr{targetName} and \Sexpr{comparatorName} treated for \Sexpr{params$indication}.
 
 \hypertarget{methods}{%
 \section*{Methods}\label{methods}}
@@ -182,96 +194,27 @@ vs.~duloxetine.
   & \multicolumn{1}{c}{C (\%)}
   & \multicolumn{1}{c}{StdDiff} \\
   \hline
-% latex table generated in R 3.4.3 by xtable 1.8-2 package
-% Tue Aug 14 12:24:34 2018
- Age group &    &    &     &    &    &     \\ 
-  $\quad$30-34 &  0.0 &  0.0 &     &  0.0 &  0.0 &     \\ 
-  $\quad$35-39 &  0.0 &  0.0 &     &  0.0 &  0.0 &     \\ 
-  $\quad$40-44 &  0.0 &  0.1 & -0.02 &  0.1 &  0.1 & -0.01 \\ 
-  $\quad$45-49 &  0.2 &  0.5 & -0.05 &  0.3 &  0.3 &  0.00 \\ 
-  $\quad$50-54 &  0.6 &  1.4 & -0.08 &  0.9 &  1.1 & -0.03 \\ 
-  $\quad$55-59 &  1.4 &  2.7 & -0.09 &  1.9 &  2.2 & -0.02 \\ 
-  $\quad$60-64 &  2.2 &  3.5 & -0.08 &  2.7 &  2.9 & -0.01 \\ 
-  $\quad$65-69 & 18.2 & 22.0 & -0.10 & 20.7 & 20.3 &  0.01 \\ 
-  $\quad$70-74 & 21.4 & 23.9 & -0.06 & 22.4 & 22.4 &  0.00 \\ 
-  $\quad$75-79 & 19.9 & 19.5 &  0.01 & 19.7 & 19.4 &  0.01 \\ 
-  $\quad$80-84 & 17.1 & 14.2 &  0.08 & 15.5 & 15.4 &  0.00 \\ 
-  $\quad$85-89 & 12.3 &  8.9 &  0.11 & 10.8 & 11.1 & -0.01 \\ 
-  $\quad$90-94 &  5.3 &  2.8 &  0.12 &  4.1 &  4.1 &  0.00 \\ 
-  $\quad$95-99 &  1.2 &  0.5 &  0.08 &  1.0 &  0.7 &  0.03 \\ 
-  $\quad$00-04 &  0.1 &  0.0 &  0.03 &  0.1 &  0.0 &  0.02 \\ 
-  $\quad$05-09 &  0.0 &  0.0 &     &  0.0 &  0.0 &     \\ 
-  Gender: female & 64.4 & 69.2 & -0.10 & 66.7 & 66.5 &  0.00 \\ 
-  Medical history: General &    &    &     &    &    &     \\ 
-  $\quad$Acute respiratory disease & 29.9 & 30.2 & -0.01 & 30.4 & 30.3 &  0.00 \\ 
-  $\quad$Attention deficit hyperactivity disorder &  0.7 &  0.8 & -0.01 &  0.8 &  0.8 &  0.01 \\ 
-  $\quad$Chronic liver disease &  1.5 &  1.5 &  0.00 &  1.6 &  1.5 &  0.01 \\ 
-  $\quad$Chronic obstructive lung disease & 21.3 & 20.3 &  0.03 & 21.0 & 21.3 & -0.01 \\ 
-  $\quad$Crohn's disease &  0.6 &  0.7 & -0.01 &  0.7 &  0.6 &  0.01 \\ 
-  $\quad$Dementia & 19.0 & 12.1 &  0.19 & 15.6 & 16.1 & -0.01 \\ 
-  $\quad$Depressive disorder & 86.8 & 84.6 &  0.06 & 86.7 & 86.5 &  0.01 \\ 
-  $\quad$Diabetes mellitus & 28.5 & 28.7 &  0.00 & 28.3 & 28.9 & -0.02 \\ 
-  $\quad$Gastroesophageal reflux disease & 22.5 & 22.5 &  0.00 & 22.6 & 22.4 &  0.00 \\ 
-  $\quad$Gastrointestinal hemorrhage &  6.8 &  6.3 &  0.02 &  6.5 &  6.7 & -0.01 \\ 
-  $\quad$Human immunodeficiency virus infection &  0.2 &  0.2 &  0.00 &  0.2 &  0.1 &  0.01 \\ 
-  $\quad$Hyperlipidemia & 49.2 & 44.5 &  0.09 & 47.1 & 47.5 & -0.01 \\ 
-  $\quad$Hypertensive disorder & 71.0 & 66.5 &  0.10 & 69.0 & 69.3 &  0.00 \\ 
-  $\quad$Lesion of liver &  1.7 &  1.0 &  0.06 &  1.4 &  1.1 &  0.03 \\ 
-  $\quad$Obesity &  8.1 &  8.2 &  0.00 &  8.3 &  8.5 & -0.01 \\ 
-  $\quad$Osteoarthritis & 42.6 & 53.0 & -0.21 & 48.3 & 47.6 &  0.01 \\ 
-  $\quad$Pneumonia & 13.1 & 11.6 &  0.05 & 12.4 & 12.9 & -0.02 \\ 
-  $\quad$Psoriasis &  1.4 &  1.5 &  0.00 &  1.4 &  1.3 &  0.01 \\ 
-  $\quad$Renal impairment & 19.8 & 14.6 &  0.14 & 17.3 & 17.5 &  0.00 \\ 
-  $\quad$Rheumatoid arthritis &  3.0 &  4.3 & -0.07 &  3.8 &  3.8 &  0.00 \\ 
-  $\quad$Schizophrenia &  0.0 &  0.0 &  0.01 &  0.0 &  0.0 &  0.00 \\ 
-  $\quad$Ulcerative colitis &  0.7 &  0.8 & -0.01 &  0.7 &  0.8 & -0.02 \\ 
-  $\quad$Urinary tract infectious disease & 24.3 & 22.7 &  0.04 & 23.9 & 24.3 & -0.01 \\ 
-  $\quad$Viral hepatitis C &  0.5 &  0.4 &  0.01 &  0.5 &  0.4 &  0.02 \\ 
-  $\quad$Visual system disorder & 52.7 & 51.4 &  0.02 & 52.0 & 51.8 &  0.00 \\ 
-  Medical history: Cardiovascular disease &    &    &     &    &    &     \\ 
-  $\quad$Atrial fibrillation & 17.9 & 13.7 &  0.12 & 15.8 & 16.6 & -0.02 \\ 
-  $\quad$Cerebrovascular disease & 17.5 & 15.1 &  0.06 & 16.4 & 16.6 &  0.00 \\ 
-  $\quad$Coronary arteriosclerosis & 27.9 & 25.6 &  0.05 & 26.9 & 27.1 & -0.01 \\ 
-  $\quad$Heart disease & 57.3 & 52.4 &  0.10 & 55.2 & 55.2 &  0.00 \\ 
-  $\quad$Heart failure & 19.3 & 15.7 &  0.09 & 17.4 & 18.2 & -0.02 \\ 
-  $\quad$Ischemic heart disease & 16.2 & 14.5 &  0.05 & 15.2 & 15.3 &  0.00 \\ 
-  $\quad$Peripheral vascular disease & 35.7 & 32.5 &  0.07 & 34.2 & 34.4 &  0.00 \\ 
-  $\quad$Pulmonary embolism &  2.0 &  2.2 & -0.01 &  2.0 &  2.2 & -0.02 \\ 
-  $\quad$Venous thrombosis &  6.6 &  6.2 &  0.02 &  6.3 &  6.8 & -0.02 \\ 
-  Medical history: Neoplasms &    &    &     &    &    &     \\ 
-  $\quad$Hematologic neoplasm &  2.5 &  2.2 &  0.02 &  2.4 &  2.3 &  0.00 \\ 
-  $\quad$Malignant lymphoma &  1.2 &  1.1 &  0.01 &  1.3 &  1.1 &  0.02 \\ 
-  $\quad$Malignant neoplasm of anorectum &  0.6 &  0.4 &  0.02 &  0.5 &  0.4 &  0.01 \\ 
-  $\quad$Malignant neoplastic disease & 20.5 & 18.7 &  0.04 & 19.9 & 19.8 &  0.00 \\ 
-  $\quad$Malignant tumor of breast &  3.8 &  3.8 &  0.00 &  4.1 &  3.7 &  0.02 \\ 
-  $\quad$Malignant tumor of colon &  1.1 &  0.9 &  0.02 &  1.0 &  1.0 & -0.01 \\ 
-  $\quad$Malignant tumor of lung &  1.1 &  1.1 &  0.00 &  1.0 &  1.2 & -0.02 \\ 
-  $\quad$Malignant tumor of urinary bladder &  1.1 &  1.0 &  0.02 &  1.1 &  1.1 &  0.00 \\ 
-  $\quad$Primary malignant neoplasm of prostate &  2.5 &  2.4 &  0.01 &  2.4 &  2.6 & -0.01 \\ 
-  Medication use &    &    &     &    &    &     \\ 
-  $\quad$Agents acting on the renin-angiotensin system & 51.3 & 50.3 &  0.02 & 51.1 & 50.6 &  0.01 \\ 
-  $\quad$Antibacterials for systemic use & 68.6 & 73.0 & -0.10 & 70.8 & 70.8 &  0.00 \\ 
-  $\quad$Antiepileptics & 33.7 & 48.6 & -0.31 & 41.0 & 40.2 &  0.02 \\ 
-  $\quad$Antiinflammatory and antirheumatic products & 29.4 & 39.3 & -0.21 & 34.4 & 34.2 &  0.00 \\ 
-  $\quad$Antineoplastic agents &  4.7 &  5.5 & -0.04 &  5.0 &  5.2 & -0.01 \\ 
-  $\quad$Antipsoriatics &  1.1 &  1.2 & -0.01 &  1.1 &  1.3 & -0.01 \\ 
-  $\quad$Antithrombotic agents & 30.6 & 28.9 &  0.04 & 29.9 & 29.9 &  0.00 \\ 
-  $\quad$Beta blocking agents & 47.6 & 44.0 &  0.07 & 46.1 & 46.4 &  0.00 \\ 
-  $\quad$Calcium channel blockers & 32.8 & 31.5 &  0.03 & 32.3 & 32.0 &  0.00 \\ 
-  $\quad$Diuretics & 45.1 & 46.1 & -0.02 & 45.4 & 45.7 &  0.00 \\ 
-  $\quad$Drugs for acid related disorders & 45.6 & 51.9 & -0.13 & 48.6 & 48.6 &  0.00 \\ 
-  $\quad$Drugs for obstructive airway diseases & 35.1 & 38.2 & -0.06 & 36.5 & 36.0 &  0.01 \\ 
-  $\quad$Drugs used in diabetes & 22.6 & 23.5 & -0.02 & 23.0 & 23.2 &  0.00 \\ 
-  $\quad$Immunosuppressants &  4.8 &  6.5 & -0.07 &  5.5 &  5.7 & -0.01 \\ 
-  $\quad$Lipid modifying agents & 57.1 & 57.5 & -0.01 & 57.1 & 57.5 & -0.01 \\ 
-  $\quad$Opioids & 36.7 & 51.0 & -0.29 & 44.3 & 43.3 &  0.02 \\ 
-  $\quad$Psycholeptics & 64.0 & 71.2 & -0.16 & 67.5 & 67.4 &  0.00 \\ 
-  $\quad$Psychostimulants, agents used for adhd and nootropics &  4.8 &  8.6 & -0.15 &  6.5 &  6.6 &  0.00 \\ 
-  
+<<features, echo=FALSE, results=tex, cache=TRUE>>==
+table <- prepareTable1(balance)
+table <- table[3:nrow(table),]
+
+print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+@
 \end{tabular}
 }
 \end{center}
 \end{table*}
+
+<<make_ps, echo=FALSE, cache=TRUE>>==
+plot <- plotPs(ps, targetName, comparatorName)
+suppressMessages(ggsave("ps.pdf", plot,
+                        width = 5, height = 5, units = "in"))
+@
 
 \begin{figure}
   \centerline{
@@ -286,13 +229,22 @@ More text here.
 
 \begin{table*}
 \begin{tabular}{lrrrr}
-% latex table generated in R 3.4.3 by xtable 1.8-2 package
-% Tue Aug 14 14:06:11 2018
- PS stratification, on-treatment & 0.93 (0.68 - 1.26) & 0.64 & 0.91 (0.65 - 1.31) & 0.62 \\ 
-  PS stratification, intent-to-treat & 1.01 (0.87 - 1.16) & 0.93 & 0.97 (0.81 - 1.18) & 0.86 \\ 
-  PS stratification, on-treatment, subgroup interactions & 1.24 (0.16 - 7.81) & 0.83 & NA (NA - NA) & 0.87 \\ 
-  PS stratification, intent-to-treat, subgroup interactions & 0.58 (0.28 - 1.12) & 0.12 & NA (NA - NA) & 0.12 \\ 
-  
+<<result_table, echo=FALSE, results=tex>>==
+table <- mainResults
+table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+table$p <- sprintf("%.2f", table$p)
+table$calHr <- sprintf("%.2f (%.2f - %.2f)", mainResults$calibratedRr, mainResults$calibratedCi95Lb, mainResults$calibratedCi95Ub)
+table$calibratedP <- sprintf("%.2f", table$calibratedP)
+table <- merge(table, analyses)
+table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
+
+print(xtable(table),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+@
 \end{tabular}
 \end{table*}
 
@@ -307,6 +259,19 @@ necessarily be the final publication layout. For more detailed
 information please see the
 \href{http://www.pnas.org/site/authors/format.xhtml}{PNAS Information
 for Authors}.
+
+<<attrition_plot, echo=FALSE, cache=TRUE>>==
+plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
+suppressMessages(ggsave("attrition.pdf", plot,
+                        width = 6, height = 10, units = "in"))
+@
+
+\begin{figure*}
+  \begin{center}
+    \includegraphics[width=0.66\textwidth]{attrition}
+  \end{center}
+  \caption{Attrition diagram for selecting new-users of }\label{fig:attrition}
+\end{figure*}
 
 \hypertarget{author-affiliations}{%
 \subsection*{Author Affiliations}\label{author-affiliations}}
@@ -380,12 +345,12 @@ service (see list at www.pnas.org/site/authors/language-editing.xhtml).
 PNAS does not take responsibility for or endorse these services, and
 their use has no bearing on acceptance of a manuscript for publication.
 
-\begin{figure}
-\centering
-\includegraphics{frog.png}
-\caption{Placeholder image of a frog with a long example caption to show
-justification setting.{}}
-\end{figure}
+% \begin{figure}
+% \centering
+% \includegraphics{frog.png}
+% \caption{Placeholder image of a frog with a long example caption to show
+% justification setting.{}}
+% \end{figure}
 
 \hypertarget{sec:figures}{%
 \subsection*{Digital Figures}\label{sec:figures}}
@@ -450,6 +415,23 @@ methods. If a paper is fundamentally a study of a new method or
 technique, then the methods must be described completely in the main
 text. Because PNAS edits SI and composes it into a single PDF, authors
 must provide the following file formats only.
+
+\hypertarget{si-principles}{%
+\subsubsection*{SI LEGEND Principles}\label{si-text}}
+\addcontentsline{toc}{subsubsection}{SI Principles}
+
+\begin{itemize}
+  \item Evidence will be generated at large-scale.
+  \item Dissemination of the evidence will not depend on the estimated effects.
+  \item Evidence will be generated by consistently applying a systematic approach across all research questions.
+  \item Evidence will be generated using a pre-specified analysis design.
+  \item Evidence will be generated using open source software that is freely available to all.
+  \item Evidence generation process will be empirically evaluated by including control research questions where the true effect size is known.
+  \item Evidence will be generated using best-practices.
+  \item LEGEND will not be used to evaluate methods.
+  \item Evidence will be updated on a regular basis.
+  \item No patient-level data will be shared between sites in the network, only aggregated data.
+\end{itemize}
 
 \hypertarget{si-text}{%
 \subsubsection*{SI Text}\label{si-text}}
