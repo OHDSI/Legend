@@ -22,14 +22,14 @@ prepareTable1 <- function(balance,
     result <- format(round(100*x, percentDigits), digits = percentDigits+1, justify = "right")
     # result <- formatC(x * 100, digits = percentDigits, format = "f")
     result <- gsub("NA", "", result)
-    result <- gsub(" ", "&nbsp;", result)
+    #result <- gsub(" ", "&nbsp;", result)
     return(result)
   }
   
   formatStdDiff <- function(x) {
     result <- format(round(x, stdDiffDigits), digits = stdDiffDigits+1, justify = "right")
     result <- gsub("NA", "", result)
-    result <- gsub(" ", "&nbsp;", result)
+    #result <- gsub(" ", "&nbsp;", result)
     return(result)
   }
   
@@ -70,7 +70,10 @@ prepareTable1 <- function(balance,
                                                            afterMatchingStdDiff = NA,
                                                            stringsAsFactors = FALSE))
             resultsTable <- rbind(resultsTable,
-                                  data.frame(Characteristic = paste0("&nbsp;&nbsp;&nbsp;&nbsp;", balanceSubset$covariateName),
+                                  data.frame(Characteristic = paste0(
+                                    #"&nbsp;&nbsp;&nbsp;&nbsp;", 
+                                    "$\\quad$",
+                                    balanceSubset$covariateName),
                                              beforeMatchingMeanTreated = balanceSubset$beforeMatchingMeanTreated,
                                              beforeMatchingMeanComparator = balanceSubset$beforeMatchingMeanComparator,
                                              beforeMatchingStdDiff = balanceSubset$beforeMatchingStdDiff,

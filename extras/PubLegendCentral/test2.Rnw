@@ -1,0 +1,531 @@
+\documentclass[9pt,twocolumn,twoside,]{pnas-new}
+
+%% Some pieces required from the pandoc template
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Use the lineno option to display guide line numbers if required.
+% Note that the use of elements such as single-column equations
+% may affect the guide line number alignment.
+
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+<<params, echo=FALSE, message=FALSE, comment=FALSE, results=hide>>=
+params <- list(databaseId = "MDCR",
+               targetId = 739138,
+               comparatorId =  715259,
+               outcomeId = 18,
+               primary = 2,
+               indication = tolower("major depressive disorder"))
+@
+
+<<setup, echo=FALSE, message=FALSE, comment=FALSE, results=hide>>=
+library(DatabaseConnector)
+library(CohortMethod)
+library(Legend)
+library(knitr)
+library(xtable)
+library(ggplot2)
+source("DataPulls.R")
+source("PlotsAndTables.R")
+options(knitr.kable.NA = '')
+
+useStoredObject <- TRUE
+
+if (!useStoredObject) {
+    connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                                 server = "localhost/ohdsi",
+                                                 user = "postgres",
+                                                 password = Sys.getenv("pwPostgres"),
+                                                 schema = "legend")
+    connection <- connect(connectionDetails)
+    targetName <- tolower(getExposureName(connection, params$targetId))
+    comparatorName <- tolower(getExposureName(connection, params$comparatorId))
+    outcomeName <- tolower(getOutcomeName(connection, params$outcomeId))
+    analyses <- getAnalyses(connection)
+    mainResults <- getMainResults(connection,
+                                  targetIds = params$targetId,
+                                  comparatorIds = params$comparatorId,
+                                  outcomeIds = params$outcomeId,
+                                  databaseIds = params$databaseId)
+
+    attrition <- getAttrition(connection,
+                              targetId = params$targetId,
+                              comparatorId = params$comparatorId,
+                              outcomeId = params$outcomeId,
+                              analysisId = 1,
+                              databaseId = params$databaseId)
+
+    balance <- getCovariateBalance(connection,
+                                   targetId = params$targetId,
+                                   comparatorId = params$comparatorId,
+                                   databaseId = params$databaseId)
+
+    ps <- getPs(connection,
+                targetId = params$targetId,
+                comparatorId = params$comparatorId,
+                databaseId = params$databaseId)
+
+    kaplanMeier <- getKaplanMeier(connection,
+                                  targetId = params$targetId,
+                                  comparatorId = params$comparatorId,
+                                  outcomeId = params$outcomeId,
+                                  databaseId = params$databaseId,
+                                  analysisId = 2)
+} else {
+    load("paperData.rda")
+    targetName <- tolower(targetName)
+    comparatorName <- tolower(comparatorName)
+    outcomeName <- tolower(outcomeName)  
+}
+@
+
+\templatetype{pnasresearcharticle}  % Choose template
+
+\title{ \Sexpr{capitalize(outcomeName)} risk in new-users of \Sexpr{targetName} versus \Sexpr{comparatorName}
+for \Sexpr{params$indication} in the \Sexpr{params$databaseId} database}
+
+\author[a,b,c,1]{Martijn J. Schuemie}
+\author[a,b,d]{Patrick B. Ryan}
+\author[a,e]{Seng Chan You}
+\author[a,f]{Nicole Pratt}
+\author[a,g]{David Madigan}
+\author[a,d]{George Hripcsak}
+\author[a,c,h,i]{Marc A. Suchard}
+
+  \affil[a]{Observational Health Data Sciences and Informatics, New York, NY, USA}
+  \affil[b]{Janssen Research \& Development, Titusville, NJ, USA}
+  \affil[c]{Department of Biostatistics, University of Califoria, Los Angeles, CA}
+  \affil[d]{Department of Biomedical Informatics, Columbia University, New York, NY}
+  \affil[e]{Department of Biomedical Informatics, Ajou University, Suwon, South
+Korea}
+  \affil[f]{Sansom Institute, University of South Australia, Adelaide SA, Australia}
+  \affil[g]{Department of Statistics, Columbia University, New York, NY}
+  \affil[h]{Department of Biomathematics, University of Califoria, Los Angeles, CA}
+  \affil[i]{Department of Human Genetics, University of Califoria, Los Angeles, CA}
+
+
+% Please give the surname of the lead author for the running footer
+\leadauthor{Schuemie}
+
+% Please add here a significance statement to explain the relevance of your work
+% \significancestatement{Authors must submit a 120-word maximum statement about the significance
+% of their research paper written at a level understandable to an
+% undergraduate educated scientist outside their field of speciality. The
+% primary goal of the Significance Statement is to explain the relevance
+% of the work in broad context to a broad readership. The Significance
+% Statement appears in the paper itself and is required for all research
+% papers.}
+
+% \authorcontributions{Please provide details of author contributions here.}
+
+\authordeclaration{
+MJS and PBR are employees and share-holders of Janssen Research.
+MAS receives contract support from Janssen Research.
+}
+
+\equalauthors{\textsuperscript{} }
+
+\correspondingauthor{\textsuperscript{\url{mschuemie@ohdsi.org}} }
+
+% Keywords are not mandatory, but authors are strongly encouraged to provide them. If provided, please include two to five keywords, separated by the pipe symbol, e.g:
+ % \keywords{  one |  two |  optional |  optional |  optional   }
+
+\begin{abstract}
+We conduct a large-scale study on the incidence of \Sexpr{outcomeName} among new users of \Sexpr{targetName} and \Sexpr{comparatorName} from XXXX to XXXX in the \Sexpr{params$databaseId} database.
+The primary outcome of interest is an estimate of the hazard ratio (HR) for incident events between comparable new users under an intent-to-treat risk window assumption. Secondary analyses consider an on-treatment risk window assumption and entertain possible clinically relevant subgroup interaction with the HR.
+We identify \Sexpr{mainResults[1,"targetSubjects"]} \Sexpr{targetName} and \Sexpr{mainResults[1,"comparatorSubjects"]} \Sexpr{comparatorName} patients for the primary analysis, totaling \Sexpr{round(mainResults[params$primary,"targetDays"]/365.24)} and \Sexpr{round(mainResults[params$primary,"comparatorDays"]/365.24)} patient-years of observation, and \Sexpr{mainResults[params$primary,"targetOutcomes"]} and \Sexpr{mainResults[params$primary,"comparatorOutcomes"]} events respectively.
+We control for measured confounding using propensity score trimming and stratification based on an expansive propensity score model that includes all measured patient features before treatment initiation.
+We account for unmeasured confounding using negative and positive controls to estimate and adjust for residual systematic bias in the study design and data source, providing calibrated confidence intervals and p-values.
+In terms of \Sexpr{outcomeName}, \Sexpr{targetName} has a 
+\Sexpr{judgeHazardRatio(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])}
+risk as \Sexpr{comparatorName} [HR: \Sexpr{prettyHr(mainResults[params$primary,"calibratedRr"])},
+95\% confidence interval (CI) \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Lb"])} - \Sexpr{prettyHr(mainResults[params$primary, "calibratedCi95Ub"])}].
+We demonstrate \Sexpr{judgePropensityScore(1.1,1.1)}.
+%In conclusion, we find that \Sexpr{targetName} is \Sexpr{judgeEffectiveness(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])} effective as \Sexpr{comparatorName} in preventing \Sexpr{outcomeName}.
+\end{abstract}
+
+\dates{This manuscript was compiled on \today}
+% \doi{\url{www.pnas.org/cgi/doi/10.1073/pnas.XXXXXXXXXX}}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+% Optional adjustment to line up main text (after abstract) of first page with line numbers, when using both lineno and twocolumn options.
+% You should only change this length when you've finalised the article contents.
+\verticaladjustment{-2pt}
+
+\maketitle
+\thispagestyle{firststyle}
+\ifthenelse{\boolean{shortarticle}}{\ifthenelse{\boolean{singlecolumn}}{\abscontentformatted}{\abscontent}}{}
+
+% If your first paragraph (i.e. with the \dropcap) contains a list environment (quote, quotation, theorem, definition, enumerate, itemize...), the line after the list may have some extra indentation. If this is the case, add \parshape=0 to the end of the list environment.
+
+\acknow{We are grateful for \ldots.}
+
+The Large-scale Evidence Generation and Evaluation in a Network of Databases (LEGEND) project aims to generate reliable evidence on the effects of medical interventions using observational healthcare data to support clinical decision making.
+LEGEND follows ten guiding principles (see Supplementary Material); chief among these stand that we generate evidence at large-scale to achieve completeness and faciliate analysis of the overall distribution of effect size estimates across treatments and outcomes.  
+We also generate evidence consistently by applying a systematic approach across all research questions and disseminate evidence regardless on the estimates effects to avoid publication bias. These aims help overcome the questionable reliable of observational research [schuemie2018].
+This LEGEND document reports the risk of \Sexpr{outcomeName} between new users of \Sexpr{targetName} and \Sexpr{comparatorName} treated for \Sexpr{params$indication}.
+
+\hypertarget{methods}{%
+\section*{Methods}\label{methods}}
+\addcontentsline{toc}{section}{Methods}
+
+\hypertarget{results}{%
+\section*{Results}\label{results}}
+\addcontentsline{toc}{section}{Results}
+
+\begin{table*}
+\caption{\textbf{Patient demographics.} Target (T) population is sertaline new-users.  Comparative (C) population is dulexotine new-users.  We report the standardized difference of population means (StdDiff) before and after stratification for selected base-line patient characteristics.}\label{tab:demographics}
+\begin{center}
+\resizebox{0.5\textwidth}{!}{
+\begin{tabular}{lrrrrrr}
+\hline
+& \multicolumn{3}{c}{Before stratification}
+& \multicolumn{3}{c}{After stratification} \\
+\multicolumn{1}{c}{Characteristic}
+  & \multicolumn{1}{c}{T (\%)}
+  & \multicolumn{1}{c}{C (\%)}
+  & \multicolumn{1}{c}{StdDiff}
+  & \multicolumn{1}{c}{T (\%)}
+  & \multicolumn{1}{c}{C (\%)}
+  & \multicolumn{1}{c}{StdDiff} \\
+  \hline
+<<features, echo=FALSE, results=tex, cache=TRUE>>==
+table <- prepareTable1(balance)
+table <- table[3:nrow(table),]
+
+print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+@
+\end{tabular}
+}
+\end{center}
+\end{table*}
+
+<<make_ps, echo=FALSE, cache=TRUE>>==
+plot <- plotPs(ps, targetName, comparatorName)
+suppressMessages(ggsave("ps.pdf", plot,
+                        width = 5, height = 5, units = "in"))
+@
+
+\begin{figure}
+  \centerline{
+    \includegraphics[width=0.4\textwidth]{ps}
+  }
+  \caption{\textbf{Preference score distribution for sertaline and dulexotine new-users.}
+  The preference score is a transformation of the propensity score that adjusts for size differences between populations.  A higher overlap indicates that subjects in the two populations are more similar in terms of their predicted probability of receiving one treatment over the other.
+  }
+\end{figure}
+
+More text here.
+
+\begin{table*}
+\begin{tabular}{lrrrr}
+<<result_table, echo=FALSE, results=tex>>==
+table <- mainResults
+table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+table$p <- sprintf("%.2f", table$p)
+table$calHr <- sprintf("%.2f (%.2f - %.2f)", mainResults$calibratedRr, mainResults$calibratedCi95Lb, mainResults$calibratedCi95Ub)
+table$calibratedP <- sprintf("%.2f", table$calibratedP)
+table <- merge(table, analyses)
+table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
+
+print(xtable(table),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+@
+\end{tabular}
+\end{table*}
+
+\hypertarget{guide-to-using-this-template}{%
+\section*{Guide to using this
+template}\label{guide-to-using-this-template}}
+\addcontentsline{toc}{section}{Guide to using this template}
+
+Please note that whilst this template provides a preview of the typeset
+manuscript for submission, to help in this preparation, it will not
+necessarily be the final publication layout. For more detailed
+information please see the
+\href{http://www.pnas.org/site/authors/format.xhtml}{PNAS Information
+for Authors}.
+
+<<attrition_plot, echo=FALSE, cache=TRUE>>==
+plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
+suppressMessages(ggsave("attrition.pdf", plot,
+                        width = 6, height = 10, units = "in"))
+@
+
+\begin{figure*}
+  \begin{center}
+    \includegraphics[width=0.66\textwidth]{attrition}
+  \end{center}
+  \caption{Attrition diagram for selecting new-users of }\label{fig:attrition}
+\end{figure*}
+
+\hypertarget{author-affiliations}{%
+\subsection*{Author Affiliations}\label{author-affiliations}}
+\addcontentsline{toc}{subsection}{Author Affiliations}
+
+Include department, institution, and complete address, with the
+ZIP/postal code, for each author. Use lower case letters to match
+authors with institutions, as shown in the example. Authors with an
+ORCID ID may supply this information at submission.
+
+\hypertarget{submitting-manuscripts}{%
+\subsection*{Submitting Manuscripts}\label{submitting-manuscripts}}
+\addcontentsline{toc}{subsection}{Submitting Manuscripts}
+
+All authors must submit their articles at
+\href{http://www.pnascentral.org/cgi-bin/main.plex}{PNAScentral}. If you
+are using Overleaf to write your article, you can use the ``Submit to
+PNAS'' option in the top bar of the editor window.
+
+\hypertarget{format}{%
+\subsection*{Format}\label{format}}
+\addcontentsline{toc}{subsection}{Format}
+
+Many authors find it useful to organize their manuscripts with the
+following order of sections; Title, Author Affiliation, Keywords,
+Abstract, Significance Statement, Results, Discussion, Materials and
+methods, Acknowledgments, and References. Other orders and headings are
+permitted.
+
+\hypertarget{manuscript-length}{%
+\subsection*{Manuscript Length}\label{manuscript-length}}
+\addcontentsline{toc}{subsection}{Manuscript Length}
+
+PNAS generally uses a two-column format averaging 67 characters,
+including spaces, per line. The maximum length of a Direct Submission
+research article is six pages and a PNAS PLUS research article is ten
+pages including all text, spaces, and the number of characters displaced
+by figures, tables, and equations. When submitting tables, figures,
+and/or equations in addition to text, keep the text for your manuscript
+under 39,000 characters (including spaces) for Direct Submissions and
+72,000 characters (including spaces) for PNAS PLUS.
+
+\hypertarget{references}{%
+\subsection*{References}\label{references}}
+\addcontentsline{toc}{subsection}{References}
+
+References should be cited in numerical order as they appear in text;
+this will be done automatically via bibtex, e.g. (1) and (2, 3). All
+references, including for the SI, should be included in the main
+manuscript file. References appearing in both sections should not be
+duplicated. SI references included in tables should be included with the
+main reference section.
+
+\hypertarget{data-archival}{%
+\subsection*{Data Archival}\label{data-archival}}
+\addcontentsline{toc}{subsection}{Data Archival}
+
+PNAS must be able to archive the data essential to a published article.
+Where such archiving is not possible, deposition of data in public
+databases, such as GenBank, ArrayExpress, Protein Data Bank, Unidata,
+and others outlined in the Information for Authors, is acceptable.
+
+\hypertarget{language-editing-services}{%
+\subsection*{Language-Editing
+Services}\label{language-editing-services}}
+\addcontentsline{toc}{subsection}{Language-Editing Services}
+
+Prior to submission, authors who believe their manuscripts would benefit
+from professional editing are encouraged to use a language-editing
+service (see list at www.pnas.org/site/authors/language-editing.xhtml).
+PNAS does not take responsibility for or endorse these services, and
+their use has no bearing on acceptance of a manuscript for publication.
+
+% \begin{figure}
+% \centering
+% \includegraphics{frog.png}
+% \caption{Placeholder image of a frog with a long example caption to show
+% justification setting.{}}
+% \end{figure}
+
+\hypertarget{sec:figures}{%
+\subsection*{Digital Figures}\label{sec:figures}}
+\addcontentsline{toc}{subsection}{Digital Figures}
+
+Only TIFF, EPS, and high-resolution PDF for Mac or PC are allowed for
+figures that will appear in the main text, and images must be final
+size. Authors may submit U3D or PRC files for 3D images; these must be
+accompanied by 2D representations in TIFF, EPS, or high-resolution PDF
+format. Color images must be in RGB (red, green, blue) mode. Include the
+font files for any text.
+
+Figures and Tables should be labelled and referenced in the standard way
+using the \texttt{\textbackslash{}label\{\}} and
+\texttt{\textbackslash{}ref\{\}} commands.
+
+Figure \[fig:frog\] shows an example of how to insert a column-wide
+figure. To insert a figure wider than one column, please use the
+\texttt{\textbackslash{}begin\{figure*\}...\textbackslash{}end\{figure*\}}
+environment. Figures wider than one column should be sized to 11.4 cm or
+17.8 cm wide.
+
+\hypertarget{single-column-equations}{%
+\subsection*{Single column equations}\label{single-column-equations}}
+\addcontentsline{toc}{subsection}{Single column equations}
+
+Authors may use 1- or 2-column equations in their article, according to
+their preference.
+
+To allow an equation to span both columns, options are to use the
+\texttt{\textbackslash{}begin\{figure*\}...\textbackslash{}end\{figure*\}}
+environment mentioned above for figures, or to use the
+\texttt{\textbackslash{}begin\{widetext\}...\textbackslash{}end\{widetext\}}
+environment as shown in equation \[eqn:example\] below.
+
+Please note that this option may run into problems with floats and
+footnotes, as mentioned in the \href{http://texdoc.net/pkg/cuted}{cuted
+package documentation}. In the case of problems with footnotes, it may
+be possible to correct the situation using commands
+\texttt{\textbackslash{}footnotemark} and
+\texttt{\textbackslash{}footnotetext}.
+
+\[\begin{aligned}
+(x+y)^3&=(x+y)(x+y)^2\\
+       &=(x+y)(x^2+2xy+y^2) \label{eqn:example} \\
+       &=x^3+3x^2y+3xy^3+x^3.
+\end{aligned}\]
+
+\hypertarget{supporting-information-si}{%
+\subsection*{Supporting Information
+(SI)}\label{supporting-information-si}}
+\addcontentsline{toc}{subsection}{Supporting Information (SI)}
+
+The main text of the paper must stand on its own without the SI. Refer
+to SI in the manuscript at an appropriate point in the text. Number
+supporting figures and tables starting with S1, S2, etc. Authors are
+limited to no more than 10 SI files, not including movie files. Authors
+who place detailed materials and methods in SI must provide sufficient
+detail in the main text methods to enable a reader to follow the logic
+of the procedures and results and also must reference the online
+methods. If a paper is fundamentally a study of a new method or
+technique, then the methods must be described completely in the main
+text. Because PNAS edits SI and composes it into a single PDF, authors
+must provide the following file formats only.
+
+\hypertarget{si-principles}{%
+\subsubsection*{SI LEGEND Principles}\label{si-text}}
+\addcontentsline{toc}{subsubsection}{SI Principles}
+
+\begin{itemize}
+  \item Evidence will be generated at large-scale.
+  \item Dissemination of the evidence will not depend on the estimated effects.
+  \item Evidence will be generated by consistently applying a systematic approach across all research questions.
+  \item Evidence will be generated using a pre-specified analysis design.
+  \item Evidence will be generated using open source software that is freely available to all.
+  \item Evidence generation process will be empirically evaluated by including control research questions where the true effect size is known.
+  \item Evidence will be generated using best-practices.
+  \item LEGEND will not be used to evaluate methods.
+  \item Evidence will be updated on a regular basis.
+  \item No patient-level data will be shared between sites in the network, only aggregated data.
+\end{itemize}
+
+\hypertarget{si-text}{%
+\subsubsection*{SI Text}\label{si-text}}
+\addcontentsline{toc}{subsubsection}{SI Text}
+
+Supply Word, RTF, or LaTeX files (LaTeX files must be accompanied by a
+PDF with the same file name for visual reference).
+
+\hypertarget{si-figures}{%
+\subsubsection*{SI Figures}\label{si-figures}}
+\addcontentsline{toc}{subsubsection}{SI Figures}
+
+Provide a brief legend for each supporting figure after the supporting
+text. Provide figure images in TIFF, EPS, high-resolution PDF, JPEG, or
+GIF format; figures may not be embedded in manuscript text. When saving
+TIFF files, use only LZW compression; do not use JPEG compression. Do
+not save figure numbers, legends, or author names as part of the image.
+Composite figures must be pre-assembled.
+
+\hypertarget{d-figures}{%
+\subsubsection*{3D Figures}\label{d-figures}}
+\addcontentsline{toc}{subsubsection}{3D Figures}
+
+Supply a composable U3D or PRC file so that it may be edited and
+composed. Authors may submit a PDF file but please note it will be
+published in raw format and will not be edited or composed.
+
+\hypertarget{si-tables}{%
+\subsubsection*{SI Tables}\label{si-tables}}
+\addcontentsline{toc}{subsubsection}{SI Tables}
+
+Supply Word, RTF, or LaTeX files (LaTeX files must be accompanied by a
+PDF with the same file name for visual reference); include only one
+table per file. Do not use tabs or spaces to separate columns in Word
+tables.
+
+\hypertarget{si-datasets}{%
+\subsubsection*{SI Datasets}\label{si-datasets}}
+\addcontentsline{toc}{subsubsection}{SI Datasets}
+
+Supply Excel (.xls), RTF, or PDF files. This file type will be published
+in raw format and will not be edited or composed.
+
+\hypertarget{si-movies}{%
+\subsubsection*{SI Movies}\label{si-movies}}
+\addcontentsline{toc}{subsubsection}{SI Movies}
+
+Supply Audio Video Interleave (avi), Quicktime (mov), Windows Media
+(wmv), animated GIF (gif), or MPEG files and submit a brief legend for
+each movie in a Word or RTF file. All movies should be submitted at the
+desired reproduction size and length. Movies should be no more than 10
+MB in size.
+
+\hypertarget{still-images}{%
+\subsubsection*{Still images}\label{still-images}}
+\addcontentsline{toc}{subsubsection}{Still images}
+
+Authors must provide a still image from each video file. Supply TIFF,
+EPS, high-resolution PDF, JPEG, or GIF files.
+
+\hypertarget{appendices}{%
+\subsubsection*{Appendices}\label{appendices}}
+\addcontentsline{toc}{subsubsection}{Appendices}
+
+PNAS prefers that authors submit individual source files to ensure
+readability. If this is not possible, supply a single PDF file that
+contains all of the SI associated with the paper. This file type will be
+published in raw format and will not be edited or composed.
+
+\showmatmethods
+\showacknow
+\pnasbreak
+
+\hypertarget{refs}{}
+\leavevmode\hypertarget{ref-belkin2002using}{}%
+1. Belkin M, Niyogi P (2002) Using manifold stucture for partially
+labeled classification. \emph{Advances in Neural Information Processing
+Systems}, pp 929--936.
+
+\leavevmode\hypertarget{ref-berard1994embedding}{}%
+2. Bérard P, Besson G, Gallot S (1994) Embedding riemannian manifolds by
+their heat kernel. \emph{Geometric \& Functional Analysis GAFA}
+4(4):373--398.
+
+\leavevmode\hypertarget{ref-coifman2005geometric}{}%
+3. Coifman RR, et al. (2005) Geometric diffusions as a tool for harmonic
+analysis and structure definition of data: Diffusion maps.
+\emph{Proceedings of the National Academy of Sciences of the United
+States of America} 102(21):7426--7431.
+
+
+
+% Bibliography
+% \bibliography{pnas-sample}
+
+\end{document}
+
