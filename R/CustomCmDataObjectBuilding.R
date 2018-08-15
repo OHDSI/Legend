@@ -142,7 +142,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     getCohorts <- function(i) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
+        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
         if (!file.exists(fileName)) {
             sql <- SqlRender::loadRenderTranslateSql("GetExposureCohorts.sql",
                                                      "Legend",
@@ -156,12 +156,28 @@ fetchAllDataFromServer <- function(connectionDetails,
             cohorts <- DatabaseConnector::querySql(conn, sql)
             colnames(cohorts) <- SqlRender::snakeCaseToCamelCase(colnames(cohorts))
             saveRDS(cohorts, fileName)
-            # ffbase::save.ffdf(cohorts, dir = cohortsFolder)
-            # ff::close.ffdf(cohorts)
         }
         return(NULL)
     }
     plyr::llply(1:nrow(exposureSummary), getCohorts, .progress = "text")
+
+    # Create single file with unique rowId - cohort definition ID combinations:
+    allCohorts <- data.frame()
+    for (i in 1:nrow(exposureSummary)) {
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
+        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
+        cohorts <- readRDS(fileName)
+        idxTarget <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == targetId]) & cohorts$treatment == 1
+        idxComparator <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == comparatorId]) & cohorts$treatment == 0
+        if (any(idxTarget) | any(idxComparator)) {
+            cohorts$cohortId <- targetId
+            cohorts$cohortId[cohorts$treatment == 0] <- comparatorId
+            cohorts$treatment <- NULL
+            allCohorts <- rbind(allCohorts, cohorts[idxTarget | idxComparator, ])
+        }
+    }
+    saveRDS(allCohorts, file.path(cohortsFolder, "allCohorts.rds"))
 
     # Retrieve outcomes -------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving outcomes")
@@ -247,7 +263,7 @@ constructCohortMethodDataObject <- function(targetId,
         outcomesFolder <- file.path(indicationFolder, "allOutcomes")
     }
     # copying cohorts
-    fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
+    fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
     cohorts <- readRDS(fileName)
     # # Subsetting cohorts
     # cohorts <- NULL
