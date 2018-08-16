@@ -204,57 +204,13 @@ synthesizePositiveControls <- function(connectionDetails,
 createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
     ParallelLogger::logInfo("- Preparing data files")
-    # exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 
     # Create exposures file ----------------------------------------------------------
     ParallelLogger::logTrace("Create exposures file")
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-    cohortIds <- unique(exposureSummary$targetId, exposureSummary$comparatorId)
-    exposures <- plyr::llply(cohortIds,
-                             getCohort,
-                             exposureSummary = exposureSummary,
-                             indicationFolder = indicationFolder,
-                             .progress = "text")
     exposures <- readRDS(file.path(indicationFolder, "allCohorts", "allCohorts.rds"))
-    # exposures <- data.frame()
-    # for (i in 1:nrow(exposureSummary)) {
-    #     print(i)
-    #     targetId <- exposureSummary$targetId[i]
-    #     comparatorId <- exposureSummary$comparatorId[i]
-    #     fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
-    #     cohorts <- readRDS(fileName)
-    #     # idx <- !(cohorts$rowId %in% exposures$rowId)
-    #     idxTarget <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == targetId]) & cohorts$treatment == 1
-    #     idxComparator <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == comparatorId]) & cohorts$treatment == 0
-    #     if (any(idxTarget) | any(idxComparator)) {
-    #         cohorts$cohortId <- targetId
-    #         cohorts$cohortId[cohorts$treatment == 0] <- comparatorId
-    #         cohorts$treatment <- NULL
-    #         exposures <- rbind(exposures, cohorts[idxTarget | idxComparator, ])
-    #     }
-    # }
-#
-#
-#     cohorts <- NULL
-#     ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-#     ff::open.ffdf(cohorts)
-#     cohortIds <- ff::as.ram(ffbase::unique.ff(cohorts$cohortDefinitionId))
-#     dedupe <- function(cohortId, data) {
-#         data <- data[data$cohortDefinitionId == cohortId,]
-#         data <- ff::as.ram(data)
-#         data$targetId <- NULL
-#         data$comparatorId <- NULL
-#         data <- data[order(data$rowId), ]
-#         data <- data[!duplicated(data$rowId), ]
-#         return(data)
-#     }
-#     exposures <- sapply(cohortIds, dedupe, data = cohorts, simplify = FALSE)
-#     exposures <- do.call("rbind", exposures)
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
-
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
     colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
-    # colnames(exposures)[colnames(exposures) == "cohortDefinitionId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1

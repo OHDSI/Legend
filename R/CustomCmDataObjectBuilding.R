@@ -136,6 +136,7 @@ fetchAllDataFromServer <- function(connectionDetails,
 
     # Retrieve cohorts -------------------------------------------------------------------------
     ParallelLogger::logInfo("Retrieving cohorts")
+    start <- Sys.time()
     if (!file.exists(cohortsFolder)) {
        dir.create(cohortsFolder)
     }
@@ -160,6 +161,8 @@ fetchAllDataFromServer <- function(connectionDetails,
         return(NULL)
     }
     plyr::llply(1:nrow(exposureSummary), getCohorts, .progress = "text")
+    delta <- Sys.time() - start
+    writeLines(paste("Retrieving cohorts took", signif(delta, 3), attr(delta, "units")))
 
     # Create single file with unique rowId - cohort definition ID combinations:
     allCohorts <- data.frame()

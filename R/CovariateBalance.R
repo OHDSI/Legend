@@ -37,21 +37,53 @@ computeCovariateBalance <- function(indicationId = "Depression",
     if (!file.exists(balanceFolder)) {
         dir.create(balanceFolder, recursive = TRUE)
     }
+    # Using ITT study population, stratification, and matching arguments:
     cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListDepression.json",
+                                      sprintf("cmAnalysisList%s.json", indicationId),
                                       package = "Legend")
     cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
-
-    # Using ITT study population and stratification arguments:
     studyPopArgs <- cmAnalysisList[[2]]$createStudyPopArgs
     stratifyByPsArgs <- cmAnalysisList[[2]]$stratifyByPsArgs
-    computeBalance <- function(exposureSummaryRow, studyPopArgs, stratifyByPsArgs, indicationFolder, balanceFolder) {
-        ParallelLogger::logTrace("Computing balance for target ", exposureSummaryRow$targetId, " and comparator ",  exposureSummaryRow$comparatorId)
-        cmDataFolder <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId))
-        cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-        psFile <- file.path(indicationFolder, "cmOutput", paste0("Ps_l1_p1_t", exposureSummaryRow$targetId, "_c", exposureSummaryRow$comparatorId, ".rds"))
-        ps <- readRDS(psFile)
+    cmAnalysisListFile <- system.file("settings",
+                                      sprintf("cmAnalysisListAsym%s.json", indicationId),
+                                      package = "Legend")
+    cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+    matchOnPsArgs <- cmAnalysisList[[2]]$matchOnPsArgs
 
+    # Load restricted set of covariates to use for per-outcome balance:
+    csvFile <- system.file("settings",
+                           "Table1Specs.csv",
+                           package = "Legend")
+    table1Specs <- read.csv(csvFile)
+    analysisIds <- table1Specs$analysisId[table1Specs$covariateIds == ""]
+    covariateIds <- table1Specs$covariateIds[table1Specs$covariateIds != ""]
+    covariateIds <- strsplit(as.character(covariateIds), ";")
+    covariateIds <- do.call("c", covariateIds)
+    covariateIds <- as.numeric(covariateIds)
+    covarSubsetIds <- list(analysisIds = analysisIds,
+                        covariateIds = covariateIds)
+
+    # Load outcomeModelReference:
+    pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
+    outcomeModelReference1 <- readRDS(pathToRds)
+    outcomeModelReference1 <- outcomeModelReference1[outcomeModelReference1$analysisId == 2, ]
+    pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
+    outcomeModelReference2 <- readRDS(pathToRds)
+    outcomeModelReference2 <- outcomeModelReference2[outcomeModelReference2$analysisId == 4, ]
+    outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
+    outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
+    computeBalance <- function(exposureSummaryRow, studyPopArgs, stratifyByPsArgs, indicationFolder, balanceFolder, covarSubsetIds, outcomeModelReference) {
+        ParallelLogger::logTrace("Computing balance for target ", exposureSummaryRow$targetId, " and comparator ",  exposureSummaryRow$comparatorId)
+        referenceSubset <- outcomeModelReference[outcomeModelReference$targetId == exposureSummaryRow$targetId &
+                                                     outcomeModelReference$comparatorId == exposureSummaryRow$comparatorId, ]
+        cmDataFolder <-file.path(indicationFolder, "cmOutput", referenceSubset$cohortMethodDataFolder[1])
+        cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
+        psFile <- file.path(indicationFolder, "cmOutput", referenceSubset$sharedPsFile[1])
+        ps <- readRDS(psFile)
+        # Compute balance when stratifying. Not specific to one outcome, so create hypothetical study population --------
         studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
                                                         population = ps,
                                                         firstExposureOnly = studyPopArgs$firstExposureOnly,
@@ -66,19 +98,36 @@ computeCovariateBalance <- function(indicationId = "Depression",
                                                         riskWindowEnd = studyPopArgs$riskWindowEnd,
                                                         addExposureDaysToEnd = studyPopArgs$addExposureDaysToEnd,
                                                         censorAtNewRiskWindow = studyPopArgs$censorAtNewRiskWindow)
-        strataPop <- CohortMethod::stratifyByPs(population = studyPop,
-                                                numberOfStrata = stratifyByPsArgs$numberOfStrata,
-                                                baseSelection = stratifyByPsArgs$baseSelection)
+        stratifiedPop <- CohortMethod::stratifyByPs(population = studyPop,
+                                                    numberOfStrata = stratifyByPsArgs$numberOfStrata,
+                                                    baseSelection = stratifyByPsArgs$baseSelection)
         fileName <- file.path(balanceFolder, paste0("Bal_t",
                                                     exposureSummaryRow$targetId,
                                                     "_c",
                                                     exposureSummaryRow$comparatorId,
-                                                    ".rds"))
+                                                    "_a2.rds"))
         if (!file.exists(fileName)) {
-            balance <- CohortMethod::computeCovariateBalance(population = strataPop,
+            balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
                                                              cohortMethodData = cmData)
             saveRDS(balance, fileName)
         }
+
+        # Compute balance when matching Not specific to one outcome, so use hypothetical study population -----------------
+        matchedPop <- CohortMethod::matchOnPs(population = studyPop,
+                                              caliper = matchOnPsArgs$caliper,
+                                              caliperScale = matchOnPsArgs$caliperScale,
+                                              maxRatio = matchOnPsArgs$maxRatio)
+        fileName <- file.path(balanceFolder, paste0("Bal_t",
+                                                    exposureSummaryRow$targetId,
+                                                    "_c",
+                                                    exposureSummaryRow$comparatorId,
+                                                    "_a4.rds"))
+        if (!file.exists(fileName)) {
+            balance <- CohortMethod::computeCovariateBalance(population = matchedPop,
+                                                             cohortMethodData = cmData)
+            saveRDS(balance, fileName)
+        }
+        # Compute balance within subgroups, both for stratification and matching. Not specific to one outcome --------------
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
         for (subgroupCovariateId in subgroupCovariateIds) {
             fileName <- file.path(balanceFolder, paste0("Bal_t",
@@ -87,11 +136,11 @@ computeCovariateBalance <- function(indicationId = "Depression",
                                                         exposureSummaryRow$comparatorId,
                                                         "_s",
                                                         subgroupCovariateId,
-                                                        ".rds"))
+                                                        "_a2.rds"))
             if (!file.exists(fileName)) {
                 subgroupSize <- ffbase::sum.ff(cmData$covariates$covariateId == subgroupCovariateId)
                 if (subgroupSize > 1000) {
-                    balance <- CohortMethod::computeCovariateBalance(population = strataPop,
+                    balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
                                                                      cohortMethodData = cmData,
                                                                      subgroupCovariateId = subgroupCovariateId)
 
@@ -99,18 +148,80 @@ computeCovariateBalance <- function(indicationId = "Depression",
                     saveRDS(balance, fileName)
                 }
             }
+            fileName <- file.path(balanceFolder, paste0("Bal_t",
+                                                        exposureSummaryRow$targetId,
+                                                        "_c",
+                                                        exposureSummaryRow$comparatorId,
+                                                        "_s",
+                                                        subgroupCovariateId,
+                                                        "_a4.rds"))
+            if (!file.exists(fileName)) {
+                subgroupSize <- ffbase::sum.ff(cmData$covariates$covariateId == subgroupCovariateId)
+                if (subgroupSize > 1000) {
+                    balance <- CohortMethod::computeCovariateBalance(population = matchedPop,
+                                                                     cohortMethodData = cmData,
+                                                                     subgroupCovariateId = subgroupCovariateId)
+
+
+                    saveRDS(balance, fileName)
+                }
+            }
+
+        }
+        # Compute balance per outcome. Restrict to subset of covariates to limit space ----------------------------------------------
+        covariateIds <- cmData$covariateRef$covariateId[ffbase::`%in%`(cmData$covariateRef$analysisId, covarSubsetIds$analysisIds) |
+                                                            ffbase::`%in%`(cmData$covariateRef$covariateId, covarSubsetIds$covariateIds)]
+        cmDataSubset <- cmData
+        cmDataSubset$covariates <- cmData$covariates[ffbase::`%in%`(cmData$covariates$covariateId, covariateIds), ]
+        outcomeIds <- unique(referenceSubset$outcomeId)
+        for (outcomeId in outcomeIds) {
+            fileName <- file.path(balanceFolder, paste0("Bal_t",
+                                                        exposureSummaryRow$targetId,
+                                                        "_c",
+                                                        exposureSummaryRow$comparatorId,
+                                                        "_o",
+                                                        outcomeId,
+                                                        "_a2.rds"))
+            if (!file.exists(fileName)) {
+                strataPopFile <- referenceSubset$strataFile[referenceSubset$outcomeId == outcomeId & referenceSubset$analysisId == 2]
+                strataPop <- readRDS(file.path(indicationFolder, "cmOutput", strataPopFile))
+                balance <- CohortMethod::computeCovariateBalance(population = strataPop,
+                                                                 cohortMethodData = cmDataSubset)
+
+
+                saveRDS(balance, fileName)
+            }
+            fileName <- file.path(balanceFolder, paste0("Bal_t",
+                                                        exposureSummaryRow$targetId,
+                                                        "_c",
+                                                        exposureSummaryRow$comparatorId,
+                                                        "_o",
+                                                        outcomeId,
+                                                        "_a4.rds"))
+            if (!file.exists(fileName)) {
+                strataPopFile <- referenceSubset$strataFile[referenceSubset$outcomeId == outcomeId & referenceSubset$analysisId == 4]
+                strataPop <- readRDS(file.path(indicationFolder, "cmOutput", strataPopFile))
+                balance <- CohortMethod::computeCovariateBalance(population = strataPop,
+                                                                 cohortMethodData = cmDataSubset)
+
+
+                saveRDS(balance, fileName)
+            }
+
         }
     }
 
     cluster <- ParallelLogger::makeCluster(numberOfThreads = min(4, maxCores))
     exposureSummary$comparison <- paste(exposureSummary$targetId, exposureSummary$comparatorId, sep = "-")
     ParallelLogger::clusterApply(cluster = cluster,
-                              x = split(exposureSummary, exposureSummary$comparison),
-                              fun = computeBalance,
-                              studyPopArgs = studyPopArgs,
-                              stratifyByPsArgs = stratifyByPsArgs,
-                              indicationFolder = indicationFolder,
-                              balanceFolder = balanceFolder)
+                                 x = split(exposureSummary, exposureSummary$comparison),
+                                 fun = computeBalance,
+                                 studyPopArgs = studyPopArgs,
+                                 stratifyByPsArgs = stratifyByPsArgs,
+                                 indicationFolder = indicationFolder,
+                                 balanceFolder = balanceFolder,
+                                 covarSubsetIds = covarSubsetIds,
+                                 outcomeModelReference = outcomeModelReference)
     ParallelLogger::stopCluster(cluster)
 }
 
