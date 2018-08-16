@@ -237,17 +237,6 @@ fetchAllDataFromServer <- function(connectionDetails,
         filterConcepts <- data.frame(cohortId = filterConcepts$ancestorConceptId,
                                      filterConceptId = filterConcepts$filterConceptId,
                                      filterConceptName = filterConcepts$filterConceptName)
-        # exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
-        # cohortIdToAncestorIds <- data.frame(cohortId = rep(exposureCombis$cohortDefinitionId, 2),
-        # ancestorConceptId = c(exposureCombis$exposureId1, exposureCombis$exposureId2))
-        # cohortIdToAncestorIds <- rbind(cohortIdToAncestorIds,
-        #                                data.frame(cohortId = exposuresOfInterest$conceptId,
-        #                                           ancestorConceptId = exposuresOfInterest$conceptId))
-        # cohortIdToAncestorIds <- data.frame(cohortId = exposuresOfInterest$conceptId,
-        #                                     ancestorConceptId = exposuresOfInterest$conceptId)
-        # filterConcepts <- merge(filterConcepts, cohortIdToAncestorIds)
-        # filterConcepts <- merge(filterConcepts, data.frame(cohortId = c(exposuresOfInterest$conceptId, exposureCombis$cohortDefinitionId),
-        #                                                    cohortName = c(exposuresOfInterest$name, exposureCombis$cohortName)))
         saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
     }
 }
@@ -268,17 +257,6 @@ constructCohortMethodDataObject <- function(targetId,
     # copying cohorts
     fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
     cohorts <- readRDS(fileName)
-    # # Subsetting cohorts
-    # cohorts <- NULL
-    # ffbase::load.ffdf(dir = cohortsFolder) # Loads cohorts
-    # ff::open.ffdf(cohorts, readonly = TRUE)
-    # idx <- cohorts$targetId == targetId & cohorts$comparatorId == comparatorId
-    # cohorts <- ff::as.ram(cohorts[ffbase::ffwhich(idx, idx == TRUE), ])
-    # cohorts$treatment <- 0
-    # cohorts$treatment[cohorts$cohortDefinitionId == targetId] <- 1
-    # cohorts$cohortDefinitionId <- NULL
-    # cohorts$targetId <- NULL
-    # cohorts$comparatorId <- NULL
     targetPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
     comparatorPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 0]))
     targetExposures <- length(cohorts$subjectId[cohorts$treatment == 1])

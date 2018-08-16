@@ -142,24 +142,17 @@ synthesizePositiveControls <- function(connectionDetails,
     if (any(counts$cohortDefinitionId >= min(summ$newOutcomeId) & counts$cohortDefinitionId <= max(summ$newOutcomeId))) {
         stop("Collision between original outcome IDs and synthetic outcome IDs")
     }
+
+    ParallelLogger::logInfo("- Fetching new outcomes from server")
     conn <- DatabaseConnector::connect(connectionDetails)
 
     # Only fetch outcomes for subjects in the exposure cohorts, because
     # only those are used in a cohort method design:
-    # cohorts <- NULL
-    # ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-    # subjectIds <- ffbase::unique.ff(cohorts$subjectId)
-
     exposures <- readRDS(file.path(signalInjectionFolder, "exposures.rds"))
     subjectIds <- data.frame(subject_id = unique(exposures$personId))
-    # USe non-temp table in case bulk loading is enabled:
 
+    # USe non-temp table in case bulk loading is enabled:
     subjectsTableName = paste0(cohortDatabaseSchema, ".temp_subjects_", paste(sample(letters, 5),collapse = ""))
-    # sql <- "IF OBJECT_ID('@subjects_table', 'U') IS NOT NULL DROP TABLE @subjects_table;--HINT DISTRIBUTE_ON_KEY(subject_id)
-    #   CREATE TABLE @subjects_table (subject_id BIGINT);"
-    # sql <- SqlRender::renderSql(sql, subjects_table = subjectsTableName)$sql
-    # sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    # DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     DatabaseConnector::insertTable(connection = conn,
                                    tableName = subjectsTableName,
                                    data = subjectIds,
@@ -167,22 +160,26 @@ synthesizePositiveControls <- function(connectionDetails,
                                    createTable = TRUE,
                                    tempTable = FALSE,
                                    oracleTempSchema = oracleTempSchema)
-    sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
-                                             "Legend",
-                                             dbms = connectionDetails$dbms,
-                                             output_database_schema = cohortDatabaseSchema,
-                                             output_table = outcomeCohortTable,
-                                             min_id = min(summ$newOutcomeId),
-                                             max_id = max(summ$newOutcomeId),
-                                             subjects_table = subjectsTableName)
-    injectedOutcomes <- DatabaseConnector::querySql.ffdf(conn, sql)
-    colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
-
     injectedOutcomesFolder <- file.path(indicationFolder, "injectedOutcomes")
-    if (file.exists(injectedOutcomesFolder)) {
-        unlink(injectedOutcomesFolder, recursive = TRUE)
+    if (!file.exists(injectedOutcomesFolder)) {
+        dir.create(injectedOutcomesFolder)
     }
-    ffbase::save.ffdf(injectedOutcomes, dir = injectedOutcomesFolder)
+    loadPositiveControlOutcomes <- function(exposureSubset) {
+        sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
+                                                 "Legend",
+                                                 dbms = connectionDetails$dbms,
+                                                 output_database_schema = cohortDatabaseSchema,
+                                                 output_table = outcomeCohortTable,
+                                                 cohort_ids = exposureSubset$newOutcomeId,
+                                                 subjects_table = subjectsTableName)
+        injectedOutcomes <- DatabaseConnector::querySql(conn, sql)
+        colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
+        fileName <- file.path(injectedOutcomesFolder, paste0("outcomes_e", exposureSubset$exposureId[1], ".rds"))
+        saveRDS(injectedOutcomes, fileName)
+        return(NULL)
+    }
+    exposureSubsets <- split(summ, summ$exposureId)
+    plyr::l_ply(exposureSubsets, loadPositiveControlOutcomes, .progress = "text")
 
     # Drop dummy and temp table:
     sql <- "TRUNCATE TABLE @cohort_database_schema.@table_prefix_dummy; DROP TABLE @cohort_database_schema.@table_prefix_dummy;"
