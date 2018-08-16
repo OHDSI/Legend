@@ -157,12 +157,12 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                            s = kaplanMeier$targetSurvival,
                            lower = kaplanMeier$targetSurvivalLb,
                            upper = kaplanMeier$targetSurvivalUb,
-                           strata = targetName),
+                           strata = paste0(" ",targetName, "    ")),
                 data.frame(time = kaplanMeier$time,
                            s = kaplanMeier$comparatorSurvival,
                            lower = kaplanMeier$comparatorSurvivalLb,
                            upper = kaplanMeier$comparatorSurvivalUb,
-                           strata = comparatorName))
+                           strata = paste0(" ", comparatorName)))
   
   xlims <- c(-max(data$time)/40, max(data$time))
   ylims <- c(min(data$lower), 1)
@@ -185,7 +185,9 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
     ggplot2::scale_y_continuous(yLabel, limits = ylims) +
     ggplot2::theme(legend.title = ggplot2::element_blank(),
                    legend.position = "top",
-                   plot.title = ggplot2::element_text(hjust = 0.5))
+                   legend.key.size = ggplot2::unit(1.0, 'lines'),
+                   plot.title = ggplot2::element_text(hjust = 0.5)) +
+    ggplot2::theme(axis.title.y = ggplot2::element_text(vjust = -10))
  
     targetAtRisk <- kaplanMeier$targetAtRisk[!is.na(kaplanMeier$targetAtRisk)]
     comparatorAtRisk <- kaplanMeier$comparatorAtRisk[!is.na(kaplanMeier$comparatorAtRisk)]
@@ -355,4 +357,51 @@ drawAttritionDiagram <- function(attrition,
                           axis.ticks = ggplot2::element_blank())
   
   return(p)
+}
+
+judgeHazardRatio <- function(hrLower, hrUpper) {
+  nonZeroHazardRatio(hrLower, hrUpper, c("lower","higher","similar"))
+}
+
+nonZeroHazardRatio <- function(hrLower, hrUpper, terms) {
+  if (hrUpper < 1.0) {
+    return(terms[1])
+  } else if (hrLower > 1.0) {
+    return(terms[2])
+  } else {
+    return(terms[3])
+  }
+}
+
+judgeEffectiveness <- function(hrLower, hrUpper) {
+  nonZeroHazardRatio(hrLower, hrUpper, c("less","more","as"))
+}
+
+prettyHr <- function(x) {
+  sprintf("%.2f", x)
+}
+
+goodPropensityScore <- function(value) {
+  return(value > 1.0)
+}
+
+goodSystematicBias <- function(value) {
+  return(value > 1.0)
+}
+
+judgePropensityScore <- function(ps, bias) {
+  paste0(
+    " ",
+    ifelse(goodPropensityScore(ps), "substantial", "inadequate"),
+    " control of measured confounding by propensity score adjustment, and ",
+    ifelse(goodSystematicBias(bias), "minimal", "non-negligible"),
+    " residual systematic bias through negative and positive control experiments",
+    ifelse(goodPropensityScore(ps) && goodSystematicBias(bias), 
+           ", lending credibility to our effect estimates", "")
+  )
+}
+
+capitalize <- function(x) {
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
 }
