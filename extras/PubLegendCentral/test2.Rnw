@@ -378,9 +378,26 @@ print(xtable(table),
 \end{table*}
 %
 Figure \ref{fig:km} plots Kaplan-Meier survival curves for patients under the intent-to-treat design.
-\begin{itemize}
-  \item Insert KM plot
-\end{itemize}
+%
+<<km, echo=FALSE, cache=TRUE>>==
+plot <- plotKaplanMeier(kaplanMeier, targetName, comparatorName)
+# + ggplot2::theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+suppressMessages(ggsave("km.pdf", plot,
+                        width = 6, height = 6, units = "in"))
+@
+%
+\begin{figure}
+  %\centerline{
+  \hspace*{-1em}
+    \includegraphics[width=0.5\textwidth]{km}
+  %}
+  \vspace*{-1em}
+  \caption{\textbf{Kaplan Meier plot of \Sexpr{outcomeName}-free survival.}
+  This plot is adjusted for the propensity score stratification; the \Sexpr{targetName} curveshows the actual observed survival. The \Sexpr{comparatorName} curve applies reweighting to approximate the counterfactual of what \Sexpr{targetName} survival
+      would look like had the \Sexpr{targetName} cohort been exposed to the \Sexpr{comparatorName} instead. The shaded area denotes the 95\% CI.
+  }
+  \label{fig:topTen}
+\end{figure}
 
 \subsection*{Residual bias}
 In the absense of bias, we expect 95\% of negative control estimate 95\% confidence intervals to include the presumed null hypothesis HR = 1.  Figure \ref{fig:negatives} describes the negative control estimates under both the intent-to-treat and on-treatment designs.

@@ -157,12 +157,12 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                            s = kaplanMeier$targetSurvival,
                            lower = kaplanMeier$targetSurvivalLb,
                            upper = kaplanMeier$targetSurvivalUb,
-                           strata = targetName),
+                           strata = paste0(" ",targetName, "    ")),
                 data.frame(time = kaplanMeier$time,
                            s = kaplanMeier$comparatorSurvival,
                            lower = kaplanMeier$comparatorSurvivalLb,
                            upper = kaplanMeier$comparatorSurvivalUb,
-                           strata = comparatorName))
+                           strata = paste0(" ", comparatorName)))
   
   xlims <- c(-max(data$time)/40, max(data$time))
   ylims <- c(min(data$lower), 1)
@@ -185,7 +185,9 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
     ggplot2::scale_y_continuous(yLabel, limits = ylims) +
     ggplot2::theme(legend.title = ggplot2::element_blank(),
                    legend.position = "top",
-                   plot.title = ggplot2::element_text(hjust = 0.5))
+                   legend.key.size = ggplot2::unit(1.0, 'lines'),
+                   plot.title = ggplot2::element_text(hjust = 0.5)) +
+    ggplot2::theme(axis.title.y = ggplot2::element_text(vjust = -10))
  
     targetAtRisk <- kaplanMeier$targetAtRisk[!is.na(kaplanMeier$targetAtRisk)]
     comparatorAtRisk <- kaplanMeier$comparatorAtRisk[!is.na(kaplanMeier$comparatorAtRisk)]
