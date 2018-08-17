@@ -114,7 +114,8 @@ execute <- function(connectionDetails,
     }
     if (generateAllCohortMethodDataObjects) {
         generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                           indicationId = indicationId)
+                                           indicationId = indicationId,
+                                           maxCores = maxCores)
     }
     if (runCohortMethod) {
         runCohortMethod(outputFolder = outputFolder,

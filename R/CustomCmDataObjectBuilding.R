@@ -288,13 +288,13 @@ constructCohortMethodDataObject <- function(targetId,
 
         fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", targetId, ".rds"))
         if (file.exists(fileName)) {
-            injectedOutcomesTarget <-readRDS(fileName)
+            injectedOutcomesTarget <- readRDS(fileName)
             injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in% cohorts$subjectId, ]
             injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesTarget)
         }
         fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", comparatorId, ".rds"))
         if (file.exists(fileName)) {
-            injectedOutcomesComparator <-readRDS(fileName)
+            injectedOutcomesComparator <- readRDS(fileName)
             injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in% cohorts$subjectId, ]
             injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesComparator)
         }
@@ -350,15 +350,21 @@ constructCohortMethodDataObject <- function(targetId,
 #' @param indicationId         A string denoting the indicationId.
 #' @param useSample            Use the sampled cohort table instead of the main cohort table (for PS model
 #'                             feasibility).
+#' @param maxCores             How many parallel cores should be used? If more cores are made available
+#'                             this can speed up the analyses.
 #'
 #' @export
-generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Depression", useSample = FALSE) {
+generateAllCohortMethodDataObjects <- function(outputFolder,
+                                               indicationId = "Depression",
+                                               useSample = FALSE,
+                                               maxCores = 4) {
     ParallelLogger::logInfo("Constructing CohortMethodData objects")
     indicationFolder <- file.path(outputFolder, indicationId)
     start <- Sys.time()
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-    pb <- txtProgressBar(style = 3)
-    for (i in 1:nrow(exposureSummary)) {
+
+    # for (i in 1:nrow(exposureSummary)) {
+    createObject <- function(i, exposureSummary, indicationFolder, useSample) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
         if (useSample) {
@@ -367,15 +373,22 @@ generateAllCohortMethodDataObjects <- function(outputFolder, indicationId = "Dep
             folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
         }
         if (!file.exists(folderName)) {
-            cmData <- constructCohortMethodDataObject(targetId = targetId,
+            cmData <- Legend:::constructCohortMethodDataObject(targetId = targetId,
                                                       comparatorId = comparatorId,
                                                       indicationFolder = indicationFolder,
                                                       useSample = useSample)
             CohortMethod::saveCohortMethodData(cmData, folderName)
         }
-        setTxtProgressBar(pb, i/nrow(exposureSummary))
+        return(NULL)
     }
-    close(pb)
+    cluster <- ParallelLogger::makeCluster(min(maxCores, 3))
+    ParallelLogger::clusterApply(cluster = cluster,
+                                 x = 1:nrow(exposureSummary),
+                                 fun = createObject,
+                                 exposureSummary = exposureSummary,
+                                 indicationFolder = indicationFolder,
+                                 useSample = useSample)
+    ParallelLogger::stopCluster(cluster)
     delta <- Sys.time() - start
     ParallelLogger::logInfo(paste("Generating all CohortMethodData objects took", signif(delta, 3), attr(delta, "units")))
 }
