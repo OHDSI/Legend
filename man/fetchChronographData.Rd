@@ -4,9 +4,9 @@
 \alias{fetchChronographData}
 \title{Fetch data for constructing chronographs from the server}
 \usage{
-fetchChronographData(connectionDetails, cdmDatabaseSchema, cohortDatabaseSchema,
-  tablePrefix = "legend", indicationId = "Depression", oracleTempSchema,
-  outputFolder)
+fetchChronographData(connectionDetails, cdmDatabaseSchema,
+  cohortDatabaseSchema, tablePrefix = "legend",
+  indicationId = "Depression", oracleTempSchema, outputFolder)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the

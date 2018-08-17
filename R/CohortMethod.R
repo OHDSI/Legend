@@ -265,20 +265,60 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                 to = file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
 
     # Create analysis summaries -------------------------------------------------------------------
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
+    outcomeModelReference1 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+    outcomeModelReference2 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
+    outcomeModelReference3 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
+    outcomeModelReference4 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
+
+    # Check to make sure no file names were used twice:
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference2$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 2")
+    }
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference3$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 3")
+    }
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 4")
+    }
+    if (any(outcomeModelReference2$studyPopFile != "" & outcomeModelReference2$studyPopFile %in% outcomeModelReference3$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 2 and 3")
+    }
+    if (any(outcomeModelReference2$studyPopFile != "" & outcomeModelReference2$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 2 and 4")
+    }
+    if (any(outcomeModelReference3$studyPopFile != "" & outcomeModelReference3$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 3 and 4")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference2$strataFile)) {
+        stop("Overlapping strataFile files detected between run 1 and 2")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference3$strataFile)) {
+        stop("Overlapping strata files detected between run 1 and 3")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 1 and 4")
+    }
+    if (any(outcomeModelReference2$strataFile != "" & outcomeModelReference2$strataFile %in% outcomeModelReference3$strataFile)) {
+        stop("Overlapping strata files detected between run 2 and 3")
+    }
+    if (any(outcomeModelReference2$strataFile != "" & outcomeModelReference2$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 2 and 4")
+    }
+    if (any(outcomeModelReference3$strataFile != "" & outcomeModelReference3$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 3 and 4")
+    }
+
+    ParallelLogger::logInfo("Summarizing results")
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference1, outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary1.csv"), row.names = FALSE)
 
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference2, outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary2.csv"), row.names = FALSE)
 
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference3, outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary3.csv"), row.names = FALSE)
 
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference4, outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary4.csv"), row.names = FALSE)
 }
 

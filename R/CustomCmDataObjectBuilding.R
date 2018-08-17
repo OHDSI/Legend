@@ -284,16 +284,22 @@ constructCohortMethodDataObject <- function(targetId,
     }
     if (!useSample) {
         # Add injected outcomes (no signal injection when doing sampling)
-        injectedOutcomes <- NULL
-        ffbase::load.ffdf(dir = file.path(indicationFolder, "injectedOutcomes")) # Loads injectedOutcomes
-        ff::open.ffdf(injectedOutcomes, readonly = TRUE)
-        injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
-        injectionSummary <- injectionSummary[injectionSummary$exposureId %in% c(targetId, comparatorId), ]
-        idx1 <- ffbase::'%in%'(injectedOutcomes$subjectId, cohorts$subjectId)
-        idx2 <- ffbase::'%in%'(injectedOutcomes$cohortDefinitionId, injectionSummary$newOutcomeId)
-        idx <- idx1 & idx2
-        if (ffbase::any.ff(idx)) {
-            injectedOutcomes <- ff::as.ram(injectedOutcomes[idx, ])
+        injectedOutcomes <- data.frame()
+
+        fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", targetId, ".rds"))
+        if (file.exists(fileName)) {
+            injectedOutcomesTarget <-readRDS(fileName)
+            injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in% cohorts$subjectId, ]
+            injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesTarget)
+        }
+        fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", comparatorId, ".rds"))
+        if (file.exists(fileName)) {
+            injectedOutcomesComparator <-readRDS(fileName)
+            injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in% cohorts$subjectId, ]
+            injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesComparator)
+        }
+
+        if (nrow(injectedOutcomes) != 0) {
             colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
             colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
             injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])

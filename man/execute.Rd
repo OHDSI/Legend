@@ -6,8 +6,9 @@
 \usage{
 execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, outputFolder, indicationId = "Depression",
-  tablePrefix, createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
-  fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
+  tablePrefix, createExposureCohorts = TRUE,
+  createOutcomeCohorts = TRUE, fetchAllDataFromServer = TRUE,
+  synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
   computeIncidence = TRUE, fetchChronographData = TRUE,
   computeCovariateBalance = TRUE, maxCores)

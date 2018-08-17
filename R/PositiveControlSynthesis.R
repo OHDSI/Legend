@@ -151,7 +151,7 @@ synthesizePositiveControls <- function(connectionDetails,
     exposures <- readRDS(file.path(signalInjectionFolder, "exposures.rds"))
     subjectIds <- data.frame(subject_id = unique(exposures$personId))
 
-    # USe non-temp table in case bulk loading is enabled:
+    # Use non-temp table in case bulk loading is enabled:
     subjectsTableName = paste0(cohortDatabaseSchema, ".temp_subjects_", paste(sample(letters, 5),collapse = ""))
     DatabaseConnector::insertTable(connection = conn,
                                    tableName = subjectsTableName,
@@ -159,7 +159,8 @@ synthesizePositiveControls <- function(connectionDetails,
                                    dropTableIfExists = TRUE,
                                    createTable = TRUE,
                                    tempTable = FALSE,
-                                   oracleTempSchema = oracleTempSchema)
+                                   oracleTempSchema = oracleTempSchema,
+                                   progressBar = TRUE)
     injectedOutcomesFolder <- file.path(indicationFolder, "injectedOutcomes")
     if (!file.exists(injectedOutcomesFolder)) {
         dir.create(injectedOutcomesFolder)
