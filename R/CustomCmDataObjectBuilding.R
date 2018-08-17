@@ -377,7 +377,7 @@ generateAllCohortMethodDataObjects <- function(outputFolder,
                                                       comparatorId = comparatorId,
                                                       indicationFolder = indicationFolder,
                                                       useSample = useSample)
-            CohortMethod::saveCohortMethodData(cmData, folderName)
+            CohortMethod::saveCohortMethodData(cmData, folderName, compress = TRUE)
         }
         return(NULL)
     }

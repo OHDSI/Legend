@@ -5,7 +5,7 @@
 \title{Construct all cohortMethodData object}
 \usage{
 generateAllCohortMethodDataObjects(outputFolder,
-  indicationId = "Depression", useSample = FALSE)
+  indicationId = "Depression", useSample = FALSE, maxCores = 4)
 }
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
@@ -15,6 +15,9 @@ generateAllCohortMethodDataObjects(outputFolder,
 
 \item{useSample}{Use the sampled cohort table instead of the main cohort table (for PS model
 feasibility).}
+
+\item{maxCores}{How many parallel cores should be used? If more cores are made available
+this can speed up the analyses.}
 }
 \description{
 Construct all cohortMethodData object
