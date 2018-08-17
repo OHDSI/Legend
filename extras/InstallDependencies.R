@@ -1,5 +1,6 @@
-install.packages()
+# Say yes to potential question about restarting R. Say no to question about installing from source:
 install.packages(c("assertthat", "crayon", "bit", "cli", "devtools", "colorspace", "glue", "lattice", "magrittr", "R.methodsS3", "Rcpp", "rlang", "stringi", "utf8", "curl", "dichromat", "digest", "fastmatch", "ff", "jsonlite", "labeling", "Matrix", "mime", "munsell", "nlme", "openssl", "pillar", "plyr", "R.oo", "R6", "RColorBrewer", "rJava", "stringr", "triebeard", "viridisLite", "DBI", "ffbase", "git2r", "gtable", "httr", "lazyeval", "MASS", "memoise", "mgcv", "R.utils", "reshape2", "rstudioapi", "scales", "tibble", "urltools", "whisker", "withr", "codetools", "formatR", "ggplot2", "mailR", "RcppParallel", "RJSONIO", "snow", "survival", "XML", "gridExtra", "pROC", "openxlsx"))
+
 devtools::install_github("r-lib/zip", dep = FALSE)
 devtools::install_github("ohdsi/SqlRender", dep = FALSE)
 devtools::install_github("ohdsi/DatabaseConnectorJars", dep = FALSE)
