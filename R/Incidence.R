@@ -31,14 +31,11 @@ computeIncidence <- function(indicationId = "Depression",
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     outcomesOfInterest <- read.csv(pathToCsv)
-    # cohorts <- NULL
+    cohorts <- readRDS(file.path(indicationFolder, "allCohorts", "allCohorts.rds"))
     outcomes <- NULL
-    # ffbase::load.ffdf(file.path(indicationFolder, "allCohorts")) # Loads cohorts ffdf
     ffbase::load.ffdf(file.path(indicationFolder, "allOutcomes")) # Loads outcomes ffdf
-    # ff::open.ffdf(cohorts, readonly = TRUE)
     ff::open.ffdf(outcomes, readonly = TRUE)
     on.exit({
-        # ff::close.ffdf(cohorts)
         ff::close.ffdf(outcomes)
     })
     outcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, outcomesOfInterest$cohortId), ]
@@ -47,13 +44,7 @@ computeIncidence <- function(indicationId = "Depression",
     covSubset <- covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ]
     cohortIds <- unique(c(exposureSummary$targetId, exposureSummary$comparatorId))
     computeCohortIrs <- function(cohortId) {
-        # Find all unique rowIds for this exposure cohort (across all comparisons)
-        # subsetRowIds <- cohorts$rowId[cohorts$cohortDefinitionId == cohortId]
-        # subsetRowIds <- ffbase::unique.ff(subsetRowIds)
-        subsetCohort <- getCohort(cohortId, exposureSummary, indicationFolder)
-
-        # Subset cohort, outcomes, covariates
-        # subsetCohort <- ff::as.ram(cohorts[ffbase::ffmatch(subsetRowIds, cohorts$rowId), ])
+        subsetCohort <- cohorts[cohorts$cohortId == cohortId, ]
         subsetOutcomes <- ff::as.ram(outcomes[ffbase::`%in%`(outcomes$rowId, subsetCohort$rowId), ])
         subsetCovariates <- ff::as.ram(covSubset[ffbase::`%in%`(covSubset$rowId, subsetCohort$rowId), ])
 
@@ -108,22 +99,4 @@ computeIrs <- function(cohort, outcomes) {
     irs <- lapply(split(outcomes, outcomes$outcomeId), computeIrForOutcome, cohort = cohort)
     irs <- do.call("rbind", irs)
     return(irs)
-}
-
-getCohort <- function(cohortId, exposureSummary, indicationFolder) {
-    cohortsFolder <- file.path(indicationFolder, "allCohorts")
-    # Create one cohort with all unique rows across all comparisons including this cohort:
-    getCohortFromFile <- function(i, treatment) {
-        targetId <- exposureSummary$targetId[i]
-        comparatorId <- exposureSummary$comparatorId[i]
-        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
-        cohorts <- readRDS(fileName)
-        return(cohorts[cohorts$treatment == treatment, ])
-    }
-    targets <- lapply(which(exposureSummary$targetId == cohortId), getCohortFromFile, treatment = 1)
-    comparators <- lapply(which(exposureSummary$comparatorId == cohortId), getCohortFromFile, treatment = 0)
-    cohort <- do.call("rbind", c(targets, comparators))
-    cohort <- cohort[order(cohort$rowId), ]
-    cohort <- cohort[!duplicated(cohort$rowId), ]
-    return(cohort)
 }

@@ -28,6 +28,13 @@
 #'
 #' @export
 runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores = 4) {
+    # Note: we don't want to run all analyses on all TCO pairs. Specifically, analyses
+    # that are symmetrical (e.g. PS stratification) we only want to do one way,
+    # and the interaction analyses we don't want to run on the positive controls.
+    # To do this, we split up the analyses across several CohortMethod runs. We must
+    # be careful not to have intermediary files in the different runs with the same name
+    # but different content.
+
     indicationFolder <- file.path(outputFolder, indicationId)
     cmFolder <- file.path(indicationFolder, "cmOutput")
     exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
@@ -37,15 +44,29 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
+    injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
 
-    createTcos <- function(i, excludePositiveControls = FALSE) {
-        targetId <- exposureSummary$targetId[i]
-        comparatorId <- exposureSummary$comparatorId[i]
+    createTcos <- function(i, positiveControls = "exclude", reverse = FALSE) {
+        if (reverse) {
+            comparatorId <- exposureSummary$targetId[i]
+            targetId <- exposureSummary$comparatorId[i]
+        } else {
+            targetId <- exposureSummary$targetId[i]
+            comparatorId <- exposureSummary$comparatorId[i]
+        }
         folderName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
         outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
-        if (excludePositiveControls) {
+        if (positiveControls == "exclude") {
             outcomeIds <- outcomeIds[outcomeIds %in% c(hois$cohortId, negativeControls$cohortId)]
+        } else if (positiveControls == "onlyTarget") {
+            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == targetId]]
+        } else if (positiveControls == "onlyComparator") {
+            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == comparatorId]]
+        } else if (positiveControls == "excludeComparator") {
+            outcomeIds <- outcomeIds[!(outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == comparatorId])]
+        } else {
+            stop("Unknown positive control setting: " , positiveControls)
         }
         tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
                                                             comparatorId = comparatorId,
@@ -53,14 +74,55 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
         return(tco)
     }
 
-    # First run: no interaction terms, include positive controls ---------------------------------
-
-    tcos <- lapply(1:nrow(exposureSummary), createTcos)
-    # tcos <- lapply(1:5, createTcos)
     cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListDepression.json",
+                                      sprintf("cmAnalysisList%s.json", indicationId),
                                       package = "Legend")
     cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+
+    cmAnalysisListFile <- system.file("settings",
+                                      sprintf("cmAnalysisListAsym%s.json", indicationId),
+                                      package = "Legend")
+    cmAnalysisListAsym <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+
+    cmAnalysisListFile <- system.file("settings",
+                                      sprintf("cmAnalysisListInteractions%s.json", indicationId),
+                                      package = "Legend")
+    cmAnalysisListInteractions <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+
+    # First run: Forward pairs only, no positive controls ---------------------------------
+
+    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "exclude", reverse = FALSE)
+    cmAnalyses <- c(cmAnalysisList, cmAnalysisListAsym, cmAnalysisListInteractions)
+    CohortMethod::runCmAnalyses(connectionDetails = NULL,
+                                cdmDatabaseSchema = NULL,
+                                exposureDatabaseSchema = NULL,
+                                exposureTable = NULL,
+                                outcomeDatabaseSchema = NULL,
+                                outcomeTable = NULL,
+                                outputFolder = cmFolder,
+                                oracleTempSchema = NULL,
+                                cmAnalysisList = cmAnalysisList,
+                                cdmVersion = 5,
+                                targetComparatorOutcomesList = tcos,
+                                getDbCohortMethodDataThreads = 1,
+                                createStudyPopThreads = min(4, maxCores),
+                                createPsThreads = max(1, round(maxCores/10)),
+                                psCvThreads = min(10, maxCores),
+                                trimMatchStratifyThreads = min(4, maxCores),
+                                prefilterCovariatesThreads = min(5, maxCores),
+                                fitOutcomeModelThreads = min(8, maxCores),
+                                outcomeCvThreads = min(10, maxCores),
+                                refitPsForEveryOutcome = FALSE,
+                                refitPsForEveryStudyPopulation = FALSE,
+                                prefilterCovariates = TRUE,
+                                outcomeIdsOfInterest = hois$cohortId)
+    file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+
+    # Second run: Forward paris only, only target positive controls ---------------------------------
+
+    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "onlyTarget", reverse = FALSE)
+    cmAnalyses <- c(cmAnalysisList, cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
                                 exposureDatabaseSchema = NULL,
@@ -85,11 +147,41 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 prefilterCovariates = TRUE,
                                 outcomeIdsOfInterest = hois$cohortId)
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
-                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
 
-    # Second run: no interaction terms, asymmetrical (matching) ------------------------------------
+    # Third run: Forward pairs only, only comparator positive controls ----------------
 
-    # Make cohortMethodData and ps objects symmetrical:
+    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "onlyComparator", reverse = FALSE)
+    cmAnalyses <- c(cmAnalysisList)
+    CohortMethod::runCmAnalyses(connectionDetails = NULL,
+                                cdmDatabaseSchema = NULL,
+                                exposureDatabaseSchema = NULL,
+                                exposureTable = NULL,
+                                outcomeDatabaseSchema = NULL,
+                                outcomeTable = NULL,
+                                outputFolder = cmFolder,
+                                oracleTempSchema = NULL,
+                                cmAnalysisList = cmAnalysisList,
+                                cdmVersion = 5,
+                                targetComparatorOutcomesList = tcos,
+                                getDbCohortMethodDataThreads = 1,
+                                createStudyPopThreads = min(4, maxCores),
+                                createPsThreads = max(1, round(maxCores/10)),
+                                psCvThreads = min(10, maxCores),
+                                trimMatchStratifyThreads = min(4, maxCores),
+                                prefilterCovariatesThreads = min(5, maxCores),
+                                fitOutcomeModelThreads = min(8, maxCores),
+                                outcomeCvThreads = min(2, maxCores),
+                                refitPsForEveryOutcome = FALSE,
+                                refitPsForEveryStudyPopulation = FALSE,
+                                prefilterCovariates = TRUE,
+                                outcomeIdsOfInterest = hois$cohortId)
+    file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
+
+    # Fourth run: Reverse pairs, exclude comparator controls ------------------------------------
+
+    # Create reverse (comparator-target) cohortMethodData and ps objects:
     pathToRds <- file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds")
     reference <- readRDS(pathToRds)
     reference <- reference[order(reference$cohortMethodDataFolder), ]
@@ -145,26 +237,8 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     }
     plyr::llply(1:nrow(reference), addOtherHalf, .progress = "text")
 
-    injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
-    tcos <- lapply(1:nrow(exposureSummary), createTcos)
-    switchTc <- function(tco) {
-        temp <- tco$targetId
-        tco$targetId <- tco$comparatorId
-        tco$comparatorId <- temp
-        return(tco)
-    }
-    otherTcos <- lapply(tcos, switchTc)
-    tcos <- c(tcos, otherTcos)
-    removeComparatorPositiveControls <- function(tco) {
-        pcs <- injectionSummary$newOutcomeId[injectionSummary$exposureId == tco$comparatorId]
-        tco$outcomeIds <- tco$outcomeIds[!(tco$outcomeIds %in% pcs)]
-        return(tco)
-    }
-    tcos <- lapply(tcos, removeComparatorPositiveControls)
-    cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListAsymDepression.json",
-                                      package = "Legend")
-    cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControl = "excludeComparator", reverse = TRUE)
+    cmAnalyses <- c(cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
                                 exposureDatabaseSchema = NULL,
@@ -188,53 +262,64 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 prefilterCovariates = TRUE,
                                 outcomeIdsOfInterest = hois$cohortId)
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
-                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
-
-    # Third run: only interaction terms, exclude positive controls ---------------------------------
-
-    tcos <- lapply(1:nrow(exposureSummary), createTcos, excludePositiveControls = TRUE)
-    cmAnalysisListFile <- system.file("settings",
-                                      "cmAnalysisListInteractionsDepression.json",
-                                      package = "Legend")
-    cmAnalysisList <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
-    CohortMethod::runCmAnalyses(connectionDetails = NULL,
-                                cdmDatabaseSchema = NULL,
-                                exposureDatabaseSchema = NULL,
-                                exposureTable = NULL,
-                                outcomeDatabaseSchema = NULL,
-                                outcomeTable = NULL,
-                                outputFolder = cmFolder,
-                                oracleTempSchema = NULL,
-                                cmAnalysisList = cmAnalysisList,
-                                cdmVersion = 5,
-                                targetComparatorOutcomesList = tcos,
-                                getDbCohortMethodDataThreads = 1,
-                                createStudyPopThreads = min(4, maxCores),
-                                createPsThreads = max(1, round(maxCores/10)),
-                                psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
-                                prefilterCovariatesThreads = min(5, maxCores),
-                                fitOutcomeModelThreads = min(6, maxCores),
-                                outcomeCvThreads = min(4, maxCores),
-                                refitPsForEveryOutcome = FALSE,
-                                refitPsForEveryStudyPopulation = FALSE,
-                                prefilterCovariates = TRUE,
-                                outcomeIdsOfInterest = hois$cohortId)
-    file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
-                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
+                to = file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
 
     # Create analysis summaries -------------------------------------------------------------------
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
-    write.csv(analysesSum, file.path(indicationFolder, "analysisSummary.csv"), row.names = FALSE)
+    outcomeModelReference1 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+    outcomeModelReference2 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
+    outcomeModelReference3 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
+    outcomeModelReference4 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
 
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
-    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryAsym.csv"), row.names = FALSE)
+    # Check to make sure no file names were used twice:
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference2$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 2")
+    }
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference3$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 3")
+    }
+    if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 1 and 4")
+    }
+    if (any(outcomeModelReference2$studyPopFile != "" & outcomeModelReference2$studyPopFile %in% outcomeModelReference3$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 2 and 3")
+    }
+    if (any(outcomeModelReference2$studyPopFile != "" & outcomeModelReference2$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 2 and 4")
+    }
+    if (any(outcomeModelReference3$studyPopFile != "" & outcomeModelReference3$studyPopFile %in% outcomeModelReference4$studyPopFile)) {
+        stop("Overlapping studyPop files detected between run 3 and 4")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference2$strataFile)) {
+        stop("Overlapping strataFile files detected between run 1 and 2")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference3$strataFile)) {
+        stop("Overlapping strata files detected between run 1 and 3")
+    }
+    if (any(outcomeModelReference1$strataFile != "" & outcomeModelReference1$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 1 and 4")
+    }
+    if (any(outcomeModelReference2$strataFile != "" & outcomeModelReference2$strataFile %in% outcomeModelReference3$strataFile)) {
+        stop("Overlapping strata files detected between run 2 and 3")
+    }
+    if (any(outcomeModelReference2$strataFile != "" & outcomeModelReference2$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 2 and 4")
+    }
+    if (any(outcomeModelReference3$strataFile != "" & outcomeModelReference3$strataFile %in% outcomeModelReference4$strataFile)) {
+        stop("Overlapping strata files detected between run 3 and 4")
+    }
 
-    outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference, outputFolder = cmFolder)
-    write.csv(analysesSum, file.path(indicationFolder, "analysisSummaryInteractions.csv"), row.names = FALSE)
+    ParallelLogger::logInfo("Summarizing results")
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference1, outputFolder = cmFolder)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummary1.csv"), row.names = FALSE)
+
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference2, outputFolder = cmFolder)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummary2.csv"), row.names = FALSE)
+
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference3, outputFolder = cmFolder)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummary3.csv"), row.names = FALSE)
+
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference4, outputFolder = cmFolder)
+    write.csv(analysesSum, file.path(indicationFolder, "analysisSummary4.csv"), row.names = FALSE)
 }
 
 #' Create the analyses details
@@ -335,9 +420,9 @@ createAnalysesDetails <- function(outputFolder) {
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
-    cmAnalysisList <- list(cmAnalysis3, cmAnalysis4)
+    cmAnalysisListAsym <- list(cmAnalysis3, cmAnalysis4)
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisListAsymDepression.json"))
+    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym, file.path(outputFolder, "cmAnalysisListAsymDepression.json"))
 
     fitOutcomeModelArgsI1998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                        modelType = "cox",
@@ -509,4 +594,15 @@ createAnalysesDetails <- function(outputFolder) {
                                        cmAnalysis16)
 
     CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions, file.path(outputFolder, "cmAnalysisListInteractionsDepression.json"))
+
+    # Hypertension --------------------------------------------------------------
+
+    # For now, just use same as depression
+
+    CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisListHypertension.json"))
+
+    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym, file.path(outputFolder, "cmAnalysisListAsymHypertension.json"))
+
+    CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions, file.path(outputFolder, "cmAnalysisListInteractionsHypertension.json"))
+
 }

@@ -114,10 +114,10 @@ OhdsiRTools::runAndNotify({
             outputFolder = outputFolder,
             indicationId = indicationId,
             tablePrefix = tablePrefix,
-            createExposureCohorts = TRUE,
-            createOutcomeCohorts = TRUE,
-            fetchAllDataFromServer = TRUE,
-            synthesizePositiveControls = TRUE,
+            createExposureCohorts = FALSE,
+            createOutcomeCohorts = FALSE,
+            fetchAllDataFromServer = FALSE,
+            synthesizePositiveControls = FALSE,
             generateAllCohortMethodDataObjects = TRUE,
             runCohortMethod = TRUE,
             computeIncidence = TRUE,
@@ -167,7 +167,8 @@ synthesizePositiveControls(connectionDetails = connectionDetails,
                            maxCores = maxCores)
 
 generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                   indicationId = indicationId)
+                                   indicationId = indicationId,
+                                   maxCores = maxCores)
 
 runCohortMethod(outputFolder = outputFolder,
                 indicationId = indicationId,

@@ -240,7 +240,7 @@ exportOutcomes <- function(outputFolder,
         if (file.exists(pathToCsv)) {
             positiveControls <- read.csv(pathToCsv, stringsAsFactors = FALSE)
             positiveControls$indicationId <- indicationId
-            positiveControls <- merge(positiveControls, negativeControls[, c("outcomeId", "outcomeName")])
+            positiveControls <- merge(positiveControls, negativeControls[negativeControls$indicationId == indicationId, c("outcomeId", "outcomeName")])
             positiveControls$outcomeName <- paste0(positiveControls$outcomeName, ", RR = ", positiveControls$targetEffectSize)
             positiveControls <- positiveControls[, c("newOutcomeId", "outcomeName", "exposureId", "outcomeId", "targetEffectSize", "indicationId")]
             colnames(positiveControls) <- c("outcomeId", "outcomeName", "exposureId", "negativeControlId", "effectSize", "indication_id")
@@ -317,14 +317,14 @@ exportMetadata <- function(outputFolder,
             return(NULL)
         }
         outcomeModelReference1 <- readRDS(pathToRds)
+        outcomeModelReference1$symmetrical <- TRUE
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference2 <- readRDS(pathToRds)
-        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
-        outcomeModelReference$symmetrical <- TRUE
+        outcomeModelReference2$symmetrical <- FALSE
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
         outcomeModelReference3 <- readRDS(pathToRds)
-        outcomeModelReference3$symmetrical <- FALSE
-        outcomeModelReference <- rbind(outcomeModelReference, outcomeModelReference3)
+        outcomeModelReference3$symmetrical <- TRUE
+        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
         outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
         first <- !file.exists(fileName)
         pb <- txtProgressBar(style = 3)
@@ -374,8 +374,8 @@ exportMetadata <- function(outputFolder,
         attritionFromDb$comparatorId[attritionFromDb$comparatorId == -1] <- NA
         attritionFromDbTc <- attritionFromDb[attritionFromDb$targetId != -1, ]
         attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc, "targetId", "comparatorId"))
-        attritionFromDb$analysisId <- -1
-        attritionFromDb$outcomeId <- -1
+        attritionFromDb$analysisId <- NA
+        attritionFromDb$outcomeId <- NA
         attritionFromDb$databaseId <- databaseId
         attritionFromDb <- attritionFromDb[, c("databaseId", "exposureId", "targetId", "comparatorId", "outcomeId", "analysisId", "sequenceNumber", "description", "subjects")]
         colnames(attritionFromDb) <- SqlRender::camelCaseToSnakeCase(colnames(attritionFromDb))
@@ -424,37 +424,59 @@ exportMetadata <- function(outputFolder,
             return(NULL)
         }
         outcomeModelReference1 <- readRDS(pathToRds)
+        outcomeModelReference1$symmetrical <- TRUE
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
         outcomeModelReference2 <- readRDS(pathToRds)
-        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2)
-        outcomeModelReference$symmetrical <- TRUE
+        outcomeModelReference2$symmetrical <- FALSE
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
         outcomeModelReference3 <- readRDS(pathToRds)
-        outcomeModelReference3$symmetrical <- FALSE
-        outcomeModelReference <- rbind(outcomeModelReference, outcomeModelReference3)
+        outcomeModelReference3$symmetrical <- TRUE
+        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
         outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
         getResult <- function(i) {
             strataPop <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$strataFile[i]))
             targetDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
             comparatorDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
-            row <- data.frame(targetId = outcomeModelReference$targetId[i],
-                              comparatorId = outcomeModelReference$comparatorId[i],
-                              outcomeId = outcomeModelReference$outcomeId[i],
-                              analysisId = outcomeModelReference$analysisId[i],
-                              target_min = targetDist[1],
-                              target_p10 = targetDist[2],
-                              target_p25 = targetDist[3],
-                              target_median = targetDist[4],
-                              target_p75 = targetDist[5],
-                              target_p90 = targetDist[6],
-                              target_max = targetDist[7],
-                              comparator_min = comparatorDist[1],
-                              comparator_p10 = comparatorDist[2],
-                              comparator_p25 = comparatorDist[3],
-                              comparator_median = comparatorDist[4],
-                              comparator_p75 = comparatorDist[5],
-                              comparator_p90 = comparatorDist[6],
-                              comparator_max = comparatorDist[7])
+            row <- data.frame(target_id = outcomeModelReference$targetId[i],
+                              comparator_id = outcomeModelReference$comparatorId[i],
+                              outcome_id = outcomeModelReference$outcomeId[i],
+                              analysis_id = outcomeModelReference$analysisId[i],
+                              target_min_days = targetDist[1],
+                              target_p10_days = targetDist[2],
+                              target_p25_days = targetDist[3],
+                              target_median_days = targetDist[4],
+                              target_p75_days = targetDist[5],
+                              target_p90_days = targetDist[6],
+                              target_max_days = targetDist[7],
+                              comparator_min_days = comparatorDist[1],
+                              comparator_p10_days = comparatorDist[2],
+                              comparator_p25_days = comparatorDist[3],
+                              comparator_median_days = comparatorDist[4],
+                              comparator_p75_days = comparatorDist[5],
+                              comparator_p90_days = comparatorDist[6],
+                              comparator_max_days = comparatorDist[7])
+            if (outcomeModelReference$symmetrical[i]) {
+                row2 <- data.frame(target_id = outcomeModelReference$comparatorId[i],
+                                   comparator_id = outcomeModelReference$targetId[i],
+                                   outcome_id = outcomeModelReference$outcomeId[i],
+                                   analysis_id = outcomeModelReference$analysisId[i],
+                                   target_min_days = comparatorDist[1],
+                                   target_p10_days = comparatorDist[2],
+                                   target_p25_days = comparatorDist[3],
+                                   target_median_days = comparatorDist[4],
+                                   target_p75_days = comparatorDist[5],
+                                   target_p90_days = comparatorDist[6],
+                                   target_max_days = comparatorDist[7],
+                                   comparator_min_days = targetDist[1],
+                                   comparator_p10_days = targetDist[2],
+                                   comparator_p25_days = targetDist[3],
+                                   comparator_median_days = targetDist[4],
+                                   comparator_p75_days = targetDist[5],
+                                   comparator_p90_days = targetDist[6],
+                                   comparator_max_days = targetDist[7])
+                row <- rbind(row, row2)
+
+            }
             return(row)
         }
         results <- plyr::llply(1:nrow(outcomeModelReference), getResult, .progress = "text")
@@ -463,8 +485,8 @@ exportMetadata <- function(outputFolder,
     }
     results <- lapply(indications$indicationId, loadCmFollowUpDist)
     results <- do.call("rbind", results)
-    results$databaseId <- databaseId
-    colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
+    results$database_id <- databaseId
+    # colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
     fileName <- file.path(exportFolder, "cm_follow_up_dist.csv")
     write.csv(results, fileName, row.names = FALSE)
     rm(results) # Free up memory
@@ -694,18 +716,43 @@ calibrate <- function(subset, negativeControls, positiveControls) {
     targetPcs <- merge(subset, data.frame(targetId = positiveControls$exposureId,
                                           outcomeId = positiveControls$outcomeId,
                                           effectSize = positiveControls$effectSize))
-
-    comparatorPcs <- merge(subset, data.frame(comparatorId = positiveControls$exposureId,
-                                              outcomeId = positiveControls$outcomeId,
-                                              effectSize = positiveControls$effectSize))
-    subsetTc <- subset[!(subset$outcomeId %in% comparatorPcs$outcomeId), ]
-    subsetCt <- subset[!(subset$outcomeId %in% targetPcs$outcomeId), ]
-    subsetCt <- swapColumnContents(subsetCt, "targetId", "comparatorId")
-    subsetCt$rr <- 1/subsetCt$rr
-    temp <- 1/subsetCt$ci95lb
-    subsetCt$ci95lb <- 1/subsetCt$ci95ub
-    subsetCt$ci95ub <- temp
-    subsetCt$logRr <- -subsetCt$logRr
+    if (subset$symmetrical[1]) {
+        comparatorPcs <- merge(subset, data.frame(comparatorId = positiveControls$exposureId,
+                                                  outcomeId = positiveControls$outcomeId,
+                                                  effectSize = positiveControls$effectSize))
+        subsetTc <- subset[!(subset$outcomeId %in% comparatorPcs$outcomeId), ]
+        subsetCt <- subset[!(subset$outcomeId %in% targetPcs$outcomeId), ]
+        subsetCt <- swapColumnContents(subsetCt, "targetId", "comparatorId")
+        subsetCt$rr <- 1/subsetCt$rr
+        temp <- 1/subsetCt$ci95lb
+        subsetCt$ci95lb <- 1/subsetCt$ci95ub
+        subsetCt$ci95ub <- temp
+        subsetCt$logRr <- -subsetCt$logRr
+        comparatorPcs <- comparatorPcs[!is.na(comparatorPcs$seLogRr), ]
+        if (nrow(comparatorPcs) > 5) {
+            model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(-ncs$logRr, -comparatorPcs$logRr),
+                                                                   seLogRr = c(ncs$seLogRr, comparatorPcs$seLogRr),
+                                                                   trueLogRr = c(rep(0, nrow(ncs)), log(comparatorPcs$effectSize)),
+                                                                   estimateCovarianceMatrix = FALSE)
+            calibratedCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = subsetCt$logRr,
+                                                                              seLogRr = subsetCt$seLogRr,
+                                                                              model = model)
+            subsetCt$calibratedRr <- exp(calibratedCi$logRr)
+            subsetCt$calibratedCi95Lb <- exp(calibratedCi$logLb95Rr)
+            subsetCt$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
+            subsetCt$calibratedLogRr <- calibratedCi$logRr
+            subsetCt$calibratedSeLogRr <- calibratedCi$seLogRr
+        } else {
+            subsetCt$calibratedRr <- rep(NA, nrow(subsetCt))
+            subsetCt$calibratedCi95Lb <- rep(NA, nrow(subsetCt))
+            subsetCt$calibratedCi95Ub <- rep(NA, nrow(subsetCt))
+            subsetCt$calibratedLogRr <- rep(NA, nrow(subsetCt))
+            subsetCt$calibratedSeLogRr <- rep(NA, nrow(subsetCt))
+        }
+    } else {
+        subsetTc <- subset
+        subsetCt <- NULL
+    }
     targetPcs <- targetPcs[!is.na(targetPcs$seLogRr), ]
     if (nrow(targetPcs) > 5) {
         model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(ncs$logRr, targetPcs$logRr),
@@ -726,27 +773,6 @@ calibrate <- function(subset, negativeControls, positiveControls) {
         subsetTc$calibratedCi95Ub <- rep(NA, nrow(subsetTc))
         subsetTc$calibratedLogRr <- rep(NA, nrow(subsetTc))
         subsetTc$calibratedSeLogRr <- rep(NA, nrow(subsetTc))
-    }
-    comparatorPcs <- comparatorPcs[!is.na(comparatorPcs$seLogRr), ]
-    if (nrow(comparatorPcs) > 5) {
-        model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(-ncs$logRr, -comparatorPcs$logRr),
-                                                               seLogRr = c(ncs$seLogRr, comparatorPcs$seLogRr),
-                                                               trueLogRr = c(rep(0, nrow(ncs)), log(comparatorPcs$effectSize)),
-                                                               estimateCovarianceMatrix = FALSE)
-        calibratedCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = subsetCt$logRr,
-                                                                          seLogRr = subsetCt$seLogRr,
-                                                                          model = model)
-        subsetCt$calibratedRr <- exp(calibratedCi$logRr)
-        subsetCt$calibratedCi95Lb <- exp(calibratedCi$logLb95Rr)
-        subsetCt$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
-        subsetCt$calibratedLogRr <- calibratedCi$logRr
-        subsetCt$calibratedSeLogRr <- calibratedCi$seLogRr
-    } else {
-        subsetCt$calibratedRr <- rep(NA, nrow(subsetCt))
-        subsetCt$calibratedCi95Lb <- rep(NA, nrow(subsetCt))
-        subsetCt$calibratedCi95Ub <- rep(NA, nrow(subsetCt))
-        subsetCt$calibratedLogRr <- rep(NA, nrow(subsetCt))
-        subsetCt$calibratedSeLogRr <- rep(NA, nrow(subsetCt))
     }
     subset <- rbind(subsetTc, subsetCt)
     subset$i2 <- rep(NA, nrow(subset))

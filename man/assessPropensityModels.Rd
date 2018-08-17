@@ -5,9 +5,9 @@
 \title{Assess propensity models}
 \usage{
 assessPropensityModels(connectionDetails, cdmDatabaseSchema,
-  cohortDatabaseSchema, tablePrefix = "legend", indicationId = "Depression",
-  oracleTempSchema, outputFolder, sampleSize = 1000, maxCores = 4,
-  databaseId)
+  cohortDatabaseSchema, tablePrefix = "legend",
+  indicationId = "Depression", oracleTempSchema, outputFolder,
+  sampleSize = 1000, maxCores = 4, databaseId)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the

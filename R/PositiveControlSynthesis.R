@@ -142,44 +142,59 @@ synthesizePositiveControls <- function(connectionDetails,
     if (any(counts$cohortDefinitionId >= min(summ$newOutcomeId) & counts$cohortDefinitionId <= max(summ$newOutcomeId))) {
         stop("Collision between original outcome IDs and synthetic outcome IDs")
     }
+
+    ParallelLogger::logInfo("- Fetching new outcomes from server")
     conn <- DatabaseConnector::connect(connectionDetails)
 
     # Only fetch outcomes for subjects in the exposure cohorts, because
     # only those are used in a cohort method design:
-    cohorts <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-    subjectIds <- ffbase::unique.ff(cohorts$subjectId)
-    subjectIds <- data.frame(subject_id = ff::as.ram(subjectIds))
+    exposures <- readRDS(file.path(signalInjectionFolder, "exposures.rds"))
+    subjectIds <- data.frame(subject_id = unique(exposures$personId))
+
+    # Use non-temp table in case bulk loading is enabled:
+    subjectsTableName = paste0(cohortDatabaseSchema, ".temp_subjects_", paste(sample(letters, 5),collapse = ""))
     DatabaseConnector::insertTable(connection = conn,
-                                   tableName = "#subjects",
+                                   tableName = subjectsTableName,
                                    data = subjectIds,
                                    dropTableIfExists = TRUE,
                                    createTable = TRUE,
-                                   tempTable = TRUE,
-                                   oracleTempSchema = oracleTempSchema)
-    sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
-                                             "Legend",
-                                             dbms = connectionDetails$dbms,
-                                             output_database_schema = cohortDatabaseSchema,
-                                             output_table = outcomeCohortTable,
-                                             min_id = min(summ$newOutcomeId),
-                                             max_id = max(summ$newOutcomeId))
-    injectedOutcomes <- DatabaseConnector::querySql.ffdf(conn, sql)
-    colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
-
+                                   tempTable = FALSE,
+                                   oracleTempSchema = oracleTempSchema,
+                                   progressBar = TRUE)
     injectedOutcomesFolder <- file.path(indicationFolder, "injectedOutcomes")
-    if (file.exists(injectedOutcomesFolder)) {
-        unlink(injectedOutcomesFolder, recursive = TRUE)
+    if (!file.exists(injectedOutcomesFolder)) {
+        dir.create(injectedOutcomesFolder)
     }
-    ffbase::save.ffdf(injectedOutcomes, dir = injectedOutcomesFolder)
+    loadPositiveControlOutcomes <- function(exposureSubset) {
+        sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
+                                                 "Legend",
+                                                 dbms = connectionDetails$dbms,
+                                                 output_database_schema = cohortDatabaseSchema,
+                                                 output_table = outcomeCohortTable,
+                                                 cohort_ids = exposureSubset$newOutcomeId,
+                                                 subjects_table = subjectsTableName)
+        injectedOutcomes <- DatabaseConnector::querySql(conn, sql)
+        colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
+        fileName <- file.path(injectedOutcomesFolder, paste0("outcomes_e", exposureSubset$exposureId[1], ".rds"))
+        saveRDS(injectedOutcomes, fileName)
+        return(NULL)
+    }
+    exposureSubsets <- split(summ, summ$exposureId)
+    plyr::l_ply(exposureSubsets, loadPositiveControlOutcomes, .progress = "text")
 
-    # Drop dummy table:
-    sql <- "DROP TABLE @cohort_database_schema.@table_prefix_dummy;"
+    # Drop dummy and temp table:
+    sql <- "TRUNCATE TABLE @cohort_database_schema.@table_prefix_dummy; DROP TABLE @cohort_database_schema.@table_prefix_dummy;"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
                                 table_prefix = tablePrefix)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    DatabaseConnector::executeSql(conn, sql)
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+
+    sql <- "TRUNCATE TABLE @subjects_table; DROP TABLE @subjects_table;"
+    sql <- SqlRender::renderSql(sql,
+                                subjects_table = subjectsTableName)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     DatabaseConnector::disconnect(conn)
 }
@@ -187,57 +202,13 @@ synthesizePositiveControls <- function(connectionDetails,
 createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
     ParallelLogger::logInfo("- Preparing data files")
-    # exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 
     # Create exposures file ----------------------------------------------------------
     ParallelLogger::logTrace("Create exposures file")
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-    cohortIds <- unique(exposureSummary$targetId, exposureSummary$comparatorId)
-    exposures <- plyr::llply(cohortIds,
-                             getCohort,
-                             exposureSummary = exposureSummary,
-                             indicationFolder = indicationFolder,
-                             .progress = "text")
-    cohortsFolder <- file.path(indicationFolder, "allCohorts")
-    exposures <- data.frame()
-    for (i in 1:nrow(exposureSummary)) {
-        print(i)
-        targetId <- exposureSummary$targetId[i]
-        comparatorId <- exposureSummary$comparatorId[i]
-        fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId))
-        cohorts <- readRDS(fileName)
-        # idx <- !(cohorts$rowId %in% exposures$rowId)
-        idxTarget <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == targetId]) & cohorts$treatment == 1
-        idxComparator <- !(cohorts$rowId %in% exposures$rowId[exposures$cohortId == comparatorId]) & cohorts$treatment == 0
-        if (any(idxTarget) | any(idxComparator)) {
-            cohorts$cohortId <- targetId
-            cohorts$cohortId[cohorts$treatment == 0] <- comparatorId
-            cohorts$treatment <- NULL
-            exposures <- rbind(exposures, cohorts[idxTarget | idxComparator, ])
-        }
-    }
-#
-#
-#     cohorts <- NULL
-#     ffbase::load.ffdf(dir = file.path(indicationFolder, "allCohorts")) # Loads cohorts
-#     ff::open.ffdf(cohorts)
-#     cohortIds <- ff::as.ram(ffbase::unique.ff(cohorts$cohortDefinitionId))
-#     dedupe <- function(cohortId, data) {
-#         data <- data[data$cohortDefinitionId == cohortId,]
-#         data <- ff::as.ram(data)
-#         data$targetId <- NULL
-#         data$comparatorId <- NULL
-#         data <- data[order(data$rowId), ]
-#         data <- data[!duplicated(data$rowId), ]
-#         return(data)
-#     }
-#     exposures <- sapply(cohortIds, dedupe, data = cohorts, simplify = FALSE)
-#     exposures <- do.call("rbind", exposures)
+    exposures <- readRDS(file.path(indicationFolder, "allCohorts", "allCohorts.rds"))
     exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
-
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
     colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
-    # colnames(exposures)[colnames(exposures) == "cohortDefinitionId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1

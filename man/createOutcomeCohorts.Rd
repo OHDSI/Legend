@@ -4,9 +4,9 @@
 \alias{createOutcomeCohorts}
 \title{Create the outcome cohorts}
 \usage{
-createOutcomeCohorts(connectionDetails, cdmDatabaseSchema, cohortDatabaseSchema,
-  tablePrefix = "legend", indicationId = "Depression", oracleTempSchema,
-  outputFolder)
+createOutcomeCohorts(connectionDetails, cdmDatabaseSchema,
+  cohortDatabaseSchema, tablePrefix = "legend",
+  indicationId = "Depression", oracleTempSchema, outputFolder)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
