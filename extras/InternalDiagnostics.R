@@ -133,25 +133,23 @@ signalInjectionSum <- read.csv(file.path(indicationFolder, "signalInjectionSumma
 sample <- 1:nrow(exposureSummary)
 sample <- sample(nrow(exposureSummary), 100, replace = FALSE)
 for (i in sample) {
-    treatmentId <- exposureSummary$tprimeCohortDefinitionId[i]
-    comparatorId <- exposureSummary$cprimeCohortDefinitionId[i]
-    treatmentConceptId <- exposureSummary$tCohortDefinitionId[i]
-    comparatorConceptId <- exposureSummary$cCohortDefinitionId[i]
-    treatmentName <- exposureSummary$tName[i]
-    comparatorName <- exposureSummary$cName[i]
+    targetId <- exposureSummary$targetId[i]
+    comparatorId <- exposureSummary$comparatorId[i]
+    targetName <- exposureSummary$targetName[i]
+    comparatorName <- exposureSummary$comparatorName[i]
     for (analysisId in unique(analysesSum$analysisId)) {
-        estimates <- analysesSum[analysesSum$analysisId == analysisId & analysesSum$targetId == treatmentId &
+        estimates <- analysesSum[analysesSum$analysisId == analysisId & analysesSum$targetId == targetId &
                                      analysesSum$comparatorId == comparatorId, ]
 
         negControls <- estimates[estimates$outcomeId %in% negativeControlIds, ]
         fileName <- file.path(calibrationFolder, paste0("negControls_a",
                                                         analysisId,
                                                         "_t",
-                                                        treatmentId,
+                                                        targetId,
                                                         "_c",
                                                         comparatorId,
                                                         ".png"))
-        title <- paste(treatmentName, "vs.", comparatorName, "- analysis ", analysisId)
+        title <- paste(targetName, "vs.", comparatorName, "- analysis ", analysisId)
         EmpiricalCalibration::plotCalibrationEffect(logRrNegatives = negControls$logRr,
                                                     seLogRrNegatives = negControls$seLogRr,
                                                     title = title,
@@ -162,16 +160,16 @@ for (i in sample) {
                                                         "_t",
                                                         comparatorId,
                                                         "_c",
-                                                        treatmentId,
+                                                        targetId,
                                                         ".png"))
-        title <- paste(comparatorName, "vs.", treatmentName, "- analysis ", analysisId)
+        title <- paste(comparatorName, "vs.", targetName, "- analysis ", analysisId)
         EmpiricalCalibration::plotCalibrationEffect(logRrNegatives = -negControls$logRr,
                                                     seLogRrNegatives = negControls$seLogRr,
                                                     title = title,
                                                     xLabel = "Hazard ratio",
                                                     fileName = fileName)
 
-        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == treatmentConceptId &
+        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == targetId &
                                                   signalInjectionSum$injectedOutcomes != 0, ]
         negativeControlIdSubsets <- unique(injectedSignals$outcomeId)
         injectedSignals <- data.frame(outcomeId = injectedSignals$newOutcomeId,
@@ -183,11 +181,11 @@ for (i in sample) {
             fileName <- file.path(calibrationFolder, paste0("negPosControls_a",
                                                             analysisId,
                                                             "_t",
-                                                            treatmentId,
+                                                            targetId,
                                                             "_c",
                                                             comparatorId,
                                                             ".png"))
-            title <- paste(treatmentName, "vs.", comparatorName, "- analysis ", analysisId)
+            title <- paste(targetName, "vs.", comparatorName, "- analysis ", analysisId)
             EmpiricalCalibration::plotCiCalibrationEffect(logRr = data$logRr,
                                                           seLogRr = data$seLogRr,
                                                           trueLogRr = data$trueLogRr,
@@ -197,7 +195,7 @@ for (i in sample) {
 
         }
 
-        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == comparatorConceptId &
+        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == comparatorId &
                                                   signalInjectionSum$injectedOutcomes != 0, ]
         negativeControlIdSubsets <- unique(injectedSignals$outcomeId)
         injectedSignals <- data.frame(outcomeId = injectedSignals$newOutcomeId,
@@ -212,9 +210,9 @@ for (i in sample) {
                                                             "_t",
                                                             comparatorId,
                                                             "_c",
-                                                            treatmentId,
+                                                            targetId,
                                                             ".png"))
-            title <- paste(comparatorName, "vs.", treatmentName, "- analysis ", analysisId)
+            title <- paste(comparatorName, "vs.", targetName, "- analysis ", analysisId)
             EmpiricalCalibration::plotCiCalibrationEffect(logRr = -data$logRr,
                                                           seLogRr = data$seLogRr,
                                                           trueLogRr = data$trueLogRr,
@@ -362,7 +360,7 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
             ff::close.ffdf(cmData$analysisRef)
             # Truncate to first 25 covariates:
             if (nrow(model) > 25) {
-              model <- model[1:25, ]
+                model <- model[1:25, ]
             }
         } else {
             model <- data.frame(coefficient = NA,
