@@ -1,11 +1,33 @@
+createTitle <- function(tcoDbs) {
+  tcoDbs$targetName <- exposures$exposureName[match(tcoDbs$targetId, exposures$exposureId)]
+  tcoDbs$comparatorName <- exposures$exposureName[match(tcoDbs$comparatorId, exposures$exposureId)]
+  tcoDbs$outcomeName <- outcomes$outcomeName[match(tcoDbs$outcomeId, outcomes$outcomeId)]
+  
+  titles <- paste("A Comparison of",
+                  tcoDbs$targetName,
+                  "to",
+                  tcoDbs$comparatorName,
+                  "for the Risk of",
+                  tcoDbs$outcomeName,
+                  "in the",
+                  tcoDbs$databaseId,"Database.")
+  return(titles)
+}
+
 prepareTable1 <- function(balance, 
                           beforeLabel = "Before stratification",
                           afterLabel = "After stratification",
                           targetLabel = "Target",
                           comparatorLabel = "Comparator",
                           percentDigits = 1,
-                          stdDiffDigits = 2) {
+                          stdDiffDigits = 2,
+                          output = "latex") {
   #pathToCsv <- system.file("settings", "Table1Specs.csv", package = packageName)
+  if (output == "latex") {
+    space <- " "
+  } else {
+    space <- "&nbsp;"
+  }
   pathToCsv <- "Table1Specs.csv"
   specifications <- read.csv(pathToCsv, stringsAsFactors = FALSE)
   
@@ -22,14 +44,14 @@ prepareTable1 <- function(balance,
     result <- format(round(100*x, percentDigits), digits = percentDigits+1, justify = "right")
     # result <- formatC(x * 100, digits = percentDigits, format = "f")
     result <- gsub("NA", "", result)
-    result <- gsub(" ", "&nbsp;", result)
+    result <- gsub(" ", space, result)
     return(result)
   }
   
   formatStdDiff <- function(x) {
     result <- format(round(x, stdDiffDigits), digits = stdDiffDigits+1, justify = "right")
     result <- gsub("NA", "", result)
-    result <- gsub(" ", "&nbsp;", result)
+    result <- gsub(" ", space, result)
     return(result)
   }
   
@@ -70,7 +92,7 @@ prepareTable1 <- function(balance,
                                                            afterMatchingStdDiff = NA,
                                                            stringsAsFactors = FALSE))
             resultsTable <- rbind(resultsTable,
-                                  data.frame(Characteristic = paste0("&nbsp;&nbsp;&nbsp;&nbsp;", balanceSubset$covariateName),
+                                  data.frame(Characteristic = paste0(space, space, space, space, balanceSubset$covariateName),
                                              beforeMatchingMeanTreated = balanceSubset$beforeMatchingMeanTreated,
                                              beforeMatchingMeanComparator = balanceSubset$beforeMatchingMeanComparator,
                                              beforeMatchingStdDiff = balanceSubset$beforeMatchingStdDiff,

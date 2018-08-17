@@ -77,7 +77,8 @@ getMainResults <- function(connection,
                            targetIds = c(), 
                            comparatorIds = c(), 
                            outcomeIds = c(), 
-                           databaseIds = c()) {
+                           databaseIds = c(),
+                           analysisIds = c()) {
   sql <- "SELECT * FROM cohort_method_result"
   parts <- c()
   if (length(targetIds) != 0) {
@@ -92,6 +93,9 @@ getMainResults <- function(connection,
   if (length(databaseIds) != 0) {
     parts <- c(parts, paste0("database_id IN ('", paste(databaseIds, collapse = "', '"), "')")) 
   }
+  if (length(analysisIds) != 0) {
+    parts <- c(parts, paste0("analysis_id IN ('", paste(analysisIds, collapse = "', '"), "')")) 
+  }
   if (length(parts) != 0) {
     sql <- paste(sql, "WHERE", paste(parts, collapse = " AND ")) 
   }
@@ -101,20 +105,73 @@ getMainResults <- function(connection,
   return(results)
 }
 
-createTitle <- function(tcoDbs) {
-  tcoDbs$targetName <- exposures$exposureName[match(tcoDbs$targetId, exposures$exposureId)]
-  tcoDbs$comparatorName <- exposures$exposureName[match(tcoDbs$comparatorId, exposures$exposureId)]
-  tcoDbs$outcomeName <- outcomes$outcomeName[match(tcoDbs$outcomeId, outcomes$outcomeId)]
-  
-  titles <- paste("A Comparison of",
-                  tcoDbs$targetName,
-                  "to",
-                  tcoDbs$comparatorName,
-                  "for the Risk of",
-                  tcoDbs$outcomeName,
-                  "in the",
-                  tcoDbs$databaseId,"Database.")
-  return(titles)
+getControlResults <- function(connection, 
+                              targetId,
+                              comparatorId,
+                              analysisId,
+                              databaseId) {
+  sql <- "SELECT * 
+  FROM cohort_method_result
+  INNER JOIN (
+    SELECT outcome_id,
+      outcome_name,
+      CAST(1 AS FLOAT) AS effect_size
+    FROM negative_control_outcome
+
+    UNION ALL
+
+    SELECT outcome_id,
+      outcome_name,
+      effect_size
+     FROM positive_control_outcome
+  ) outcomes
+  ON cohort_method_result.outcome_id = outcomes.outcome_id
+  WHERE target_id = @target_id
+  AND comparator_id = @comparator_id
+  AND database_id = '@database_id'
+  AND analysis_id = @analysis_id"
+  sql <- SqlRender::renderSql(sql, 
+                              target_id = targetId,
+                              comparator_id = comparatorId,
+                              database_id = databaseId,
+                              analysis_id = analysisId)$sql
+  results <- querySql(connection, sql)  
+  colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
+  return(results)
+}
+
+getCmFollowUpDist <- function(connection, targetId, comparatorId, outcomeId, databaseId, analysisId) {
+  sql <- "SELECT target_min_days,
+    target_p10_days,
+    target_p25_days,
+    target_median_days,
+    target_p75_days,
+    target_p90_days,
+    target_max_days,
+    comparator_min_days,
+    comparator_p10_days,
+    comparator_p25_days,
+    comparator_median_days,
+    comparator_p75_days,
+    comparator_p90_days,
+    comparator_max_days
+  FROM cm_follow_up_dist
+  WHERE target_id = @target_id
+  AND comparator_id = @comparator_id
+  AND outcome_id = @outcome_id
+  AND database_id = '@database_id'
+  AND analysis_id = @analysis_id"
+  sql <- SqlRender::renderSql(sql, 
+                              target_id = targetId,
+                              comparator_id = comparatorId,
+                              outcome_id = outcomeId,
+                              database_id = databaseId,
+                              analysis_id = analysisId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  followUpDist <- querySql(connection, sql)  
+  # querySql(connection, "SELECT * FROM cm_follow_up_dist WHERE target_id = 715259 AND comparator_id = 739138 AND analysis_id = 1 LIMIT 100") 
+  colnames(followUpDist) <- SqlRender::snakeCaseToCamelCase(colnames(followUpDist))
+  return(followUpDist)
 }
 
 getCovariateBalance <- function(connection, targetId, comparatorId, databaseId) {
@@ -205,11 +262,11 @@ getAttrition <- function(connection, targetId, comparatorId, outcomeId, analysis
     description,
     subjects
   FROM attrition
-  WHERE (target_id = -1 OR target_id = @target_id)
-    AND (comparator_id = -1 OR comparator_id = @comparator_id)
-    AND (outcome_id = -1 OR outcome_id = @outcome_id)
+  WHERE (target_id IS NULL OR target_id = @target_id)
+    AND (comparator_id IS NULL OR comparator_id = @comparator_id)
+    AND (outcome_id IS NULL OR outcome_id = @outcome_id)
     AND (exposure_id = @target_id OR exposure_id = @comparator_id)  
-    AND (analysis_id = -1 OR analysis_id = @analysis_id)
+    AND (analysis_id IS NULL OR analysis_id = @analysis_id)
     AND database_id = '@database_id'"
   sql <- SqlRender::renderSql(sql, 
                               target_id = targetId,

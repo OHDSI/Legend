@@ -7,18 +7,19 @@ output:
   html_document: default
 bibliography: bibliography.bib
 params:
-  databaseId: "MDCR"
+  databaseId: "MDCD"
   targetId: 739138
   comparatorId: 715259
   outcomeId: 18
-  setTitle: "A Comparison of Trazodone & Psychotherapy to Amitriptyline & Psychotherapy for the Risk of Stroke in the MDCR Database."
+  setTitle: "A Comparison of Sertraline to Duloxetine for the Risk of Stroke in the MDCD Database."
 title: "`r params$setTitle`"
 ---
 
 
-```{r, echo=FALSE, message=FALSE, comment=FALSE, results='hide'}
+```{r, echo=FALSE, message=FALSE, comment=FALSE, warning=FALSE, results='hide'}
 library(DatabaseConnector)
 library(knitr)
+library(kableExtra)
 source("DataPulls.R")
 source("PlotsAndTables.R")
 options(knitr.kable.NA = '')
@@ -45,7 +46,14 @@ if (!useStoredObject) {
                                   targetIds = params$targetId,
                                   comparatorIds = params$comparatorId,
                                   outcomeIds = params$outcomeId,
-                                  databaseIds = params$databaseId)
+                                  databaseIds = params$databaseId,
+                                  analysisIds = c(1, 2, 3, 4))
+    
+    controlResults <- getControlResults(connection,
+                                        targetId = params$targetId,
+                                        comparatorId = params$comparatorId,
+                                        analysisId = 1,
+                                        databaseId = params$databaseId)
 
     attrition <- getAttrition(connection,
                               targetId = params$targetId,
@@ -103,27 +111,54 @@ This is a very important study. Here's a really cool paper @pmid23900808.
 
 # Results
 
-```{r, echo = FALSE, fig.width=6, fig.height=7.5, fig.align='center'}
+```{r, echo = FALSE, fig.width=6, fig.height=7.5, out.width = '50%', fig.align='center'}
 drawAttritionDiagram(attrition, targetName, comparatorName)
 ```
 **Figure 1**. Attrition diagram.
 
 
 **Table 1**. Select population characteristics
-\fontsize{6.5}{6.5}
-\selectfont
 ```{r, echo = FALSE}
 table <- prepareTable1(balance)
-kable(table, row.names = FALSE)
+# Remove 1st header, with add back later with merged columns:
+header <- as.character(table[1, ])
+header[header == "1"] <- ""
+table <- table[-1, ]
+# Indentation needs to be made explicit (not by leading spaces):
+needIndent <- which(substr(table[, 1], 1, 1) == " ")
+
+kable_styling(add_indent(add_header_above(kable(table, "latex", 
+                                                booktabs = TRUE, 
+                                                longtable = TRUE,
+                                                row.names = FALSE, 
+                                                col.names = header,
+                                                linesep = "",
+                                                align = c("l", "r", "r", "r", "r", "r", "r")), 
+                                          c("", "Before stratification" = 3, "After stratification" = 3)),
+                         needIndent),
+              font_size = 7,
+              latex_options = c("HOLD_position", "repeat_header"))
+           
 ```
 
-\fontsize{10}{12}
-\selectfont
-
-```{r, echo = FALSE, fig.width=6, fig.height=4, fig.align='center'}
+```{r, echo = FALSE, fig.width=5, fig.height=3.5, out.width = '50%', fig.align='center'}
 plotPs(ps, targetName, comparatorName)
 ```
 **Figure 2**. Preference score distribution. The preference score is a transformation of the propensity score that adjusts for differences in the sizes of the two treatment groups. A higher overlap indicates subjects in the two groups were more similar in terms of their predicted probability of receiving one treatment over the other.
+
+```{r, echo = FALSE, fig.width=4, fig.height=4, out.width = '50%', fig.align='center', warning=FALSE}
+CohortMethod::plotCovariateBalanceScatterPlot(balance, beforeLabel = "Before stratification", afterLabel = "After stratification")
+```
+**Figure 3**. Covariate balance before and after stratification. Each dot represents the standardizes difference of means for a single covariate before and after stratification on the propensity score. 
+
+```{r, echo = FALSE, fig.width=15, fig.height=2.5, out.width = '100%', fig.align='center', warning=FALSE}
+EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlResults$logRr,
+                                              seLogRr = controlResults$seLogRr,
+                                              trueLogRr = log(controlResults$effectSize),
+                                              xLabel = "Hazard ratio")
+```
+**Figure 4**. Systematic error 
+
 
 **Table 2**. Hazard ratios, 95% confidence intervals, uncalibrated and empirically calibrated, for various analyses.
 ```{r, echo = FALSE}
@@ -135,10 +170,16 @@ table$calibratedP <- sprintf("%.2f", table$calibratedP)
 table <- merge(table, analyses)
 table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
 colnames(table) <- c("Analysis", "HR (95% CI)", "P", "Cal. HR (95% CI)", "Cal. p")
-kable(table, row.names = FALSE)
+kable_styling(kable(table, "latex", 
+                    booktabs = TRUE, 
+                    longtable = FALSE,
+                    row.names = FALSE, 
+                    linesep = ""),
+              font_size = 8,
+              latex_options = c("HOLD_position"))
 ```
 
-```{r, echo = FALSE, fig.width=6, fig.height=5.5, fig.align='center', results='hide'}
+```{r, echo = FALSE, fig.width=7, fig.height=5, out.width = '100%', fig.align='center', results='hide'}
 plotKaplanMeier(kaplanMeier, targetName, comparatorName)
 ```
 **Figure 3**. Kaplan Meier plot, showing survival as a function of time. This plot
@@ -151,3 +192,9 @@ plotKaplanMeier(kaplanMeier, targetName, comparatorName)
 # Conclusions
 
 # References
+
+```{r, echo=FALSE, message=FALSE, comment=FALSE, warning=FALSE, results='hide'}
+if (!useStoredObject) {
+  DatabaseConnector::disconnect(connection)
+}
+```
