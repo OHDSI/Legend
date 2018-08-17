@@ -2,7 +2,6 @@
 
 export(assessPhenotypes)
 export(assessPropensityModels)
-export(calibrateEstimatesAndPvalues)
 export(computeCovariateBalance)
 export(computeIncidence)
 export(createAnalysesDetails)
