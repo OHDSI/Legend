@@ -60,6 +60,7 @@ assessPhenotypes <- function(connectionDetails,
     }
     ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "logAssesPhenotypes.txt"))
 
+    # Exposures ----------------------------------------------------------------------------------------
     createExposureCohorts(connectionDetails = connectionDetails,
                           cdmDatabaseSchema = cdmDatabaseSchema,
                           cohortDatabaseSchema = cohortDatabaseSchema,
@@ -67,15 +68,27 @@ assessPhenotypes <- function(connectionDetails,
                           indicationId = indicationId,
                           oracleTempSchema = oracleTempSchema,
                           outputFolder = outputFolder)
-    exposureSummary <- read.csv(file.path(outputFolder, indicationId, "pairedExposureSummary.csv"))
-    exposureSummary$targetPersons[exposureSummary$targetPersons < minCellCount] <- paste0("<", minCellCount)
-    exposureSummary$comparatorPersons[exposureSummary$comparatorPersons < minCellCount] <- paste0("<", minCellCount)
-    exposureSummary$targetPairedPersons[exposureSummary$targetPairedPersons < minCellCount] <- paste0("<", minCellCount)
-    exposureSummary$comparatorPairedPersons[exposureSummary$comparatorPairedPersons < minCellCount] <- paste0("<", minCellCount)
-    exposureSummary$indicationId <- indicationId
-    exposureSummary$databaseId <- databaseId
-    write.csv(exposureSummary, file.path(assessmentExportFolder, "exposurePairs.csv"), row.names = FALSE)
 
+    exposureCohortTable <- paste(tablePrefix, tolower(indicationId), "exp_cohort", sep = "_")
+    sql <- "SELECT COUNT(*) AS exposure_count, cohort_definition_id AS cohort_id FROM @cohort_database_schema.@exposure_cohort_table GROUP BY cohort_definition_id;"
+    sql <- SqlRender::renderSql(sql = sql,
+                                cohort_database_schema = cohortDatabaseSchema,
+                                exposure_cohort_table = exposureCohortTable)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect =  connectionDetails$dbms)$sql
+    conn <- DatabaseConnector::connect(connectionDetails)
+    exposureCounts <- DatabaseConnector::querySql(conn, sql)
+    DatabaseConnector::disconnect(conn)
+    colnames(exposureCounts) <- SqlRender::snakeCaseToCamelCase(colnames(exposureCounts))
+    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+    exposuresOfInterest <- read.csv(pathToCsv)
+    exposureCounts <- merge(exposureCounts, exposuresOfInterest[, c("cohortId", "type", "name")])
+    # To do: handle combination exposures for hypertension
+    exposureCounts$exposureCount[exposureCounts$exposureCount < minCellCount] <- paste0("<", minCellCount)
+    exposureCounts$indicationId <- indicationId
+    exposureCounts$databaseId <- databaseId
+    write.csv(exposureCounts, file.path(assessmentExportFolder, "exposures.csv"), row.names = FALSE)
+
+    # Outcomes -------------------------------------------------------------------------------------------
     createOutcomeCohorts(connectionDetails = connectionDetails,
                          cdmDatabaseSchema = cdmDatabaseSchema,
                          cohortDatabaseSchema = cohortDatabaseSchema,
@@ -89,7 +102,7 @@ assessPhenotypes <- function(connectionDetails,
     outcomeCounts$databaseId <- databaseId
     write.csv(outcomeCounts, file.path(assessmentExportFolder, "outcomes.csv"), row.names = FALSE)
 
-
+    # Subgroups -------------------------------------------------------------------------------------------
     ParallelLogger::logInfo("Sampling cohorts for subgroup feasibility")
     pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     smallSampleTable <- paste(tablePrefix, tolower(indicationId), "small_sample", sep = "_")
@@ -101,7 +114,7 @@ assessPhenotypes <- function(connectionDetails,
                                              paired_cohort_table = pairedCohortTable,
                                              small_sample_table = smallSampleTable,
                                              sample_size = sampleSize)
-    conn <- DatabaseConnector::connect(connectionDetails)
+
     DatabaseConnector::executeSql(conn, sql)
 
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
@@ -127,7 +140,8 @@ assessPhenotypes <- function(connectionDetails,
     covs$databaseId <- databaseId
     write.csv(covs, file.path(assessmentExportFolder, "subgroups.csv"), row.names = FALSE)
 
-    zipName <- file.path(assessmentExportFolder, "PhenotypeAssessment.zip")
+    # Compress -------------------------------------------------------------------------------------------
+    zipName <- file.path(assessmentExportFolder, sprintf("PhenotypeAssessment%s%s.zip", indicationId, databaseId))
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
@@ -317,7 +331,7 @@ assessPropensityModels <- function(connectionDetails,
     data$indicationId <- indicationId
     write.csv(data, file.path(assessmentExportFolder, "aucs.csv"), row.names = FALSE)
 
-    zipName <- file.path(assessmentExportFolder, "PropensityModelAssessment.zip")
+    zipName <- file.path(assessmentExportFolder, sprintf("PropensityModelAssessment.zip%s%s.zip", indicationId, databaseId))
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))

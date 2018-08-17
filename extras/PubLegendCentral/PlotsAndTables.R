@@ -1,14 +1,36 @@
-prepareTable1 <- function(balance, 
+createTitle <- function(tcoDbs) {
+  tcoDbs$targetName <- exposures$exposureName[match(tcoDbs$targetId, exposures$exposureId)]
+  tcoDbs$comparatorName <- exposures$exposureName[match(tcoDbs$comparatorId, exposures$exposureId)]
+  tcoDbs$outcomeName <- outcomes$outcomeName[match(tcoDbs$outcomeId, outcomes$outcomeId)]
+
+  titles <- paste("A Comparison of",
+                  tcoDbs$targetName,
+                  "to",
+                  tcoDbs$comparatorName,
+                  "for the Risk of",
+                  tcoDbs$outcomeName,
+                  "in the",
+                  tcoDbs$databaseId,"Database.")
+  return(titles)
+}
+
+prepareTable1 <- function(balance,
                           beforeLabel = "Before stratification",
                           afterLabel = "After stratification",
                           targetLabel = "Target",
                           comparatorLabel = "Comparator",
                           percentDigits = 1,
-                          stdDiffDigits = 2) {
+                          stdDiffDigits = 2,
+                          output = "latex") {
   #pathToCsv <- system.file("settings", "Table1Specs.csv", package = packageName)
+  if (output == "latex") {
+    space <- " "
+  } else {
+    space <- "&nbsp;"
+  }
   pathToCsv <- "Table1Specs.csv"
   specifications <- read.csv(pathToCsv, stringsAsFactors = FALSE)
-  
+
   fixCase <- function(label) {
     idx <- (toupper(label) == label)
     if (any(idx)) {
@@ -17,22 +39,22 @@ prepareTable1 <- function(balance,
     }
     return(label)
   }
-  
+
   formatPercent <- function(x) {
     result <- format(round(100*x, percentDigits), digits = percentDigits+1, justify = "right")
     # result <- formatC(x * 100, digits = percentDigits, format = "f")
     result <- gsub("NA", "", result)
-    #result <- gsub(" ", "&nbsp;", result)
+    result <- gsub(" ", space, result)
     return(result)
   }
-  
+
   formatStdDiff <- function(x) {
-    result <- format(round(x, stdDiffDigits), digits = stdDiffDigits+1, justify = "right")
+    result <- format(round(x, stdDiffDigits), digits = stdDiffDigits + 1, justify = "right")
     result <- gsub("NA", "", result)
-    #result <- gsub(" ", "&nbsp;", result)
+    result <- gsub(" ", space, result)
     return(result)
   }
-  
+
   resultsTable <- data.frame()
   for (i in 1:nrow(specifications)) {
     if (specifications$analysisId[i] == "") {
@@ -70,10 +92,7 @@ prepareTable1 <- function(balance,
                                                            afterMatchingStdDiff = NA,
                                                            stringsAsFactors = FALSE))
             resultsTable <- rbind(resultsTable,
-                                  data.frame(Characteristic = paste0(
-                                    #"&nbsp;&nbsp;&nbsp;&nbsp;", 
-                                    "$\\quad$",
-                                    balanceSubset$covariateName),
+                                  data.frame(Characteristic = paste0(space, space, space, space, balanceSubset$covariateName),
                                              beforeMatchingMeanTreated = balanceSubset$beforeMatchingMeanTreated,
                                              beforeMatchingMeanComparator = balanceSubset$beforeMatchingMeanComparator,
                                              beforeMatchingStdDiff = balanceSubset$beforeMatchingStdDiff,
@@ -95,20 +114,20 @@ prepareTable1 <- function(balance,
       }
     }
   }
-  resultsTable$beforeMatchingMeanTreated <- formatPercent(resultsTable$beforeMatchingMeanTreated) 
-  resultsTable$beforeMatchingMeanComparator <- formatPercent(resultsTable$beforeMatchingMeanComparator) 
-  resultsTable$beforeMatchingStdDiff <- formatStdDiff(resultsTable$beforeMatchingStdDiff) 
-  resultsTable$afterMatchingMeanTreated <- formatPercent(resultsTable$afterMatchingMeanTreated) 
-  resultsTable$afterMatchingMeanComparator <- formatPercent(resultsTable$afterMatchingMeanComparator) 
-  resultsTable$afterMatchingStdDiff <- formatStdDiff(resultsTable$afterMatchingStdDiff) 
-  
+  resultsTable$beforeMatchingMeanTreated <- formatPercent(resultsTable$beforeMatchingMeanTreated)
+  resultsTable$beforeMatchingMeanComparator <- formatPercent(resultsTable$beforeMatchingMeanComparator)
+  resultsTable$beforeMatchingStdDiff <- formatStdDiff(resultsTable$beforeMatchingStdDiff)
+  resultsTable$afterMatchingMeanTreated <- formatPercent(resultsTable$afterMatchingMeanTreated)
+  resultsTable$afterMatchingMeanComparator <- formatPercent(resultsTable$afterMatchingMeanComparator)
+  resultsTable$afterMatchingStdDiff <- formatStdDiff(resultsTable$afterMatchingStdDiff)
+
   headerRow <- as.data.frame(t(rep("", ncol(resultsTable))))
   colnames(headerRow) <- colnames(resultsTable)
   headerRow$beforeMatchingMeanTreated <- targetLabel
   headerRow$beforeMatchingMeanComparator <- comparatorLabel
   headerRow$afterMatchingMeanTreated <- targetLabel
   headerRow$afterMatchingMeanComparator <- comparatorLabel
-  
+
   subHeaderRow <- as.data.frame(t(rep("", ncol(resultsTable))))
   colnames(subHeaderRow) <- colnames(resultsTable)
   subHeaderRow$Characteristic <- "Characteristic"
@@ -118,9 +137,9 @@ prepareTable1 <- function(balance,
   subHeaderRow$afterMatchingMeanTreated <- "%"
   subHeaderRow$afterMatchingMeanComparator <- "%"
   subHeaderRow$afterMatchingStdDiff <- "Std. diff"
-  
+
   resultsTable <- rbind(headerRow, subHeaderRow, resultsTable)
-  
+
   colnames(resultsTable) <- rep("", ncol(resultsTable))
   colnames(resultsTable)[2] <- beforeLabel
   colnames(resultsTable)[5] <- afterLabel
@@ -142,9 +161,9 @@ plotPs <- function(ps, targetName, comparatorName) {
     ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
     ggplot2::scale_x_continuous("Preference score", limits = c(0, 1)) +
     ggplot2::scale_y_continuous("Density") +
-    ggplot2::theme(legend.title = ggplot2::element_blank(), 
-                   panel.grid.major = ggplot2::element_blank(), 
-                   panel.grid.minor = ggplot2::element_blank(), 
+    ggplot2::theme(legend.title = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank(),
+                   panel.grid.minor = ggplot2::element_blank(),
                    legend.position = "top",
                    legend.text = theme,
                    axis.text = theme,
@@ -163,7 +182,7 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                            lower = kaplanMeier$comparatorSurvivalLb,
                            upper = kaplanMeier$comparatorSurvivalUb,
                            strata = paste0(" ", comparatorName)))
-  
+
   xlims <- c(-max(data$time)/40, max(data$time))
   ylims <- c(min(data$lower), 1)
   xLabel <- "Time in days"
@@ -188,7 +207,7 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                    legend.key.size = ggplot2::unit(1.0, 'lines'),
                    plot.title = ggplot2::element_text(hjust = 0.5)) +
     ggplot2::theme(axis.title.y = ggplot2::element_text(vjust = -10))
- 
+
     targetAtRisk <- kaplanMeier$targetAtRisk[!is.na(kaplanMeier$targetAtRisk)]
     comparatorAtRisk <- kaplanMeier$comparatorAtRisk[!is.na(kaplanMeier$comparatorAtRisk)]
     labels <- data.frame(x = c(0, xBreaks, xBreaks),
@@ -251,8 +270,8 @@ drawAttritionDiagram <- function(attrition,
   for (i in 2:nrow(attrition)) {
     data <- addStep(data, attrition, i)
   }
-  
-  
+
+
   data$leftBoxText[length(data$leftBoxText) + 1] <- paste("Study population:\n",
                                                           targetLabel,
                                                           ": n = ",
@@ -265,7 +284,7 @@ drawAttritionDiagram <- function(attrition,
   leftBoxText <- data$leftBoxText
   rightBoxText <- data$rightBoxText
   nSteps <- length(leftBoxText)
-  
+
   boxHeight <- (1/nSteps) - 0.03
   boxWidth <- 0.45
   shadowOffset <- 0.01
@@ -276,7 +295,7 @@ drawAttritionDiagram <- function(attrition,
   y <- function(y) {
     return(1 - (y - 0.5) * (1/nSteps))
   }
-  
+
   downArrow <- function(p, x1, y1, x2, y2) {
     p <- p + ggplot2::geom_segment(ggplot2::aes_string(x = x1, y = y1, xend = x2, yend = y2))
     p <- p + ggplot2::geom_segment(ggplot2::aes_string(x = x2,
@@ -324,7 +343,7 @@ drawAttritionDiagram <- function(attrition,
                                 size = 3.7)
     return(p)
   }
-  
+
   p <- ggplot2::ggplot()
   for (i in 2:nSteps - 1) {
     p <- downArrow(p, x(1), y(i) - (boxHeight/2), x(1), y(i + 1) + (boxHeight/2))
@@ -355,7 +374,7 @@ drawAttritionDiagram <- function(attrition,
                           axis.text = ggplot2::element_blank(),
                           axis.title = ggplot2::element_blank(),
                           axis.ticks = ggplot2::element_blank())
-  
+
   return(p)
 }
 
@@ -396,7 +415,7 @@ judgePropensityScore <- function(ps, bias) {
     " control of measured confounding by propensity score adjustment, and ",
     ifelse(goodSystematicBias(bias), "minimal", "non-negligible"),
     " residual systematic bias through negative and positive control experiments",
-    ifelse(goodPropensityScore(ps) && goodSystematicBias(bias), 
+    ifelse(goodPropensityScore(ps) && goodSystematicBias(bias),
            ", lending credibility to our effect estimates", "")
   )
 }
