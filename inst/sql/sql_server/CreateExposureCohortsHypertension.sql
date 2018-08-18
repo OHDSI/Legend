@@ -239,7 +239,6 @@ FROM (
 		INNER JOIN #exposure_combi exposure_combi
 			ON exposure_combi.exposure_id_1 = first_use_1.cohort_definition_id
 			AND exposure_combi.exposure_id_2 = first_use_2.cohort_definition_id
-		WHERE exposure_combi.exposure_id_3 = -1
 		
 		) first_use
 	-- Require washout period
@@ -268,108 +267,7 @@ GROUP BY first_line.subject_id,
 HAVING COUNT(DISTINCT concurrent.cohort_definition_id) = 2;
 
 
--- Create triple therapy first-line first use cohort. Store in #triple_new_user
-IF OBJECT_ID('tempdb..#triple_new_user', 'U') IS NOT NULL
-	DROP TABLE #triple_new_user;
-
---HINT DISTRIBUTE_ON_KEY(subject_id)
-SELECT first_line.subject_id,
-	first_line.cohort_definition_id,
-	first_line.cohort_start_date,
-	first_line.cohort_end_date
-INTO #triple_new_user
-FROM (
-	SELECT first_use.subject_id,
-		first_use.cohort_definition_id,
-		first_use.cohort_start_date,
-		first_use.cohort_end_date
-	FROM (
-		-- First use of drug triplet or class triplet:
-		SELECT first_use_1.subject_id,
-			exposure_combi.cohort_definition_id,
-			CASE 
-				WHEN first_use_1.cohort_start_date < first_use_2.cohort_start_date 
-					AND first_use_1.cohort_start_date < first_use_3.cohort_start_date 
-				THEN first_use_1.cohort_start_date
-				WHEN first_use_2.cohort_start_date < first_use_1.cohort_start_date 
-					AND first_use_2.cohort_start_date < first_use_3.cohort_start_date 
-				THEN first_use_2.cohort_start_date
-				ELSE first_use_3.cohort_start_date
-			END AS cohort_start_date,
-			CASE 
-				WHEN first_use_1.cohort_end_date < first_use_2.cohort_end_date 
-					AND first_use_1.cohort_end_date < first_use_3.cohort_end_date 
-				THEN first_use_1.cohort_end_date
-				WHEN first_use_2.cohort_end_date < first_use_1.cohort_end_date 
-					AND first_use_2.cohort_end_date < first_use_3.cohort_end_date 
-				THEN first_use_2.cohort_end_date
-				ELSE first_use_3.cohort_end_date
-			END AS cohort_end_date
-		FROM (
-			SELECT subject_id,
-				cohort_definition_id,
-				MIN(cohort_start_date) AS cohort_start_date,
-				MIN(cohort_end_date) AS cohort_end_date
-			FROM #exposure_era exposure_1
-			GROUP BY subject_id,
-				cohort_definition_id
-			) first_use_1
-		INNER JOIN (
-			SELECT subject_id,
-				cohort_definition_id,
-				MIN(cohort_start_date) AS cohort_start_date,
-				MIN(cohort_end_date) AS cohort_end_date
-			FROM #exposure_era exposure_1
-			GROUP BY subject_id,
-				cohort_definition_id
-			) first_use_2
-			ON first_use_1.subject_id = first_use_2.subject_id
-			AND ABS(DATEDIFF(DAY, first_use_1.cohort_start_date, first_use_2.cohort_start_date)) <= 7
-		INNER JOIN (
-			SELECT subject_id,
-				cohort_definition_id,
-				MIN(cohort_start_date) AS cohort_start_date,
-				MIN(cohort_end_date) AS cohort_end_date
-			FROM #exposure_era exposure_1
-			GROUP BY subject_id,
-				cohort_definition_id
-			) first_use_3
-			ON first_use_1.subject_id = first_use_3.subject_id
-			AND ABS(DATEDIFF(DAY, first_use_1.cohort_start_date, first_use_3.cohort_start_date)) <= 7
-			AND ABS(DATEDIFF(DAY, first_use_2.cohort_start_date, first_use_3.cohort_start_date)) <= 7
-		INNER JOIN #exposure_combi exposure_combi
-			ON exposure_combi.exposure_id_1 = first_use_1.cohort_definition_id
-			AND exposure_combi.exposure_id_2 = first_use_2.cohort_definition_id
-			AND exposure_combi.exposure_id_3 = first_use_3.cohort_definition_id
-		
-		) first_use
-	-- Require washout period
-	INNER JOIN @cdm_database_schema.observation_period
-		ON observation_period.person_id = first_use.subject_id
-		AND DATEADD(DAY, @washout_period, observation_period_start_date) <= first_use.cohort_start_date
-		AND observation_period_end_date >= first_use.cohort_start_date
-	-- First line: no prior HT exposure:
-	LEFT JOIN #exposure_era era
-		ON era.subject_id = first_use.subject_id
-		AND era.cohort_start_date < first_use.cohort_start_date
-	WHERE era.subject_id IS NULL
-	)  first_line
--- Triple therapy: only 3 drugs within 7 day period after initiation:
-INNER JOIN #exposure_era concurrent
-	ON concurrent.subject_id = first_line.subject_id
-	AND concurrent.cohort_start_date >= first_line.cohort_start_date
-	AND concurrent.cohort_start_date <= DATEADD(DAY, 7, first_line.cohort_start_date)
-INNER JOIN @eoi_table eoi
-	ON concurrent.cohort_definition_id = eoi.cohort_id
-WHERE eoi.exposure_type = 'Drug'
-GROUP BY first_line.subject_id,
-	first_line.cohort_definition_id,
-	first_line.cohort_start_date,
-	first_line.cohort_end_date
-HAVING COUNT(DISTINCT concurrent.cohort_definition_id) = 3;
-	
-
--- Merge mono, duo, and triple therapy. Require hypertension diagnose. Store in @cohort_database_schema.@exposure_cohort_table
+-- Merge mono and duo therapy. Require hypertension diagnose. Store in @cohort_database_schema.@exposure_cohort_table
 IF OBJECT_ID('@cohort_database_schema.@exposure_cohort_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@exposure_cohort_table;
 
@@ -393,15 +291,6 @@ FROM (
 		cohort_start_date,
 		cohort_end_date
 	FROM #duo_new_user
-	
-	UNION ALL
-	
-	SELECT subject_id,
-		cohort_definition_id,
-		cohort_start_date,
-		cohort_end_date
-	FROM #triple_new_user
-	
 	) new_user
 INNER JOIN @cdm_database_schema.condition_occurrence
 	ON condition_occurrence.person_id = new_user.subject_id
@@ -453,15 +342,6 @@ FROM (
 	UNION ALL
 	
 	SELECT cohort_definition_id AS exposure_id,
-		CAST(2 AS INT) AS sequence_number,
-		CAST('Triple-therapy new users' AS VARCHAR(255)) AS description,
-		COUNT(DISTINCT subject_id) AS subjects
-	FROM #triple_new_user
-	GROUP BY cohort_definition_id
-	
-	UNION ALL
-	
-	SELECT cohort_definition_id AS exposure_id,
 		CAST(3 AS INT) AS sequence_number,
 		CAST('Having indication' AS VARCHAR(255)) AS description,
 		COUNT(DISTINCT subject_id) AS subjects
@@ -482,6 +362,3 @@ DROP TABLE #mono_new_user;
 
 TRUNCATE TABLE #duo_new_user;
 DROP TABLE #duo_new_user;
-
-TRUNCATE TABLE #triple_new_user;
-DROP TABLE #triple_new_user;
