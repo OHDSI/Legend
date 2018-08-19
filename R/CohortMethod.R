@@ -182,6 +182,8 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     # Fourth run: Reverse pairs, exclude comparator controls ------------------------------------
 
     # Create reverse (comparator-target) cohortMethodData and ps objects:
+    # Warning: cohortMethodData will not have covariate and covariateRef data, since we
+    # won't need them (PS is already computed)
     pathToRds <- file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds")
     reference <- readRDS(pathToRds)
     reference <- reference[order(reference$cohortMethodDataFolder), ]
