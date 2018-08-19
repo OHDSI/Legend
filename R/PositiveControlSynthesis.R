@@ -85,13 +85,14 @@ synthesizePositiveControls <- function(connectionDetails,
 
     # Create a dummy exposure table:
     ParallelLogger::logTrace("Create a dummy exposure table")
+    dummyTable <- paste(tablePrefix, tolower(indicationId), "dummy", sep = "_")
     conn <- DatabaseConnector::connect(connectionDetails)
-    sql <- "IF OBJECT_ID('@cohort_database_schema.@table_prefix_dummy', 'U') IS NOT NULL
-	DROP TABLE @cohort_database_schema.@table_prefix_dummy;
-    CREATE TABLE @cohort_database_schema.@table_prefix_dummy (cohort_definition_id BIGINT, subject_id BIGINT, cohort_start_date DATE, cohort_end_date DATE);"
+    sql <- "IF OBJECT_ID('@cohort_database_schema.@dummy_table', 'U') IS NOT NULL
+	DROP TABLE @cohort_database_schema.@dummy_table;
+    CREATE TABLE @cohort_database_schema.@dummy_table (cohort_definition_id BIGINT, subject_id BIGINT, cohort_start_date DATE, cohort_end_date DATE);"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
-                                table_prefix = tablePrefix)$sql
+                                dummy_table = dummyTable)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     DatabaseConnector::disconnect(conn)
@@ -183,10 +184,10 @@ synthesizePositiveControls <- function(connectionDetails,
     plyr::l_ply(exposureSubsets, loadPositiveControlOutcomes, .progress = "text")
 
     # Drop dummy and temp table:
-    sql <- "TRUNCATE TABLE @cohort_database_schema.@table_prefix_dummy; DROP TABLE @cohort_database_schema.@table_prefix_dummy;"
+    sql <- "TRUNCATE TABLE @cohort_database_schema.@dummy_table; DROP TABLE @cohort_database_schema.@dummy_table;"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
-                                table_prefix = tablePrefix)$sql
+                                dummy_table = dummyTable)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
