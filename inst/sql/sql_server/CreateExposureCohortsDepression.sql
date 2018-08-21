@@ -231,13 +231,28 @@ INNER JOIN @cdm_database_schema.observation_period
 IF OBJECT_ID('@cohort_database_schema.@attrition_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@attrition_table;
 	
+CREATE TABLE @cohort_database_schema.@attrition_table (
+		exposure_id BIGINT,
+		target_id BIGINT,
+		comparator_id BIGINT,
+		sequence_number INT,
+		description VARCHAR(255),
+		subjects INT
+);
+	
+INSERT INTO @cohort_database_schema.@attrition_table (
+	exposure_id,
+	target_id,
+	comparator_id,
+	sequence_number,
+	description,
+	subjects)
 SELECT exposure_id,
 	CAST(-1 AS BIGINT) AS target_id,
 	CAST(-1 AS BIGINT) AS comparator_id,
 	sequence_number,
 	description,
 	subjects
-INTO @cohort_database_schema.@attrition_table
 FROM (
 	SELECT cohort_definition_id AS exposure_id,
 		CAST(1 AS INT) AS sequence_number,

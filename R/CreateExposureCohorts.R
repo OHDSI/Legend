@@ -47,7 +47,7 @@ createExposureCohorts <- function(connectionDetails,
     ParallelLogger::logInfo("Creating exposure cohorts for indicationId: ", indicationId)
 
     indicationFolder <- file.path(outputFolder, indicationId)
-    attritionTable <- paste(tablePrefix, tolower(indicationId), "attition", sep = "_")
+    attritionTable <- paste(tablePrefix, tolower(indicationId), "attrition", sep = "_")
     exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
     exposureCohortTable <- paste(tablePrefix, tolower(indicationId), "exp_cohort", sep = "_")
     pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")

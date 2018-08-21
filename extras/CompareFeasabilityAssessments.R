@@ -25,7 +25,7 @@ plotCounts <- function(subset, fileName) {
         coord_flip() +
         facet_grid(~databaseId, scales = "free") +
         theme(axis.title.y = element_blank())
-    ggsave(fileName, plot, dpi = 300)
+    ggsave(fileName, plot, dpi = 300, width = 9, height = 5)
 }
 
 allOutcomes$name <- allOutcomes$cohortName
