@@ -54,9 +54,11 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
             targetId <- exposureSummary$targetId[i]
             comparatorId <- exposureSummary$comparatorId[i]
         }
-        folderName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId))
-        cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
-        outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
+        fileName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId), "outcomes.rds")
+        outcomes <- readRDS(fileName)
+        outcomeIds <- unique(outcomes$outcomeId)
+        # cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
+        # outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
         if (positiveControls == "exclude") {
             outcomeIds <- outcomeIds[outcomeIds %in% c(hois$cohortId, negativeControls$cohortId)]
         } else if (positiveControls == "onlyTarget") {
@@ -110,7 +112,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 psCvThreads = min(10, maxCores),
                                 trimMatchStratifyThreads = min(4, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
-                                fitOutcomeModelThreads = min(8, maxCores),
+                                fitOutcomeModelThreads = min(6, maxCores),
                                 outcomeCvThreads = min(10, maxCores),
                                 refitPsForEveryOutcome = FALSE,
                                 refitPsForEveryStudyPopulation = FALSE,
