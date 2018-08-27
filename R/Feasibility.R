@@ -114,7 +114,7 @@ assessPhenotypes <- function(connectionDetails,
                                              paired_cohort_table = pairedCohortTable,
                                              small_sample_table = smallSampleTable,
                                              sample_size = sampleSize)
-
+    conn <- DatabaseConnector::connect(connectionDetails)
     DatabaseConnector::executeSql(conn, sql)
 
     subgroupCovariateSettings <- createSubgroupCovariateSettings()
