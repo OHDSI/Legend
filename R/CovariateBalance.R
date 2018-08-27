@@ -249,6 +249,7 @@ computeCovariateBalance <- function(indicationId = "Depression",
                 }
             }
         }
+        return(NULL)
     }
 
     cluster <- ParallelLogger::makeCluster(numberOfThreads = min(4, maxCores))
