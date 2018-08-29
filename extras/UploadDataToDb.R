@@ -17,29 +17,37 @@ resumeCount <- 0
 
 
 # exportFolder <- file.path(outputFolder, "export")
-exportFolder <- "c:/legend/mdcr"
+exportFolder <- "r:/legend/mdcr"
 files <- list.files(exportFolder, pattern = ".*csv")
 
 # resumeCount <- querySql(conn, "SELECT COUNT(*) FROM legend.covariate_balance")[1,1]
 # createTables <- FALSE
-i <- which(files == "covariate_balance.csv")
-for (i in 12:length(files)) {
+# i <- which(files == "covariate_balance.csv")
+
+infinityToNa <- function(data) {
+    # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
+    if (nrow(data) > 0) {
+        for (j in 1:ncol(data)) {
+            if (is.numeric(data[, j])) {
+                idx <- is.infinite(data[, j])
+                if (any(idx)) {
+                    data[idx, j] <- NA
+                }
+            }
+        }
+    }
+    return(data)
+}
+
+for (i in 19:length(files)) {
     file <- files[i]
     tableName <- gsub(".csv$", "", file)
     writeLines(paste("Uploading table", tableName))
     start <- Sys.time()
     fileCon = file(file.path(exportFolder, file), "r")
     data <- read.csv(fileCon, nrows = batchSize)
-    # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
-    for (j in 1:ncol(data)) {
-        if (is.numeric(data[, j])) {
-           idx <- is.infinite(data[, j])
-           if (any(idx)) {
-               data[idx, j] <- NA
-           }
-        }
-    }
     columnNames <- colnames(data)
+    data <- infinityToNa(data)
     first <- createTables
     insertedCount <- 0
     while (nrow(data) != 0) {
@@ -54,6 +62,7 @@ for (i in 12:length(files)) {
         insertedCount <- insertedCount + nrow(data)
         writeLines(paste("- Inserted ", insertedCount, "rows"))
         data <- read.csv(fileCon, nrows = batchSize, header = FALSE, col.names = columnNames)
+        data <- infinityToNa(data)
         first <- FALSE
     }
     close(fileCon)

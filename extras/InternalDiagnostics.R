@@ -6,7 +6,7 @@ if (!file.exists(diagnosticsFolder)) {
 }
 cmFolder <- file.path(indicationFolder, "cmOutput")
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
 
 i = 22
 
@@ -342,6 +342,7 @@ cmFolder <- file.path(indicationFolder, "cmOutput")
 
 # for (i in 1:nrow(exposureSummary)) {
 getModel <- function(i, exposureSummary, outcomeModelReference) {
+    # i <- which(exposureSummary$targetId == 11 & exposureSummary$comparatorId == 17)
     treatmentId <- exposureSummary$targetId[i]
     comparatorId <- exposureSummary$comparatorId[i]
     idx <- outcomeModelReference$targetId == treatmentId &
@@ -362,6 +363,10 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
             if (nrow(model) > 25) {
                 model <- model[1:25, ]
             }
+        } else if (metaData$psError == "High correlation between covariate(s) and treatment detected. Perhaps you forgot to exclude part of the exposure definition from the covariates?") {
+            model <- data.frame(coefficient = Inf,
+                                covariateId = metaData$psHighCorrelation$covariateId,
+                                covariateName = paste("High corr:", metaData$psHighCorrelation$covariateName))
         } else {
             model <- data.frame(coefficient = NA,
                                 covariateId = NA,
