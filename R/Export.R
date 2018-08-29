@@ -457,7 +457,7 @@ exportMetadata <- function(outputFolder,
         getResult <- function(i) {
             strataPop <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$strataFile[i]))
             targetDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
-            comparatorDist <- quantile(strataPop$survivalTime[strataPop$treatment == 1], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
+            comparatorDist <- quantile(strataPop$survivalTime[strataPop$treatment == 0], c(0, 0.1, 0.25, 0.5, 0.85, 0.9, 1))
             row <- data.frame(target_id = outcomeModelReference$targetId[i],
                               comparator_id = outcomeModelReference$comparatorId[i],
                               outcome_id = outcomeModelReference$outcomeId[i],
