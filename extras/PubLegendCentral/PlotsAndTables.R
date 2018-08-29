@@ -14,6 +14,23 @@ createTitle <- function(tcoDbs) {
   return(titles)
 }
 
+prepareSubgroupTable <- function(subgroupResults) {
+  subgroupResults$hrr <- sprintf("%.2f (%.2f - %.2f)", subgroupResults$rrr, subgroupResults$ci95Lb, subgroupResults$ci95Ub)
+  subgroupResults$hrr[is.na(subgroupResults$rrr)] <- ""
+  subgroupResults$p <- sprintf("%.2f", subgroupResults$p)
+  subgroupResults$p[subgroupResults$p == "NA"] <- ""
+  subgroupResults$calibratedP <- sprintf("%.2f", subgroupResults$calibratedP)
+  subgroupResults$calibratedP[subgroupResults$calibratedP == "NA"] <- ""
+  idx <- grepl("on-treatment", subgroupResults$analysisDescription)
+  onTreatment <- subgroupResults[idx, c("interactionCovariateName", "hrr", "p", "calibratedP")] 
+  itt <- subgroupResults[!idx,  c("interactionCovariateName", "hrr", "p", "calibratedP")] 
+  colnames(onTreatment)[2:4] <- paste("onTreatment", colnames(onTreatment)[2:4], sep = "_")
+  colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
+  table <- merge(onTreatment, itt)
+  table$interactionCovariateName <- gsub("Subgroup: ", "", table$interactionCovariateName)
+  return(table)
+}
+
 prepareTable1 <- function(balance,
                           beforeLabel = "Before stratification",
                           afterLabel = "After stratification",
@@ -22,7 +39,6 @@ prepareTable1 <- function(balance,
                           percentDigits = 1,
                           stdDiffDigits = 2,
                           output = "latex") {
-  #pathToCsv <- system.file("settings", "Table1Specs.csv", package = packageName)
   if (output == "latex") {
     space <- " "
   } else {
@@ -41,8 +57,7 @@ prepareTable1 <- function(balance,
   }
 
   formatPercent <- function(x) {
-    result <- format(round(100*x, percentDigits), digits = percentDigits+1, justify = "right")
-    # result <- formatC(x * 100, digits = percentDigits, format = "f")
+    result <- format(round(100 * x, percentDigits), digits = percentDigits + 1, justify = "right")
     result <- gsub("NA", "", result)
     result <- gsub(" ", space, result)
     return(result)

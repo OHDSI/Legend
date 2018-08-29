@@ -13,18 +13,17 @@ shinyServer(function(input, output, session) {
       outcomeIds <- c()
       exposureIds <- c()
       for (part in parts) {
-        outcomeIds <- c(outcomeIds, 
-                        outcomes$outcomeId[agrepl(part, 
-                                                  outcomes$outcomeName,
-                                                  max.distance = 0.1)])
-        exposureIds <- c(exposureIds, 
-                         exposures$exposureId[agrepl(part, 
-                                                     exposures$exposureName,
-                                                     max.distance = 0.1)])
+        outcomeDist <- adist(part, outcomes$outcomeName)
+        exposureDist <- adist(part, exposures$exposureName)
+        if (min(outcomeDist) < min(exposureDist)) {
+          outcomeIds <- c(outcomeIds, outcomes$outcomeId[outcomeDist == min(outcomeDist)])
+        } else {
+          exposureIds <- c(exposureIds, exposures$exposureId[exposureDist == min(exposureDist)])
+        }
       }
-      tcoDbs <- getTcoDbs(connection, 
-                          exposureIds = exposureIds,
-                          outcomeIds = outcomeIds)
+      tcoDbs <- getTcoDbsStrict(connection, 
+                                exposureIds = exposureIds,
+                                outcomeIds = outcomeIds)
       return(tcoDbs)
     }
   })
@@ -146,11 +145,4 @@ shinyServer(function(input, output, session) {
       file.rename(tempFileName, con)
     }
   )
-  
 })
-
-
-
-
-
-

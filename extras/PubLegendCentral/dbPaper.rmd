@@ -32,62 +32,86 @@ options(knitr.kable.NA = '')
 useStoredObject <- FALSE
 
 if (!useStoredObject) {
-    connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                                 server = "localhost/ohdsi",
-                                                 user = "postgres",
-                                                 password = Sys.getenv("pwPostgres"),
-                                                 schema = "legend")
-    connection <- connect(connectionDetails)
-    targetName <- getExposureName(connection, params$targetId)
-    comparatorName <- getExposureName(connection, params$comparatorId)
-    outcomeName <- getOutcomeName(connection, params$outcomeId)
-    analyses <- getAnalyses(connection)
-    mainResults <- getMainResults(connection,
-                                  targetIds = params$targetId,
-                                  comparatorIds = params$comparatorId,
-                                  outcomeIds = params$outcomeId,
-                                  databaseIds = params$databaseId,
-                                  analysisIds = c(1, 2, 3, 4))
-    
-    controlResults <- getControlResults(connection,
-                                        targetId = params$targetId,
-                                        comparatorId = params$comparatorId,
-                                        analysisId = 1,
-                                        databaseId = params$databaseId)
-
-    attrition <- getAttrition(connection,
-                              targetId = params$targetId,
-                              comparatorId = params$comparatorId,
-                              outcomeId = params$outcomeId,
-                              analysisId = 1,
-                              databaseId = params$databaseId)
-
-    balance <- getCovariateBalance(connection,
-                                   targetId = params$targetId,
-                                   comparatorId = params$comparatorId,
-                                   databaseId = params$databaseId,
-                                   analysisId = 2)
-    
-    popCharacteristics <- getCovariateBalance(connection,
-                                              targetId = params$targetId,
-                                              comparatorId = params$comparatorId,
-                                              databaseId = params$databaseId,
-                                              analysisId = 1,
-                                              outcomeId = params$outcomeId)
-
-    ps <- getPs(connection,
-                targetId = params$targetId,
-                comparatorId = params$comparatorId,
-                databaseId = params$databaseId)
-
-    kaplanMeier <- getKaplanMeier(connection,
-                                  targetId = params$targetId,
-                                  comparatorId = params$comparatorId,
-                                  outcomeId = params$outcomeId,
-                                  databaseId = params$databaseId,
-                                  analysisId = 2)
+  # connectionDetails <- createConnectionDetails(dbms = "postgresql",
+  #                                              server = "localhost/ohdsi",
+  #                                              user = "postgres",
+  #                                              password = Sys.getenv("pwPostgres"),
+  #                                              schema = "legend")
+  connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                               server = paste(Sys.getenv("legendServer"), Sys.getenv("legendDatabase"), sep = "/"),
+                                               port = Sys.getenv("legendPort"),
+                                               user = Sys.getenv("legendUser"),
+                                               password = Sys.getenv("legendPw"),
+                                               schema = Sys.getenv("legendSchema"))
+  connection <- connect(connectionDetails)
+  targetName <- getExposureName(connection = connection, exposureId = params$targetId)
+  comparatorName <- getExposureName(connection = connection, exposureId = params$comparatorId)
+  outcomeName <- getOutcomeName(connection = connection, outcomeId = params$outcomeId)
+  analyses <- getAnalyses(connection = connection)
+  
+  studyPeriod <- getStudyPeriod(connection = connection,
+                                targetId = params$targetId,
+                                comparatorId = params$comparatorId,
+                                databaseId = params$databaseId)
+  mainResults <- getMainResults(connection = connection,
+                                targetIds = params$targetId,
+                                comparatorIds = params$comparatorId,
+                                outcomeIds = params$outcomeId,
+                                databaseIds = params$databaseId,
+                                analysisIds = c(1, 2, 3, 4))
+  
+  subgroupResults <- getSubgroupResults(connection = connection,
+                                        targetIds = params$targetId,
+                                        comparatorIds = params$comparatorId,
+                                        outcomeIds = params$outcomeId,
+                                        databaseIds = params$databaseId)
+  
+  controlResults <- getControlResults(connection = connection,
+                                      targetId = params$targetId,
+                                      comparatorId = params$comparatorId,
+                                      analysisId = 1,
+                                      databaseId = params$databaseId)
+  
+  attrition <- getAttrition(connection = connection,
+                            targetId = params$targetId,
+                            comparatorId = params$comparatorId,
+                            outcomeId = params$outcomeId,
+                            analysisId = 1,
+                            databaseId = params$databaseId)
+  
+  followUpDist <- getCmFollowUpDist(connection = connection,
+                                    targetId = params$targetId,
+                                    comparatorId = params$comparatorId,
+                                    outcomeId = params$outcomeId,
+                                    databaseId = params$databaseId,
+                                    analysisId = 1)
+  
+  balance <- getCovariateBalance(connection = connection,
+                                 targetId = params$targetId,
+                                 comparatorId = params$comparatorId,
+                                 databaseId = params$databaseId,
+                                 analysisId = 2)
+  
+  popCharacteristics <- getCovariateBalance(connection = connection,
+                                            targetId = params$targetId,
+                                            comparatorId = params$comparatorId,
+                                            databaseId = params$databaseId,
+                                            analysisId = 1,
+                                            outcomeId = params$outcomeId)
+  
+  ps <- getPs(connection = connection,
+              targetId = params$targetId,
+              comparatorId = params$comparatorId,
+              databaseId = params$databaseId)
+  
+  kaplanMeier <- getKaplanMeier(connection = connection,
+                                targetId = params$targetId,
+                                comparatorId = params$comparatorId,
+                                outcomeId = params$outcomeId,
+                                databaseId = params$databaseId,
+                                analysisId = 2)
 } else {
-    load("paperData.rda")
+  load("paperData.rda")
 }
 ```
 
@@ -116,6 +140,8 @@ To do
 This is a very important study. Here's a really cool paper @pmid23900808.
 
 # Methods
+
+The study spanned the period from `r studyPeriod$minDate` until `r studyPeriod$minDate`.
 
 # Results
 
@@ -146,7 +172,36 @@ kable_styling(add_indent(add_header_above(kable(table, "latex",
                          needIndent),
               font_size = 7,
               latex_options = c("HOLD_position", "repeat_header"))
-           
+
+```
+
+**Table 2**. Time (days) at risk distribution expressed as minimum (Min), 10th Percentile (P10), 25th percentile (P25), median, 75th percentile (P75), 90th percentile (P90) and maximum (Max) in the target and comparator cohort after stratification.
+```{r, echo = FALSE}
+targetRow <- data.frame(Cohort = "Target",
+                        Min = followUpDist$targetMinDays,
+                        P10 = followUpDist$targetP10Days,
+                        P25 = followUpDist$targetP25Days,
+                        Median = followUpDist$targetMedianDays,
+                        P75 = followUpDist$targetP75Days,
+                        P90 = followUpDist$targetP90Days,
+                        Max = followUpDist$targetMaxDays)
+comparatorRow <- data.frame(Cohort = "Comparator",
+                            Min = followUpDist$comparatorMinDays,
+                            P10 = followUpDist$comparatorP10Days,
+                            P25 = followUpDist$comparatorP25Days,
+                            Median = followUpDist$comparatorMedianDays,
+                            P75 = followUpDist$comparatorP75Days,
+                            P90 = followUpDist$comparatorP90Days,
+                            Max = followUpDist$comparatorMaxDays)
+table <- rbind(targetRow, comparatorRow)
+kable_styling(kable(table, "latex", 
+                    booktabs = TRUE, 
+                    longtable = FALSE,
+                    row.names = FALSE, 
+                    linesep = ""),
+              font_size = 8,
+              latex_options = c("HOLD_position"))
+
 ```
 
 ```{r, echo = FALSE, fig.width=5, fig.height=3.5, out.width = '50%', fig.align='center'}
@@ -168,7 +223,7 @@ EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlResults$logRr,
 **Figure 4**. Systematic error 
 
 
-**Table 2**. Hazard ratios, 95% confidence intervals, uncalibrated and empirically calibrated, for various analyses.
+**Table 3**. Hazard ratios, 95% confidence intervals, uncalibrated and empirically calibrated, for various analyses.
 ```{r, echo = FALSE}
 table <- mainResults
 table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
@@ -191,11 +246,27 @@ kable_styling(kable(table, "latex",
 plotKaplanMeier(kaplanMeier, targetName, comparatorName)
 ```
 **Figure 3**. Kaplan Meier plot, showing survival as a function of time. This plot
-      is adjusted for the propensity score stratification: The target curve (<em>`r targetName`</em>) shows the actual observed survival. The
-      comparator curve (<em>`r comparatorName`</em>) applies reweighting to approximate the counterfactual of what the target survival
-      would look like had the target cohort been exposed to the comparator instead. The shaded area denotes
-      the 95 percent confidence interval.
+is adjusted for the propensity score stratification: The target curve (<em>`r targetName`</em>) shows the actual observed survival. The
+comparator curve (<em>`r comparatorName`</em>) applies reweighting to approximate the counterfactual of what the target survival
+would look like had the target cohort been exposed to the comparator instead. The shaded area denotes
+the 95 percent confidence interval.
 
+
+**Table 4**. Subgroup interactions
+```{r, echo = FALSE}
+table <- prepareSubgroupTable(subgroupResults)
+
+header <- c("Subgroup", "HRR (95% CI)", "P" ,"Cal. P", "HRR (95% CI)", "P" ,"Cal. P")
+kable_styling(add_header_above(kable(table, "latex", 
+                                                booktabs = TRUE, 
+                                                row.names = FALSE, 
+                                                col.names = header,
+                                                align = c("l", "r", "r", "r", "r", "r", "r")), 
+                                          c("", "On-treatment" = 3, "Intent-to-treat" = 3)),
+              font_size = 8,
+              latex_options = c("HOLD_position"))
+
+```
 
 # Conclusions
 

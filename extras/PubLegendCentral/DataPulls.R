@@ -1,6 +1,6 @@
 getExposureName <- function(connection, exposureId) {
   sql <- "SELECT exposure_name FROM single_exposure_of_interest WHERE exposure_id = @exposure_id
-UNION ALL SELECT exposure_name FROM combi_exposure_of_interest WHERE exposure_id = @exposure_id"
+    UNION ALL SELECT exposure_name FROM combi_exposure_of_interest WHERE exposure_id = @exposure_id"
   sql <- SqlRender::renderSql(sql, exposure_id = exposureId)$sql
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   exposureName <- querySql(connection, sql)  
@@ -17,7 +17,7 @@ getOutcomeName <- function(connection, outcomeId) {
 
 getExposures <- function(connection) {
   sql <- "SELECT exposure_id, exposure_name, indication_id FROM single_exposure_of_interest
-  UNION ALL SELECT exposure_id, exposure_name, indication_id FROM combi_exposure_of_interest"
+    UNION ALL SELECT exposure_id, exposure_name, indication_id FROM combi_exposure_of_interest"
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   exposures <- querySql(connection, sql)  
   colnames(exposures) <- SqlRender::snakeCaseToCamelCase(colnames(exposures))
@@ -43,7 +43,6 @@ getAnalyses <- function(connection) {
 getTcoDbs <- function(connection, 
                       targetIds = c(), 
                       comparatorIds = c(), 
-                      exposureIds = c(),
                       outcomeIds = c(), 
                       databaseIds = c(), 
                       operator = "AND") {
@@ -54,9 +53,6 @@ getTcoDbs <- function(connection,
   }
   if (length(comparatorIds) != 0) {
     parts <- c(parts, paste0("comparator_id IN (", paste(comparatorIds, collapse = ", "), ")")) 
-  }
-  if (length(exposureIds) != 0) {
-    parts <- c(parts, paste0("(target_id IN (", paste(exposureIds, collapse = ", "), ") OR comparator_id IN (", paste(exposureIds, collapse = ", "), "))")) 
   }
   if (length(outcomeIds) != 0) {
     parts <- c(parts, paste0("outcome_id IN (", paste(outcomeIds, collapse = ", "), ")")) 
@@ -70,6 +66,32 @@ getTcoDbs <- function(connection,
     } else {
       sql <- paste(sql, "AND", paste(parts, collapse = " OR ")) 
     }
+  }
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  tcoDbs <- querySql(connection, sql)  
+  colnames(tcoDbs) <- SqlRender::snakeCaseToCamelCase(colnames(tcoDbs))
+  return(tcoDbs)
+}
+
+getTcoDbsStrict <- function(connection, 
+                            exposureIds = c(),
+                            outcomeIds = c(), 
+                            databaseIds = c()) {
+  sql <- "SELECT target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1"
+  parts <- c()
+  if (length(exposureIds) != 0) {
+    for (exposureId in exposureIds) {
+      parts <- c(parts, paste0("(target_id = ", exposureId, " OR comparator_id = ", exposureId, ")")) 
+    }
+  }
+  if (length(outcomeIds) != 0) {
+    parts <- c(parts, paste0("outcome_id IN (", paste(outcomeIds, collapse = ", "), ")")) 
+  }
+  if (length(databaseIds) != 0) {
+    parts <- c(parts, paste0("database_id IN ('", paste(databaseIds, collapse = "', '"), "')")) 
+  }
+  if (length(parts) != 0) {
+    sql <- paste(sql, "AND", paste(parts, collapse = " AND ")) 
   }
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   tcoDbs <- querySql(connection, sql)  
@@ -96,6 +118,65 @@ getMainResults <- function(connection,
   }
   if (length(databaseIds) != 0) {
     parts <- c(parts, paste0("database_id IN ('", paste(databaseIds, collapse = "', '"), "')")) 
+  }
+  if (length(analysisIds) != 0) {
+    parts <- c(parts, paste0("analysis_id IN ('", paste(analysisIds, collapse = "', '"), "')")) 
+  }
+  if (length(parts) != 0) {
+    sql <- paste(sql, "WHERE", paste(parts, collapse = " AND ")) 
+  }
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  results <- querySql(connection, sql)  
+  colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
+  return(results)
+}
+
+getSubgroupResults <- function(connection, 
+                               targetIds = c(), 
+                               comparatorIds = c(), 
+                               outcomeIds = c(), 
+                               databaseIds = c(),
+                               analysisIds = c()) {
+  sql <- "SELECT target_id,
+      comparator_id,
+      outcome_id,
+      cm_interaction_result.analysis_id,
+      cohort_method_analysis.description AS analysis_description,
+      cm_interaction_result.database_id,
+      interaction_covariate_id,
+      covariate_name AS interaction_covariate_name,
+      rrr,
+      ci_95_lb,
+      ci_95_ub,
+      p,
+      calibrated_p,
+      i_2,
+      log_rrr,
+      se_log_rrr,
+      target_subjects,
+      comparator_subjects,
+      target_days,
+      comparator_days,
+      target_outcomes,
+      comparator_outcomes
+    FROM cm_interaction_result
+    INNER JOIN covariate 
+    ON cm_interaction_result.interaction_covariate_id = covariate.covariate_id
+    AND cm_interaction_result.database_id = covariate.database_id
+    INNER JOIN cohort_method_analysis
+    ON cm_interaction_result.analysis_id = cohort_method_analysis.analysis_id"
+  parts <- c()
+  if (length(targetIds) != 0) {
+    parts <- c(parts, paste0("target_id IN (", paste(targetIds, collapse = ", "), ")")) 
+  }
+  if (length(comparatorIds) != 0) {
+    parts <- c(parts, paste0("comparator_id IN (", paste(comparatorIds, collapse = ", "), ")")) 
+  }
+  if (length(outcomeIds) != 0) {
+    parts <- c(parts, paste0("outcome_id IN (", paste(outcomeIds, collapse = ", "), ")")) 
+  }
+  if (length(databaseIds) != 0) {
+    parts <- c(parts, paste0("cm_interaction_result.database_id IN ('", paste(databaseIds, collapse = "', '"), "')")) 
   }
   if (length(analysisIds) != 0) {
     parts <- c(parts, paste0("analysis_id IN ('", paste(analysisIds, collapse = "', '"), "')")) 
@@ -173,7 +254,6 @@ getCmFollowUpDist <- function(connection, targetId, comparatorId, outcomeId, dat
                               analysis_id = analysisId)$sql
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   followUpDist <- querySql(connection, sql)  
-  # querySql(connection, "SELECT * FROM cm_follow_up_dist WHERE target_id = 715259 AND comparator_id = 739138 AND analysis_id = 1 LIMIT 100") 
   colnames(followUpDist) <- SqlRender::snakeCaseToCamelCase(colnames(followUpDist))
   return(followUpDist)
 }
@@ -294,4 +374,21 @@ getAttrition <- function(connection, targetId, comparatorId, outcomeId, analysis
   attrition <- merge(targetAttrition, comparatorAttrition)
   attrition <- attrition[order(attrition$sequenceNumber), ] 
   return(attrition)
+}
+
+getStudyPeriod <- function(connection, targetId, comparatorId, databaseId) {
+  sql <- "SELECT min_date,
+    max_date
+  FROM comparison_summary
+  WHERE target_id = @target_id
+  AND comparator_id = @comparator_id
+  AND database_id = '@database_id'"
+  sql <- SqlRender::renderSql(sql, 
+                              target_id = targetId,
+                              comparator_id = comparatorId,
+                              database_id = databaseId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  studyPeriod <- querySql(connection, sql)  
+  colnames(studyPeriod) <- SqlRender::snakeCaseToCamelCase(colnames(studyPeriod))
+  return(studyPeriod)
 }
