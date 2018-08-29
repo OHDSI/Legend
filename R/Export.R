@@ -24,6 +24,7 @@
 #'                             performance.
 #' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
 #' @param databaseName         The full name of the database.
+#' @param databaseDescription  A short description (several sentences) of the database.
 #' @param minCellCount         The minimum cell count for fields contains person counts or fractions.
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
@@ -32,6 +33,7 @@
 exportResults <- function(outputFolder,
                           databaseId,
                           databaseName,
+                          databaseDescription,
                           minCellCount = 5,
                           maxCores) {
     exportFolder <- file.path(outputFolder, "export")
@@ -59,6 +61,7 @@ exportResults <- function(outputFolder,
                    exportFolder = exportFolder,
                    databaseId = databaseId,
                    databaseName = databaseName,
+                   databaseDescription = databaseDescription,
                    minCellCount = minCellCount)
 
     exportMainResults(outputFolder = outputFolder,
@@ -142,6 +145,7 @@ exportAnalyses <- function(outputFolder,
     }
     cohortMethodAnalysis <- lapply(indications$indicationId, loadCmAnalyses)
     cohortMethodAnalysis <- do.call("rbind", cohortMethodAnalysis)
+    cohortMethodAnalysis <- unique(cohortMethodAnalysis)
     unlink(tempFileName)
     colnames(cohortMethodAnalysis) <- SqlRender::camelCaseToSnakeCase(colnames(cohortMethodAnalysis))
     fileName <- file.path(exportFolder, "cohort_method_analysis.csv")
@@ -172,10 +176,15 @@ exportExposures <- function(outputFolder,
     indications <- read.csv(pathToCsv)
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
-    singleExposuresOfInterest <- exposuresOfInterest[, c("conceptId", "name" ,"indicationId")]
+    singleExposuresOfInterest <- exposuresOfInterest[, c("cohortId", "name" ,"indicationId")]
     singleExposuresOfInterest$definition <- ""
     singleExposuresOfInterest$filterConceptIds <- ""
-    colnames(singleExposuresOfInterest) <- c("exposure_id", "exposure_name", "indication_id", "definition", "filter_concept_ids")
+    singleExposuresOfInterest$description <- sprintf("First use of %s",
+                                                     tolower(singleExposuresOfInterest$name))
+    idx <- singleExposuresOfInterest$indicationId == "Hypertension"
+    singleExposuresOfInterest$description[idx] <- sprintf("First-line %s monotherapy",
+                                                          tolower(singleExposuresOfInterest$name[idx]))
+    colnames(singleExposuresOfInterest) <- c("exposure_id", "exposure_name", "indication_id", "definition", "filter_concept_ids", "description")
     fileName <- file.path(exportFolder, "single_exposure_of_interest.csv")
     write.csv(singleExposuresOfInterest, fileName, row.names = FALSE)
 
@@ -186,7 +195,9 @@ exportExposures <- function(outputFolder,
             combiExposures <- read.csv(pathToCsv, stringsAsFactors = FALSE)
             combiExposures$indicationId <- indicationId
             combiExposures <- combiExposures[, c("cohortDefinitionId", "cohortName", "exposureId1", "exposureId2", "indicationId")]
-            colnames(combiExposures) <- c("exposure_id", "exposure_name", "single_exposure_id_1", "single_exposure_id_2", "indication_id")
+            combiExposures$description <- sprintf("First-line dual therapy of %s",
+                                                  tolower(gsub("&", "and", combiExposures$cohortName)))
+            colnames(combiExposures) <- c("exposure_id", "exposure_name", "single_exposure_id_1", "single_exposure_id_2", "indication_id", "description")
             return(combiExposures)
         } else {
             return(NULL)
@@ -199,11 +210,18 @@ exportExposures <- function(outputFolder,
                                      exposure_name = "dummy",
                                      single_exposure_id_1 = -1,
                                      single_exposure_id_2 = -1,
-                                     single_exposure_id_3 = -1,
-                                     indication_id = "Dummy")
+                                     indication_id = "Dummy",
+                                     description = "dummy")
     }
     fileName <- file.path(exportFolder, "combi_exposure_of_interest.csv")
     write.csv(combiExposures, fileName, row.names = FALSE)
+
+
+    ParallelLogger::logInfo("- exposure_group table")
+    exposureGroup <- exposuresOfInterest[, c("cohortId", "type")]
+    colnames(exposureGroup) <- c("exposure_id", "exposure_group")
+    fileName <- file.path(exportFolder, "exposure_group.csv")
+    write.csv(exposureGroup, fileName, row.names = FALSE)
 }
 
 exportOutcomes <- function(outputFolder,
@@ -220,8 +238,9 @@ exportOutcomes <- function(outputFolder,
         return(readChar(fileName, file.info(fileName)$size))
     }
     outcomesOfInterest$definition <- sapply(outcomesOfInterest$name, getDefinition)
-    outcomesOfInterest <- outcomesOfInterest[, c("cohortId", "name", "definition", "indicationId")]
-    colnames(outcomesOfInterest) <- c("outcome_id", "outcome_name", "definition", "indication_id")
+    outcomesOfInterest$description <- ""
+    outcomesOfInterest <- outcomesOfInterest[, c("cohortId", "name", "definition", "indicationId", "description")]
+    colnames(outcomesOfInterest) <- c("outcome_id", "outcome_name", "definition", "indication_id", "description")
     fileName <- file.path(exportFolder, "outcome_of_interest.csv")
     write.csv(outcomesOfInterest, fileName, row.names = FALSE)
 
@@ -260,6 +279,7 @@ exportMetadata <- function(outputFolder,
                            exportFolder,
                            databaseId,
                            databaseName,
+                           databaseDescription,
                            minCellCount) {
     ParallelLogger::logInfo("Exporting metadata")
     ParallelLogger::logInfo("- database table")
@@ -267,6 +287,7 @@ exportMetadata <- function(outputFolder,
     indications <- read.csv(pathToCsv)
     database <- data.frame(database_id = databaseId,
                            database_name = databaseName,
+                           description = databaseDescription,
                            is_meta_analysis = 0)
     fileName <- file.path(exportFolder, "database.csv")
     write.csv(database, fileName, row.names = FALSE)
@@ -528,18 +549,21 @@ exportMainResults <- function(outputFolder,
     colnames(negativeControls) <- SqlRender::snakeCaseToCamelCase(colnames(negativeControls))
 
     loadCmResults <- function(indicationId) {
-        summaryFile <- file.path(outputFolder, indicationId, "analysisSummary.csv")
-        if (!file.exists(summaryFile)) {
-            warning("Cannot find ", summaryFile)
+        summaryFile1 <- file.path(outputFolder, indicationId, "analysisSummary1.csv")
+        if (!file.exists(summaryFile1)) {
+            warning("Cannot find ", summaryFile1)
             return(NULL)
         }
-        analysesSum <- read.csv(summaryFile)
-        analysesSum2 <- read.csv(file.path(outputFolder, indicationId, "analysisSummaryInteractions.csv"))
-        analysesSum <- rbind(analysesSum, analysesSum2[, colnames(analysesSum)])
+        analysesSum1 <- read.csv(summaryFile1)
+        analysesSum2 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary2.csv"))
+        analysesSum3 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary3.csv"))
+        analysesSum4 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary4.csv"))
+        analysesSum <- rbind(analysesSum1[, colnames(analysesSum2)],
+                             analysesSum2,
+                             analysesSum3,
+                             analysesSum4)
         analysesSum$symmetrical <- TRUE
-        analysesSum3 <- read.csv(file.path(outputFolder, indicationId, "analysisSummaryAsym.csv"))
-        analysesSum3$symmetrical <- FALSE
-        analysesSum <- rbind(analysesSum, analysesSum3[, colnames(analysesSum)])
+        analysesSum$symmetrical[analysesSum$analysisId %in% c(3, 4)] <- FALSE
         return(analysesSum)
     }
     cmResults <- lapply(indications$indicationId, loadCmResults)
@@ -570,8 +594,13 @@ exportMainResults <- function(outputFolder,
     ParallelLogger::logInfo("- cm_interaction_result table")
     loadInteractionEffects <- function(indicationId) {
         ParallelLogger::logInfo("   compiling interaction results for ", indicationId)
-        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
+        if (!file.exists(pathToRds)) {
+            warning("Could not find ", pathToRds)
+            return(NULL)
+        }
         outcomeModelReference <- readRDS(pathToRds)
+        outcomeModelReference <- outcomeModelReference[outcomeModelReference$analysisId > 4, ]
         loadInteractionsFromOutcomeModel <- function(i) {
             outcomeModel <- readRDS(file.path(outputFolder, indicationId, "cmOutput", outcomeModelReference$outcomeModelFile[i]))
             if (!is.null(outcomeModel$subgroupCounts)) {
@@ -820,20 +849,31 @@ exportDiagnostics <- function(outputFolder,
     loadAndSaveBalance <- function(indicationId) {
         ParallelLogger::logInfo("   compiling covariate balance statistics for ", indicationId)
         first <- !file.exists(fileName)
-        files <- list.files(file.path(outputFolder, indicationId, "balance"), pattern = "Bal_.*.rds", full.names = TRUE)
+        balanceFolder <- file.path(outputFolder, indicationId, "balance")
+        if (!file.exists(balanceFolder)) {
+            warning("Cannot find folder ", balanceFolder)
+            return(NULL)
+        }
+        files <- list.files(balanceFolder, pattern = "Bal_.*.rds", full.names = TRUE)
         pb <- txtProgressBar(style = 3)
         for (i in 1:length(files)) {
             ids <- gsub("^.*Bal_t", "", files[i])
             targetId <- as.numeric(gsub("_c.*", "", ids))
             ids <- gsub("^.*_c", "", ids)
-            comparatorId <- as.numeric(gsub("(_s.*$)|(\\.rds$)", "", ids))
+            comparatorId <- as.numeric(gsub("_[aso].*$", "", ids))
             if (grepl("_s", ids)) {
-                subgroupId <- as.numeric(gsub("^.*_s", "", gsub("\\.rds", "", ids)))
+                subgroupId <- as.numeric(gsub("^.*_s", "", gsub("_a[0-9]*.rds", "", ids)))
             } else {
                 subgroupId <- NA
             }
+            if (grepl("_o", ids)) {
+                outcomeId <- as.numeric(gsub("^.*_o", "", gsub("_a[0-9]*.rds", "", ids)))
+            } else {
+                outcomeId <- NA
+            }
+            ids <- gsub("^.*_a", "", ids)
+            analysisId <- as.numeric(gsub(".rds", "", ids))
             balance <- readRDS(files[i])
-
             inferredTargetBeforeSize <- mean(balance$beforeMatchingSumTarget/balance$beforeMatchingMeanTarget, na.rm = TRUE)
             inferredComparatorBeforeSize <- mean(balance$beforeMatchingSumComparator/balance$beforeMatchingMeanComparator, na.rm = TRUE)
             inferredTargetAfterSize <- mean(balance$afterMatchingSumTarget/balance$afterMatchingMeanTarget, na.rm = TRUE)
@@ -842,11 +882,13 @@ exportDiagnostics <- function(outputFolder,
             balance$databaseId <- databaseId
             balance$targetId <- targetId
             balance$comparatorId <- comparatorId
+            balance$outcomeId <- outcomeId
+            balance$analysisId <- analysisId
             balance$interactionCovariateId <- subgroupId
-            balance <- balance[, c("databaseId", "targetId", "comparatorId", "interactionCovariateId", "covariateId",
+            balance <- balance[, c("databaseId", "targetId", "comparatorId", "outcomeId", "analysisId", "interactionCovariateId", "covariateId",
                                    "beforeMatchingMeanTarget", "beforeMatchingMeanComparator", "beforeMatchingStdDiff",
                                    "afterMatchingMeanTarget", "afterMatchingMeanComparator", "afterMatchingStdDiff")]
-            colnames(balance) <- c("databaseId", "targetId", "comparatorId", "interactionCovariateId", "covariateId",
+            colnames(balance) <- c("databaseId", "targetId", "comparatorId",  "outcomeId", "analysisId", "interactionCovariateId", "covariateId",
                                    "targetMeanBefore", "comparatorMeanBefore", "stdDiffBefore",
                                    "targetMeanAfter", "comparatorMeanAfter", "stdDiffAfter")
             balance$targetMeanBefore[is.na(balance$targetMeanBefore)] <- 0
@@ -855,14 +897,14 @@ exportDiagnostics <- function(outputFolder,
             balance$targetMeanAfter[is.na(balance$targetMeanAfter)] <- 0
             balance$comparatorMeanAfter[is.na(balance$comparatorMeanAfter)] <- 0
             balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
-
-            balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
-            balanceCt <- swapColumnContents(balanceCt, "targetMeanBefore", "comparatorMeanBefore")
-            balanceCt$stdDiffBefore <- -balanceCt$stdDiffBefore
-            balanceCt <- swapColumnContents(balanceCt, "targetMeanAfter", "comparatorMeanAfter")
-            balanceCt$stdDiffAfter <- -balanceCt$stdDiffAfter
-            balance <- rbind(balance, balanceCt)
-
+            if (!(analysisId %in% c(3,4))) {
+                balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
+                balanceCt <- swapColumnContents(balanceCt, "targetMeanBefore", "comparatorMeanBefore")
+                balanceCt$stdDiffBefore <- -balanceCt$stdDiffBefore
+                balanceCt <- swapColumnContents(balanceCt, "targetMeanAfter", "comparatorMeanAfter")
+                balanceCt$stdDiffAfter <- -balanceCt$stdDiffAfter
+                balance <- rbind(balance, balanceCt)
+            }
             balance <- enforceMinCellValue(balance, "targetMeanBefore",  minCellCount / inferredTargetBeforeSize, TRUE)
             balance <- enforceMinCellValue(balance, "comparatorMeanBefore",  minCellCount / inferredComparatorBeforeSize, TRUE)
             balance <- enforceMinCellValue(balance, "targetMeanAfter",  minCellCount / inferredTargetAfterSize, TRUE)
@@ -1004,7 +1046,12 @@ exportDiagnostics <- function(outputFolder,
         outcomeModelReference2 <- readRDS(pathToRds)
         pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
         outcomeModelReference3 <- readRDS(pathToRds)
-        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
+        pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference4.rds")
+        outcomeModelReference4 <- readRDS(pathToRds)
+        outcomeModelReference <- rbind(outcomeModelReference1,
+                                       outcomeModelReference2,
+                                       outcomeModelReference3,
+                                       outcomeModelReference3)
         outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ] # HOIs only
         outcomeModelReference <- outcomeModelReference[, c("strataFile", "targetId", "comparatorId", "outcomeId", "analysisId")]
         cluster <- ParallelLogger::makeCluster(min(6, maxCores))
