@@ -1,32 +1,58 @@
 library(DatabaseConnector)
+# connectionDetails <- createConnectionDetails(dbms = "postgresql",
+#                                              server = "localhost/ohdsi",
+#                                              user = "postgres",
+#                                              password = Sys.getenv("pwPostgres"),
+#                                              schema = "legend")
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                             server = "localhost/ohdsi",
-                                             user = "postgres",
-                                             password = Sys.getenv("pwPostgres"),
-                                             schema = "legend")
+                                             server = paste(Sys.getenv("legendServer"), Sys.getenv("legendDatabase"), sep = "/"),
+                                             port = Sys.getenv("legendPort"),
+                                             user = Sys.getenv("legendUser"),
+                                             password = Sys.getenv("legendPw"),
+                                             schema = Sys.getenv("legendSchema"))
 conn <- connect(connectionDetails)
 batchSize <- 1000000
+createTables <- TRUE
+resumeCount <- 0
 
 
 # exportFolder <- file.path(outputFolder, "export")
-exportFolder <- "c:/legend/mdcd"
+exportFolder <- "c:/legend/mdcr"
 files <- list.files(exportFolder, pattern = ".*csv")
-for (i in 1:length(files)) {
+
+# resumeCount <- querySql(conn, "SELECT COUNT(*) FROM legend.covariate_balance")[1,1]
+# createTables <- FALSE
+i <- which(files == "covariate_balance.csv")
+for (i in 12:length(files)) {
     file <- files[i]
     tableName <- gsub(".csv$", "", file)
     writeLines(paste("Uploading table", tableName))
     start <- Sys.time()
     fileCon = file(file.path(exportFolder, file), "r")
     data <- read.csv(fileCon, nrows = batchSize)
+    # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
+    for (j in 1:ncol(data)) {
+        if (is.numeric(data[, j])) {
+           idx <- is.infinite(data[, j])
+           if (any(idx)) {
+               data[idx, j] <- NA
+           }
+        }
+    }
     columnNames <- colnames(data)
-    first <- TRUE
+    first <- createTables
+    insertedCount <- 0
     while (nrow(data) != 0) {
-        DatabaseConnector::insertTable(connection = conn,
-                                       tableName = tableName,
-                                       data = data,
-                                       dropTableIfExists = first,
-                                       createTable = first,
-                                       tempTable = FALSE)
+        if (insertedCount >= resumeCount) {
+            DatabaseConnector::insertTable(connection = conn,
+                                           tableName = tableName,
+                                           data = data,
+                                           dropTableIfExists = first,
+                                           createTable = first,
+                                           tempTable = FALSE)
+        }
+        insertedCount <- insertedCount + nrow(data)
+        writeLines(paste("- Inserted ", insertedCount, "rows"))
         data <- read.csv(fileCon, nrows = batchSize, header = FALSE, col.names = columnNames)
         first <- FALSE
     }

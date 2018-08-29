@@ -43,6 +43,7 @@ getAnalyses <- function(connection) {
 getTcoDbs <- function(connection, 
                       targetIds = c(), 
                       comparatorIds = c(), 
+                      exposureIds = c(),
                       outcomeIds = c(), 
                       databaseIds = c(), 
                       operator = "AND") {
@@ -53,6 +54,9 @@ getTcoDbs <- function(connection,
   }
   if (length(comparatorIds) != 0) {
     parts <- c(parts, paste0("comparator_id IN (", paste(comparatorIds, collapse = ", "), ")")) 
+  }
+  if (length(exposureIds) != 0) {
+    parts <- c(parts, paste0("(target_id IN (", paste(exposureIds, collapse = ", "), ") OR comparator_id IN (", paste(exposureIds, collapse = ", "), "))")) 
   }
   if (length(outcomeIds) != 0) {
     parts <- c(parts, paste0("outcome_id IN (", paste(outcomeIds, collapse = ", "), ")")) 
@@ -174,7 +178,7 @@ getCmFollowUpDist <- function(connection, targetId, comparatorId, outcomeId, dat
   return(followUpDist)
 }
 
-getCovariateBalance <- function(connection, targetId, comparatorId, databaseId) {
+getCovariateBalance <- function(connection, targetId, comparatorId, databaseId, analysisId, outcomeId = NULL) {
   sql <- "SELECT covariate.covariate_id, 
               covariate_name, 
               covariate_analysis_id,
@@ -191,11 +195,15 @@ getCovariateBalance <- function(connection, targetId, comparatorId, databaseId) 
           WHERE target_id = @target_id
             AND comparator_id = @comparator_id
             AND covariate.database_id = '@database_id'
-            AND interaction_covariate_id IS NULL"
+            AND analysis_id = @analysis_id
+            AND interaction_covariate_id IS NULL
+          {@outcome_id == \"\"} ? {AND outcome_id IS NULL} : {AND outcome_id = @outcome_id}"
   sql <- SqlRender::renderSql(sql, 
                               target_id = targetId,
                               comparator_id = comparatorId,
-                              database_id = databaseId)$sql
+                              database_id = databaseId,
+                              analysis_id = analysisId,
+                              outcome_id = outcomeId)$sql
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   balance <- querySql(connection, sql)  
   colnames(balance) <- c("covariateId",

@@ -7,7 +7,7 @@ output:
   html_document: default
 bibliography: bibliography.bib
 params:
-  databaseId: "MDCD"
+  databaseId: "MDCR"
   targetId: 739138
   comparatorId: 715259
   outcomeId: 18
@@ -65,7 +65,15 @@ if (!useStoredObject) {
     balance <- getCovariateBalance(connection,
                                    targetId = params$targetId,
                                    comparatorId = params$comparatorId,
-                                   databaseId = params$databaseId)
+                                   databaseId = params$databaseId,
+                                   analysisId = 2)
+    
+    popCharacteristics <- getCovariateBalance(connection,
+                                              targetId = params$targetId,
+                                              comparatorId = params$comparatorId,
+                                              databaseId = params$databaseId,
+                                              analysisId = 1,
+                                              outcomeId = params$outcomeId)
 
     ps <- getPs(connection,
                 targetId = params$targetId,
@@ -119,7 +127,7 @@ drawAttritionDiagram(attrition, targetName, comparatorName)
 
 **Table 1**. Select population characteristics
 ```{r, echo = FALSE}
-table <- prepareTable1(balance)
+table <- prepareTable1(popCharacteristics)
 # Remove 1st header, with add back later with merged columns:
 header <- as.character(table[1, ])
 header[header == "1"] <- ""

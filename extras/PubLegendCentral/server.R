@@ -23,8 +23,7 @@ shinyServer(function(input, output, session) {
                                                      max.distance = 0.1)])
       }
       tcoDbs <- getTcoDbs(connection, 
-                          targetIds = exposureIds,
-                          comparatorIds = exposureIds,
+                          exposureIds = exposureIds,
                           outcomeIds = outcomeIds)
       return(tcoDbs)
     }

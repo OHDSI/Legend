@@ -15,6 +15,7 @@ for (zipFile in zipFiles) {
     subgroups <- read.csv(file.path(mainFolder, "subgroups.csv"), stringsAsFactors = FALSE)
     allSubgroups <- rbind(allSubgroups, subgroups)
 }
+write.csv(allExposures, file.path(mainFolder, "AllExposures.csv"), row.names = FALSE)
 pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
 outcomesOfInterest <- read.csv(pathToCsv)
 
