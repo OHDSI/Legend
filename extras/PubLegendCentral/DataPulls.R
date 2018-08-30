@@ -7,6 +7,15 @@ getExposureName <- function(connection, exposureId) {
   return(exposureName[1,1])
 }
 
+getExposureDescription <- function(connection, exposureId) {
+  sql <- "SELECT description FROM single_exposure_of_interest WHERE exposure_id = @exposure_id
+  UNION ALL SELECT exposure_name FROM combi_exposure_of_interest WHERE exposure_id = @exposure_id"
+  sql <- SqlRender::renderSql(sql, exposure_id = exposureId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  exposureDescription <- querySql(connection, sql)  
+  return(exposureDescription[1,1])
+}
+
 getOutcomeName <- function(connection, outcomeId) {
   sql <- "SELECT outcome_name FROM outcome_of_interest WHERE outcome_id = @outcome_id"
   sql <- SqlRender::renderSql(sql, outcome_id = outcomeId)$sql
@@ -38,6 +47,15 @@ getAnalyses <- function(connection) {
   analyses <- querySql(connection, sql)  
   colnames(analyses) <- SqlRender::snakeCaseToCamelCase(colnames(analyses))
   return(analyses)
+}
+
+getDatabaseDetails <- function(connection, databaseId) {
+  sql <- "SELECT * FROM database WHERE database_id = '@database_id'"
+  sql <- SqlRender::renderSql(sql, database_id = databaseId)$sql
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  databaseDetails <- querySql(connection, sql)  
+  colnames(databaseDetails) <- SqlRender::snakeCaseToCamelCase(colnames(databaseDetails))
+  return(databaseDetails)
 }
 
 getTcoDbs <- function(connection, 
