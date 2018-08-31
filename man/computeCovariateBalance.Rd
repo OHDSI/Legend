@@ -8,7 +8,7 @@ computeCovariateBalance(indicationId = "Depression", outputFolder,
   maxCores)
 }
 \arguments{
-\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be created.}
+\item{indicationId}{A string denoting the indicationId for which the covariate balance should be computed.}
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/)}

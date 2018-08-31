@@ -20,7 +20,7 @@
 #' Compute covariate alance for each comparison. The balance is computed considering the entire target and comparator cohort,
 #' so note removing subjects with prior outcomes. Stores the results in a subfolder called 'balance'.
 #'
-#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
+#' @param indicationId           A string denoting the indicationId for which the covariate balance should be computed.
 #' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
 #'                             (/)
 #' @param maxCores             How many parallel cores should be used? If more cores are made available

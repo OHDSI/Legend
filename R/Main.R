@@ -35,6 +35,10 @@
 #'                             performance.
 #' @param indicationId         A string denoting the indicationId.
 #' @param tablePrefix          A prefix to be used for all table names created for this study.
+#' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
+#' @param databaseName         The full name of the database.
+#' @param databaseDescription  A short description (several sentences) of the database.
+#' @param minCellCount         The minimum cell count for fields contains person counts or fractions when exporting to CSV.
 #' @param createExposureCohorts     Create the tables with the exposure cohorts?
 #' @param createOutcomeCohorts     Create the tables with the outcome cohorts?
 #' @param fetchAllDataFromServer          Fetch all relevant data from the server?
@@ -44,6 +48,7 @@
 #' @param computeIncidence     Compute incidence rates?
 #' @param fetchChronographData Fetch the data for constructing chronographs?
 #' @param computeCovariateBalance Fetch the data for constructing chronographs?
+#' @param exportToCsv          Export all results to CSV files?
 #' @param maxCores             How many parallel cores should be used? If more cores are made available
 #'                             this can speed up the analyses.
 #'
@@ -55,6 +60,10 @@ execute <- function(connectionDetails,
                     outputFolder,
                     indicationId = "Depression",
                     tablePrefix,
+                    databaseId = "Unknown",
+                    databaseName = "Unknown",
+                    databaseDescription = "Unknown",
+                    minCellCount = 5,
                     createExposureCohorts = TRUE,
                     createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
@@ -64,6 +73,7 @@ execute <- function(connectionDetails,
                     computeIncidence = TRUE,
                     fetchChronographData = TRUE,
                     computeCovariateBalance = TRUE,
+                    exportToCsv = TRUE,
                     maxCores) {
 
     indicationFolder <- file.path(outputFolder, indicationId)
@@ -142,4 +152,13 @@ execute <- function(connectionDetails,
                                 maxCores = maxCores)
     }
 
+    if (exportToCsv) {
+        exportResults(indicationId = indicationId,
+                      outputFolder = outputFolder,
+                      databaseId = databaseId,
+                      databaseName = databaseName,
+                      databaseDescriptio = databaseDescription,
+                      minCellCount = minCellCount,
+                      maxCores = maxCores)
+    }
 }

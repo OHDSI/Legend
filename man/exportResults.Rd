@@ -4,10 +4,12 @@
 \alias{exportResults}
 \title{Export all results to tables}
 \usage{
-exportResults(outputFolder, databaseId, databaseName, databaseDescription,
-  minCellCount = 5, maxCores)
+exportResults(indicationId = "Depression", outputFolder, databaseId,
+  databaseName, databaseDescription, minCellCount = 5, maxCores)
 }
 \arguments{
+\item{indicationId}{A string denoting the indicationId for which the results should be exported.}
+
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/). Do not use a folder on a network drive since this greatly impacts
 performance.}
