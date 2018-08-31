@@ -11,7 +11,9 @@ Development
 ===========
 Legend was developed in R Studio.
 
-###Development status
+### Development status
+
+[![Build Status](https://travis-ci.org/OHDSI/Legend.svg?branch=master)](https://travis-ci.org/OHDSI/Legend)
 
 Under active development.
 
