@@ -239,6 +239,11 @@ fetchAllDataFromServer <- function(connectionDetails,
                                      filterConceptName = filterConcepts$filterConceptName)
         saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
     }
+
+    # Drop exposure_cohorts temp table ----------------------------------------------------------------
+    sql <- "TRUNCATE TABLE #exposure_cohorts; DROP TABLE #exposure_cohorts;"
+    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 }
 
 constructCohortMethodDataObject <- function(targetId,
