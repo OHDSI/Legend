@@ -13,13 +13,19 @@ r_packages:
 r_github_packages:
   - OHDSI/ParallelLogger
   - OHDSI/SqlRender
+  - OHDSI/DatabaseConnectorJars
   - OHDSI/DatabaseConnector
   - OHDSI/Cyclops
   - OHDSI/FeatureExtraction
+  - OHDSI/EmpiricalCalibration
+  - OHDSI/IcTemporalPatternDiscovery
+  - r-lib/zip
 
 before_script:
   - export PKG_NAME=$(Rscript -e 'cat(paste0(devtools::as.package(".")$package))')
   - export PKG_TARBALL=$(Rscript -e 'pkg <- devtools::as.package("."); cat(paste0(pkg$package,"_",pkg$version,".tar.gz"))')
+  - R -e 'devtools::install_github("OHDSI/CohortMethod", ref = "develop")'
+  - R -e 'devtools::install_github("OHDSI/MethodEvaluation", ref = "develop")'
 
 # Build and check package
 script:
