@@ -88,7 +88,7 @@ exportResults <- function(indicationId = "Depression",
 
     # Add all to zip file -------------------------------------------------------------------------------
     ParallelLogger::logInfo("Adding results to zip file")
-    zipName <- file.path(exportFolder, paste0("Results", indicationId, databaseId, ".zip")
+    zipName <- file.path(exportFolder, paste0("Results", indicationId, databaseId, ".zip"))
     files <- list.files(exportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(exportFolder)
     on.exit(setwd(oldWd))
@@ -629,8 +629,6 @@ exportMainResults <- function(indicationId,
     ParallelLogger::logInfo("- chronograph table")
     pathToCsv <- file.path(outputFolder, indicationId, "chronographData.csv")
     chronograph <- read.csv(pathToCsv)
-    chronograph <- lapply(indications$indicationId, loadChronograph)
-    chronograph <- do.call("rbind", chronograph)
     chronograph$databaseId <- databaseId
     chronograph <- chronograph[, c("databaseId", "exposureId", "outcomeId", "periodId", "outcomeCount", "expectedCount", "ic", "icLow", "icHigh")]
     colnames(chronograph) <- c("databaseId", "exposureId", "outcomeId", "time", "outcomes", "expectedOutcomes", "ic", "icLb", "icUb")
