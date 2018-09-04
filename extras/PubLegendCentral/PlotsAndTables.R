@@ -98,8 +98,23 @@ preparePowerTable <- function(mainResults, analyses) {
   return(table)
 }
 
+rnd <- function(x) {
+  ifelse(x > 10,
+         sprintf("%.1f", x),
+         sprintf("%.2f", x))
+         # signif(x, 3),
+         # signif(x, 2))
+}
+
 prepareSubgroupTable <- function(subgroupResults) {
-  subgroupResults$hrr <- sprintf("%.2f (%.2f - %.2f)", subgroupResults$rrr, subgroupResults$ci95Lb, subgroupResults$ci95Ub)
+  # subgroupResults$hrr <- sprintf("%.2f (%.2f - %.2f)", subgroupResults$rrr, subgroupResults$ci95Lb, subgroupResults$ci95Ub)
+  
+  subgroupResults$hrr <- paste0(
+    rnd(subgroupResults$rrr), " (",
+    rnd(subgroupResults$ci95Lb), " - ",
+    rnd(subgroupResults$ci95Ub), ")"
+  )
+  
   subgroupResults$hrr[is.na(subgroupResults$rrr)] <- ""
   subgroupResults$p <- sprintf("%.2f", subgroupResults$p)
   subgroupResults$p[subgroupResults$p == "NA"] <- ""
@@ -112,10 +127,12 @@ prepareSubgroupTable <- function(subgroupResults) {
   colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
   table <- merge(onTreatment, itt)
   table$interactionCovariateName <- gsub("Subgroup: ", "", table$interactionCovariateName)
+  table$interactionCovariateName <- gsub(">=", "$\\\\ge$ ", table$interactionCovariateName)
   table$targetSubjects <- formatC(table$targetSubjects, big.mark = ",", format = "d")
   table$targetSubjects <- gsub("^-", "<", table$targetSubjects)
   table$comparatorSubjects <- formatC(table$comparatorSubjects, big.mark = ",", format = "d")
   table$comparatorSubjects <- gsub("^-", "<", table$comparatorSubjects)
+  table$comparatorSubjects <- gsub("^<", "$<$", table$comparatorSubjects)
   return(table)
 }
 
@@ -342,6 +359,42 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
     }
     plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]], heights = c(400,100))
     return(plot)
+}
+
+judgeCoverage <- function(values) {
+  ifelse(any(values < 0.9),
+         "poor",
+         "acceptable"
+         )
+}
+
+getCoverage <- function(controlResults) {
+  d <- rbind(data.frame(yGroup = "Uncalibrated",
+                        logRr = controlResults$logRr,
+                        seLogRr = controlResults$seLogRr,
+                        ci95lb = controlResults$ci95lb,
+                        ci95ub = controlResults$ci95ub,
+                        trueRr = controlResults$effectSize),
+             data.frame(yGroup = "Calibrated",
+                        logRr = controlResults$calibratedLogRr,
+                        seLogRr = controlResults$calibratedSeLogRr,
+                        ci95lb = controlResults$calibratedCi95Lb,
+                        ci95ub = controlResults$calibratedCi95Ub,
+                        trueRr = controlResults$effectSize))
+  d <- d[!is.na(d$logRr), ]
+  d <- d[!is.na(d$ci95lb), ]
+  d <- d[!is.na(d$ci95ub), ]
+  if (nrow(d) == 0) {
+    return(NULL)
+  }
+  
+  d$Group <- as.factor(d$trueRr)
+  d$Significant <- d$ci95lb > d$trueRr | d$ci95ub < d$trueRr
+  
+  temp2 <- aggregate(Significant ~ Group + yGroup, data = d, mean)
+  temp2$coverage <- (1 - temp2$Significant)
+  
+  data.frame(true = temp2$Group, group = temp2$yGroup, coverage = temp2$coverage)
 }
 
 plotScatter <- function(controlResults) {
