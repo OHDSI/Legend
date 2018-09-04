@@ -125,8 +125,6 @@ exportAnalyses <- function(indicationId,
                            databaseId) {
     ParallelLogger::logInfo("Exporting analyses")
     ParallelLogger::logInfo("- cohort_method_analysis table")
-    pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
-    indications <- read.csv(pathToCsv)
 
     tempFileName <- tempfile()
 
@@ -159,7 +157,7 @@ exportAnalyses <- function(indicationId,
     write.csv(cohortMethodAnalysis, fileName, row.names = FALSE)
 
     ParallelLogger::logInfo("- covariate_analysis table")
-    indicationFolder <- file.path(outputFolder, indications$indicationId[1])
+    indicationFolder <- file.path(outputFolder, indicationId[1])
     covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
     covariateAnalysis <- ff::as.ram(covariateData$analysisRef)
     covariateAnalysis <- covariateAnalysis[, c("analysisId", "analysisName")]
