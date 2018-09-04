@@ -3,7 +3,7 @@ Depression,2837,1,Acute liver injury
 Depression,2557,2,Acute myocardial infarction
 Depression,2830,3,Alopecia
 Depression,2826,4,Constipation
-Depression,2834,5,Decreased libido
+Depression,7394,5,Decreased libido
 Depression,2829,6,Delirium
 Depression,2822,7,Diarrhea
 Depression,2835,8,Fracture
@@ -15,10 +15,11 @@ Depression,2824,13,Hypothyroidism
 Depression,2821,14,Insomnia
 Depression,2823,15,Nausea
 Depression,2551,16,Open-angle glaucoma
+Depression,7466,23,Unconfirmed open-angle glaucoma
 Depression,2828,17,Seizure
-Depression,2559,18,Stroke
-Depression,2820,19,Suicide and suicidal ideation
+Depression,7464,18,Stroke
+Depression,7467,19,Suicide and suicidal ideation
 Depression,2831,20,Tinnitus
 Depression,2839,21,Ventricular arrhythmia and sudden cardiac death
 Depression,2832,22,Vertigo
-Hypertension,2559,18,Stroke
+Hypertension,7464,18,Stroke
