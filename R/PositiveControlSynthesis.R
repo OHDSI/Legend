@@ -275,6 +275,13 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
                                covariateRef = ff::clone.ffdf(covariateData$covariateRef),
                                analysisRef = ff::clone.ffdf(covariateData$analysisRef),
                                metaData = covariateData$metaData)
+    # Drop subgroup covariates, so positive control synthesis is independent of subgroup definitions:
+    subgroupCovariateIds <- covariateDataClone$covariateRef$covariateId[covariateDataClone$covariateRef$analysisId == 998]
+    covariateDataClone$covariates <- covariateDataClone$covariates[!ffbase::`%in%`(covariateDataClone$covariates$covariateId,
+                                                                                   subgroupCovariateIds), ]
+    covariateDataClone$covariateRef <- covariateDataClone$covariateRef[!ffbase::`%in%`(covariateDataClone$covariateRef$covariateId,
+                                                                                   subgroupCovariateIds), ]
+
     class(covariateDataClone) = class(covariateData)
     FeatureExtraction::saveCovariateData(covariateDataClone, covariatesFolder)
 

@@ -361,7 +361,7 @@ if (length(subgroupIds) > 0) {
     deleteCohortMethodObjectsForSubgroups(subgroupIds)
 }
 
-if (negativeControlsChanged || length(subgroupIds) > 0) {
+if (negativeControlsChanged) {
 
     deleteSignalInjectionFiles()
 
