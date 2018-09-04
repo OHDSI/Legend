@@ -25,13 +25,13 @@ limitations under the License.
 {DEFAULT @drug_class_cohort_ids = 5, 6}
 {DEFAULT @custom_ancestor_table = '#custom_ancestor'}
 {DEFAULT @procedure_duration = 30}
-{DEFAULT @washout_period = 365} 
-{DEFAULT @max_gap = 30} 
+{DEFAULT @washout_period = 365}
+{DEFAULT @max_gap = 30}
 
 -- Create nesting cohort. Store in #nesting_cohort
 SELECT depression.person_id AS subject_id,
 	depression_start_date AS cohort_start_date,
-	CASE 
+	CASE
 		WHEN other_start_date IS NULL
 			THEN observation_period_end_date
 		ELSE other_start_date
@@ -44,7 +44,7 @@ FROM (
 	WHERE condition_concept_id IN (
 			SELECT descendant_concept_id
 			FROM @cdm_database_schema.concept_ancestor
-			WHERE ancestor_concept_id IN (4152280) -- Major depressive disorder
+			WHERE ancestor_concept_id IN (440383) -- Depressive disorder
 			)
 	GROUP BY person_id
 	) depression
@@ -74,20 +74,20 @@ WHERE other_start_date IS NULL
 
 -- Find drugs, procedures , and classes of interest. Store them in #exposure
 IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
-	DROP TABLE #exposure;	
-	
+	DROP TABLE #exposure;
+
 --HINT DISTRIBUTE_ON_KEY(person_id)
 SELECT person_id,
 	concept_id,
 	exposure_start_date,
 	exposure_end_date
-INTO #exposure	
+INTO #exposure
 FROM (
 	-- drugs
 	SELECT person_id,
 		ancestor_concept_id AS concept_id,
 		drug_exposure_start_date AS exposure_start_date,
-		CASE 
+		CASE
 			WHEN drug_exposure_end_date IS NULL
 				THEN DATEADD(DAY, days_supply, drug_exposure_start_date)
 			ELSE drug_exposure_end_date
@@ -97,9 +97,9 @@ FROM (
 	INNER JOIN @cdm_database_schema.concept_ancestor
 		ON drug_concept_id = descendant_concept_id
 	WHERE ancestor_concept_id IN (@drug_cohort_ids)
-	
+
 	UNION ALL
-	
+
 	-- procedures (assume 30 day exposure)
 	SELECT person_id,
 		ancestor_concept_id AS concept_id,
@@ -110,14 +110,14 @@ FROM (
 		ON procedure_concept_id = descendant_concept_id
 		OR procedure_source_concept_id = descendant_concept_id
 	WHERE ancestor_concept_id IN (@procedure_cohort_ids)
-		
+
 	UNION ALL
-	
+
 	-- drug classes
 	SELECT person_id,
 		custom_ancestor.ancestor_concept_id AS concept_id,
 		drug_exposure_start_date AS exposure_start_date,
-		CASE 
+		CASE
 			WHEN drug_exposure_end_date IS NULL
 				THEN DATEADD(DAY, days_supply, drug_exposure_start_date)
 			ELSE drug_exposure_end_date
@@ -134,7 +134,7 @@ FROM (
 IF OBJECT_ID('@cohort_database_schema.@exposure_era_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@exposure_era_table;
 
---HINT DISTRIBUTE_ON_KEY(subject_id)	
+--HINT DISTRIBUTE_ON_KEY(subject_id)
 SELECT ends.person_id AS subject_id,
 	ends.concept_id AS cohort_definition_id,
 	MIN(exposure_start_date) AS cohort_start_date,
@@ -174,9 +174,9 @@ FROM (
 						PARTITION BY person_id, concept_id ORDER BY exposure_start_date
 						) AS start_ordinal
 				FROM #exposure
-				
+
 				UNION ALL
-				
+
 				-- add the end dates with NULL as the row number, padding the end dates by @max_gap to allow a grace period for overlapping ranges.
 				SELECT person_id,
 					concept_id,
@@ -230,7 +230,7 @@ INNER JOIN @cdm_database_schema.observation_period
 -- Create attrition table
 IF OBJECT_ID('@cohort_database_schema.@attrition_table', 'U') IS NOT NULL
 	DROP TABLE @cohort_database_schema.@attrition_table;
-	
+
 CREATE TABLE @cohort_database_schema.@attrition_table (
 		exposure_id BIGINT,
 		target_id BIGINT,
@@ -239,7 +239,7 @@ CREATE TABLE @cohort_database_schema.@attrition_table (
 		description VARCHAR(255),
 		subjects INT
 );
-	
+
 INSERT INTO @cohort_database_schema.@attrition_table (
 	exposure_id,
 	target_id,
@@ -260,9 +260,9 @@ FROM (
 		COUNT(DISTINCT subject_id) AS subjects
 	FROM @cohort_database_schema.@exposure_era_table
 	GROUP BY cohort_definition_id
-	
+
 	UNION ALL
-	
+
 	SELECT cohort_definition_id AS exposure_id,
 		CAST(2 AS INT) AS sequence_number,
 		CAST('New users' AS VARCHAR(255)) AS description,
@@ -281,9 +281,9 @@ FROM (
 			AND DATEADD(DAY, @washout_period, observation_period.observation_period_start_date) <= first_exposure.cohort_start_date
 			AND observation_period.observation_period_end_date >= first_exposure.cohort_start_date
 	GROUP BY cohort_definition_id
-	
+
 	UNION ALL
-	
+
 	SELECT cohort_definition_id AS exposure_id,
 		CAST(3 AS INT) AS sequence_number,
 		CAST('Having indication' AS VARCHAR(255)) AS description,
