@@ -51,55 +51,79 @@ Depression,4249170,1048,Epicondylitis
 Depression,4254542,1049,Hypopituitarism
 Depression,4291005,1050,Viral hepatitis
 Depression,4345472,1051,Epstein-Barr virus disease
-Hypertension,73008,1000,Enthesopathy
-Hypertension,74855,1001,Genital herpes simplex
-Hypertension,75354,1002,Osteochondropathy
-Hypertension,75576,1003,Irritable bowel syndrome
-Hypertension,77650,1004,Aseptic necrosis of bone
-Hypertension,81893,1005,Ulcerative colitis
-Hypertension,134461,1006,Tietze's disease
-Hypertension,139099,1007,Ingrowing nail
-Hypertension,140480,1008,Impetigo
-Hypertension,141932,1009,Seborrheic keratosis
-Hypertension,192606,1010,Paraplegia
-Hypertension,196236,1011,Septic shock
-Hypertension,196456,1012,Gallstone
-Hypertension,200775,1013,Endometrial hyperplasia
-Hypertension,201606,1014,Crohn's disease
-Hypertension,253954,1015,Pulmonary tuberculosis
-Hypertension,254443,1016,Sjogren's syndrome
-Hypertension,260134,1017,Croup
-Hypertension,373478,1018,Presbyopia
-Hypertension,374923,1019,Bell's palsy
-Hypertension,378424,1020,Astigmatism
-Hypertension,380038,1021,Viral conjunctivitis
-Hypertension,380688,1022,Hypoglycemic coma
-Hypertension,381581,1023,Chalazion
-Hypertension,432595,1024,Amyloidosis
-Hypertension,434926,1025,Iridocyclitis
-Hypertension,436634,1026,Acariasis
-Hypertension,437082,1027,Ankylosing spondylitis
-Hypertension,438531,1028,Chondromalacia
-Hypertension,438688,1029,Sarcoidosis
-Hypertension,440638,1030,Lyme disease
-Hypertension,441589,1031,Endocarditis
-Hypertension,441788,1032,Human papilloma virus infection
-Hypertension,441818,1033,Hemangioma
-Hypertension,443285,1034,Lesion of cervix
-Hypertension,443767,1035,Diabetic oculopathy
-Hypertension,4030042,1036,Toxic goiter
-Hypertension,4038835,1037,Hodgkin's disease
-Hypertension,4050747,1038,Fracture of upper limb
-Hypertension,4087647,1039,Rectal mass
-Hypertension,4110709,1040,Benign epithelial neoplasm of skin
-Hypertension,4112731,1041,Polyp of intestine
-Hypertension,4134455,1042,Mononeuropathy
-Hypertension,4156115,1043,Malignant neoplasm of endocrine gland
-Hypertension,4169984,1044,Scar
-Hypertension,4215978,1045,Onychomycosis
-Hypertension,4234533,1046,Tonsillitis
-Hypertension,4248870,1047,Visceroptosis
-Hypertension,4249170,1048,Epicondylitis
-Hypertension,4254542,1049,Hypopituitarism
-Hypertension,4291005,1050,Viral hepatitis
-Hypertension,4345472,1051,Epstein-Barr virus disease
+Hypertension,134438,1100,Contact dermatitis
+Hypertension,141932,1101,Senile hyperkeratosis
+Hypertension,140648,1102,Onychomycosis due to dermatophyte
+Hypertension,374375,1103,Impacted cerumen
+Hypertension,378427,1104,Tear film insufficiency
+Hypertension,437264,1105,Tobacco dependence syndrome
+Hypertension,373478,1106,Presbyopia
+Hypertension,139099,1107,Ingrowing nail
+Hypertension,36713918,1108,Somatic dysfunction of lumbar region
+Hypertension,140641,1109,Verruca vulgaris
+Hypertension,4115367,1110,Wrist joint pain
+Hypertension,194083,1111,Vaginitis and vulvovaginitis
+Hypertension,4213540,1112,Cervical somatic dysfunction
+Hypertension,444132,1113,Injury of knee
+Hypertension,81151,1114,Sprain of ankle
+Hypertension,440329,1115,Herpes zoster without complication
+Hypertension,73560,1116,Calcaneal spur
+Hypertension,433577,1117,Hammer toe
+Hypertension,81378,1118,Chondromalacia of patella
+Hypertension,72748,1119,Strain of rotator cuff capsule
+Hypertension,75911,1120,Acquired hallux valgus
+Hypertension,441788,1121,Human papilloma virus infection
+Hypertension,136368,1122,Non-toxic multinodular goiter
+Hypertension,376707,1123,Acute conjunctivitis
+Hypertension,77965,1124,Acquired trigger finger
+Hypertension,137951,1125,Acquired keratoderma
+Hypertension,73241,1126,Anal and rectal polyp
+Hypertension,4209423,1127,Nicotine dependence
+Hypertension,76786,1128,Derangement of knee
+Hypertension,78619,1129,Contusion of knee
+Hypertension,196168,1130,Irregular periods
+Hypertension,4092896,1131,Feces contents abnormal
+Hypertension,380706,1132,Regular astigmatism
+Hypertension,195873,1133,Leukorrhea
+Hypertension,4344500,1134,Impingement syndrome of shoulder region
+Hypertension,4170770,1135,Epidermoid cyst
+Hypertension,4103703,1136,Melena
+Hypertension,4088290,1137,Absence of breast
+Hypertension,40480893,1138,Nonspecific tuberculin test reaction
+Hypertension,4083487,1139,Macular drusen
+Hypertension,201606,1140,Crohn's disease
+Hypertension,433527,1141,Endometriosis
+Hypertension,434165,1142,Abnormal cervical smear
+Hypertension,140842,1143,Changes in skin texture
+Hypertension,4201390,1144,Colostomy present
+Hypertension,439790,1145,Psychalgia
+Hypertension,4092879,1146,Absent kidney
+Hypertension,4012570,1147,High risk sexual behavior
+Hypertension,4115402,1148,Difficulty sleeping
+Hypertension,438130,1149,Opioid abuse
+Hypertension,434327,1150,Cannabis abuse
+Hypertension,199192,1151,Abrasion and/or friction burn of trunk without infection
+Hypertension,44783954,1152,Acid reflux
+Hypertension,46269889,1153,Complication due to Crohn's disease
+Hypertension,4166231,1154,Genetic predisposition
+Hypertension,4201717,1155,Ileostomy present
+Hypertension,4091513,1156,Passing flatus
+Hypertension,40481632,1157,Ganglion cyst
+Hypertension,4231770,1158,Hereditary thrombophilia
+Hypertension,259995,1159,Foreign body in orifice
+Hypertension,432303,1160,Cocaine abuse
+Hypertension,46286594,1161,Problem related to lifestyle
+Hypertension,432593,1162,Kwashiorkor
+Hypertension,4202045,1163,Postviral fatigue syndrome
+Hypertension,81634,1164,Ptotic breast
+Hypertension,377572,1165,Noise effects on inner ear
+Hypertension,436409,1166,Abnormal pupil
+Hypertension,4012934,1167,Homocystinuria
+Hypertension,4103640,1168,Amputated foot
+Hypertension,433111,1169,Effects of hunger
+Hypertension,434203,1170,Late effect of contusion
+Hypertension,438329,1171,Late effect of motor vehicle accident
+Hypertension,45757370,1172,Disproportion of reconstructed breast
+Hypertension,133655,1173,Burn of forearm
+Hypertension,443172,1174,"Splinter of face, without major open wound"
+Hypertension,440193,1175,Wristdrop

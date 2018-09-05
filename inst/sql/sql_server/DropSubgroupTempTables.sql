@@ -16,3 +16,6 @@ DROP TABLE #cov_5;
 TRUNCATE TABLE #cov_6;
 DROP TABLE #cov_6;
 
+TRUNCATE TABLE #cov_7;
+DROP TABLE #cov_7;
+

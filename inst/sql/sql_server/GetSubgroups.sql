@@ -36,4 +36,11 @@ UNION ALL
 SELECT row_id,
 	covariate_id,
 	covariate_value
-FROM #cov_6;
+FROM #cov_6
+
+UNION ALL
+
+SELECT row_id,
+	covariate_id,
+	covariate_value
+FROM #cov_7;

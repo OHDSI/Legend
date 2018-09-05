@@ -44,7 +44,7 @@
     },
     "createPs": true,
     "createPsArgs": {
-      "excludeCovariateIds": [1998, 2998, 3998, 4998, 5998, 6998],
+      "excludeCovariateIds": [1998, 2998, 3998, 4998, 5998, 6998, 7998],
       "maxCohortSizeForFitting": 100000,
       "errorOnHighCorrelation": true,
       "stopOnError": false,
@@ -184,7 +184,7 @@
     },
     "createPs": true,
     "createPsArgs": {
-      "excludeCovariateIds": [1998, 2998, 3998, 4998, 5998, 6998],
+      "excludeCovariateIds": [1998, 2998, 3998, 4998, 5998, 6998, 7998],
       "maxCohortSizeForFitting": 100000,
       "errorOnHighCorrelation": true,
       "stopOnError": false,

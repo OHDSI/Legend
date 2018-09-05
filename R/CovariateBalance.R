@@ -153,7 +153,7 @@ computeCovariateBalance <- function(indicationId = "Depression",
             saveRDS(balance, fileName)
         }
         # Compute balance within subgroups, both for stratification and matching. Not specific to one outcome --------------
-        subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+        subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
         for (subgroupCovariateId in subgroupCovariateIds) {
             fileName <- file.path(balanceFolder, paste0("Bal_t",
                                                         exposureSummaryRow$targetId,

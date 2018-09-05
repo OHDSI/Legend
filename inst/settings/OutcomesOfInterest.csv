@@ -1,25 +1,81 @@
-indicationId,atlasId,cohortId,name
-Depression,2837,1,Acute liver injury
-Depression,2557,2,Acute myocardial infarction
-Depression,2830,3,Alopecia
-Depression,2826,4,Constipation
-Depression,7394,5,Decreased libido
-Depression,2829,6,Delirium
-Depression,2822,7,Diarrhea
-Depression,2835,8,Fracture
-Depression,2556,9,Gastrointestinal hemhorrage
-Depression,2838,10,Hyperprolactinemia
-Depression,2833,11,Hyponatremia
-Depression,2836,12,Hypotension
-Depression,2824,13,Hypothyroidism
-Depression,2821,14,Insomnia
-Depression,2823,15,Nausea
-Depression,2551,16,Open-angle glaucoma
-Depression,7466,23,Unconfirmed open-angle glaucoma
-Depression,2828,17,Seizure
-Depression,7464,18,Stroke
-Depression,7467,19,Suicide and suicidal ideation
-Depression,2831,20,Tinnitus
-Depression,2839,21,Ventricular arrhythmia and sudden cardiac death
-Depression,2832,22,Vertigo
-Hypertension,7464,18,Stroke
+indicationId,atlasId,cohortId,name,atlasName,description,useCondition,useVisit,useProcedure,useDrug,useMeasurement,useObservation,useDeath
+Depression,2837,1,Acute liver injury,,,,,,,,,
+Depression,7364,2,Acute myocardial infarction,Acute myocardial infarction events,Acute myocardial infarction condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,,,,,,,
+Depression,2830,3,Alopecia,,,,,,,,,
+Depression,2826,4,Constipation,,,,,,,,,
+Depression,7394,5,Decreased libido,Persons with decreased libido,The first condition record of decreased libido,,,,,,,
+Depression,2829,6,Delirium,,,,,,,,,
+Depression,7391,7,Diarrhea,Diarrhea events,Diarrhea condition record of any type;  successive records with > 30 day gap are considered independent episodes,,,,,,,
+Depression,2835,8,Fracture,,,,,,,,,
+Depression,7376,9,Gastrointestinal bleeding,Gastrointestinal bleeding events,Gastrointestinal hemorrhage condition record during an inpatient or ER visit;  successive records with > 30 day gap are considered independent episodes,,,,,,,
+Depression,2838,10,Hyperprolactinemia,,,,,,,,,
+Depression,7387,11,Hyponatremia,Hyponatremia events,Hyponatremia condition record of any type;  successive records with > 90 day gap are considered independent episodes,,,,,,,
+Depression,7379,12,Hypotension,Hypotension events,Hypotension condition record of any type;  successive records with > 90 day gap are considered independent episodes,,,,,,,
+Depression,2824,13,Hypothyroidism,,,,,,,,,
+Depression,2821,14,Insomnia,,,,,,,,,
+Depression,7389,15,Nausea,Nausea events,Nausea condition record of any type;  successive records with > 30 day gap are considered independent episodes,,,,,,,
+Depression,2551,16,Open-angle glaucoma,,,,,,,,,
+Depression,2828,17,Seizure,,,,,,,,,
+Depression,7464,18,Stroke,Stroke (ischemic or hemorrhagic) events,Stroke (ischemic or hemorrhagic) condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,,,,,,,
+Depression,7467,19,Suicide and suicidal ideation,,,,,,,,,
+Depression,2831,20,Tinnitus,,,,,,,,,
+Depression,7466,21,Unconfirmed open-angle glaucoma,,,,,,,,,
+Depression,2839,22,Ventricular arrhythmia and sudden cardiac death,,,,,,,,,
+Depression,7393,23,Vertigo,Persons with vertigo,The first condition record of vertigo,,,,,,,
+Hypertension,7397,24,Abdominal pain,Abdominal pain events,Abdominal pain condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7415,25,Abnormal weight gain,Abnormal weight gain events,Abnormal weight gain record of any type;  successive records with > 90 day gap are considered independent episodes,,,,,,x,
+Hypertension,7416,26,Abnormal weight loss,Abnormal weight loss events,Abnormal weight loss observation record of any type;  successive records with > 90 day gap are considered independent episodes,,,,,,x,
+Hypertension,7364,2,Acute myocardial infarction,Acute myocardial infarction events,Acute myocardial infarction condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7400,27,Acute pancreatitis,Acute pancreatitis events,Acute pancreatitis condition record during an inpatient or ER visit;  successive records with >30 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7382,28,Acute renal failure,Acute renal failure events,Acute renal failure condition record during an inpatient or ER visit;  successive records with >30 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7361,29,All-cause mortality,All-cause mortality,Death record of any type,,,,,,,x
+Hypertension,7378,30,Anaphylactoid reaction,Anaphylactoid reaction events,Anaphylactoid reaction condition record during an inpatient or ER visit;  successive records with >7 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7412,31,Anemia,Persons with anemia,The first condition record of anemia,x,,,,,,
+Hypertension,7377,32,Angioedema,Angioedema events,Angioedema condition record during an inpatient or ER visit;  successive records with >7 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7407,33,Anxiety,Persons with anxiety,"The first condition record of anxiety, which is followed by another anxiety condition record or a drug used to treat anxiety",x,,,x,,,
+Hypertension,7404,34,Bradycardia,Persons with bradycardia,"The first condition record of bradycardia, which is followed by another bradycardia condition record",x,,,,,,
+Hypertension,7399,35,Cardiac arrhythmia,Person with cardiac arrhythmia,"The first condition record of cardiac arrhythmia, which is followed by another cardiac arrhythmia condition record, at least two drug records for a drug used to treat arrhythmias, or a procedure to treat arrhythmias",x,,x,x,,,
+Hypertension,7367,36,Cardiovascular disease,"Total cardiovascular disease events (ischemic stroke, hemorrhagic stroke, heart failure, acute myocardial infarction or sudden cardiac death)","A condition record of ischemic stroke, hemorrhagic stroke, heart failure, acute myocardial infarction or sudden cardiac death during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes",x,x,,,,,
+Hypertension,7362,37,Cardiovascular-related mortality,Cardiovascular-related mortality,"Death record with at least 1 cardiovascular-related condition record (myocardial infarction, ischemic stroke, intracranial hemorrhage, sudden cardiac death, hospitalization for heart failure) in 30 days prior to death",x,x,,,,,x
+Hypertension,7396,38,Chest pain or angina,Persons with chest pain or angina,The first condition record of chest pain or angina,x,,,,,,
+Hypertension,7373,39,Chronic kidney disease,Persons with chronic kidney disease,"The first condition record of chronic kidney disease, which is followed by either another chronic kidney disease condition record or a dialysis procedure or observation",x,,x,,,x,
+Hypertension,7366,40,Coronary heart disease,Coronary heart disease events (acute myocardial infarction or sudden cardiac death),A condition record of acute myocardial infarction or sudden cardiac death during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7388,41,Cough,Cough events,Cough condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7394,5,Decreased libido,Persons with decreased libido,The first condition record of decreased libido,x,,,,,,
+Hypertension,7414,42,Dementia,Persons with dementia,The first condition record of dementia,x,,,,,,
+Hypertension,7405,43,Depression,Persons with depression,"The first condition record of depression, which is followed by another depression condition record, at least two drugs used to treat depression without another indication, or two psychotherapy procedures",x,,x,x,,,
+Hypertension,7391,7,Diarrhea,Diarrhea events,Diarrhea condition record of any type;  successive records with > 30 day gap are considered independent episodes,x,,,,,,
+Hypertension,7409,44,Edema,Edema events,Edema condition record of any type;  successive records with > 180 day gap are considered independent episodes,x,,,,,,
+Hypertension,7374,45,End stage renal disease,Persons with end stage renal disease,"The first condition record of end stage renal disease, which is followed by either another end stage renal disease condition record or a dialysis procedure or observation within 90 days",x,,x,,,x,
+Hypertension,7411,46,Fall,Fall events,Fall condition record of any type;  successive records with > 180 day gap are considered independent episodes,x,,,,,,
+Hypertension,7376,9,Gastrointestinal bleeding,Gastrointestinal bleeding events,Gastrointestinal hemorrhage condition record during an inpatient or ER visit;  successive records with > 30 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7413,47,Gout,Persons with gout,The first condition record of gout,x,,,,,,
+Hypertension,7392,48,Headache,Headache events,Headache condition record of any type;  successive records with > 30 day gap are considered independent episodes,x,,,,,,
+Hypertension,7369,49,Heart failure,Persons with heart failure,"The first condition record of heart failure, which is followed by at least 1 heart failure condition record in the following year",x,,,,,,
+Hypertension,7372,50,Hemorrhagic stroke,Hemorrhagic stroke (intracerebral bleeding) events,"Intracranial, cerebral or subarachnoid hemorrhage condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes",x,x,,,,,
+Hypertension,7381,51,Hepatic failure,Persons with hepatic failure,"The first condition record of hepatic failure, necrosis, or coma",x,,,,,,
+Hypertension,7368,52,Hospitalization with heart failure,Hospitalization with heart failure events,Inpatient or ER visits with heart failure condition record; all qualifying inpatient visits occurring > 7 days apart are considered independent episodes,x,x,,,,,
+Hypertension,7371,53,Hospitalization with preinfarction syndrome,Hospitalization with preinfarction syndrome events,Inpatient or ER visits with preinfarction syndrome condition record; all qualifying inpatient visits occurring > 7 days apart are considered independent episodes,x,x,,,,,
+Hypertension,7383,54,Hyperkalemia,Hyperkalemia events,Condition record for hyperkalemia or potassium measurements > 5.6 mmol/L; successive records with >90 day gap are considered independent episodes,x,,,,x,,
+Hypertension,7386,55,Hypokalemia,Hypokalemia events,Hypokalemia condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7417,56,Hypomagnesemia,Hypomagnesemia events,Hypomagnesemia condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7387,11,Hyponatremia,Hyponatremia events,Hyponatremia condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7379,12,Hypotension,Hypotension events,Hypotension condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7395,57,Impotence,Persons with impotence,The first condition record of impotence,x,,,,,,
+Hypertension,7363,58,Ischemic stroke,Ischemic stroke events,Ischemic stroke condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7375,59,Malignant neoplasm,Persons with a malignant neoplasm other than non-melanoma skin cancer,"The first condition record of a malignant neoplasm, with at least 2 conditions records for one of 17 leading cancer (breast, prostate, lung, colorectal, bladder, ovary, uterus, thyroid, kidney, brain, pancreas, liver, multiple myeloma, leukemia, melanoma, myelodysplastic syndrome)",x,,,,,,
+Hypertension,7384,60,Measured renal dysfunction,Persons with measured renal dysfunction,The first creatinine measurement with value > 3 mg/dL,,,,,x,,
+Hypertension,7389,15,Nausea,Nausea events,Nausea condition record of any type;  successive records with > 30 day gap are considered independent episodes,x,,,,,,
+Hypertension,7380,61,Neutropenia or agranulocytosis,Persons with neutropenia or agranulocytosis,The first condition record of neutropenia or agranulocytosis,x,,,,,,
+Hypertension,7408,62,Rash,Rash events,Rash condition record of any type;  successive records with > 90 day gap are considered independent episodes,x,,,,,,
+Hypertension,7418,63,Rhabdomyolysis,Rhabdomyolysis events,Rhabdomyolysis condition record or muscle disorder condition record with creatine measurement 5*ULN during an inpatient or ER visit;  successive records with >90 day gap are considered independent episodes,x,x,,,x,,
+Hypertension,7464,18,Stroke,Stroke (ischemic or hemorrhagic) events,Stroke (ischemic or hemorrhagic) condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7365,64,Sudden cardiac death,Sudden cardiac death events,Sudden cardiac death condition record during an inpatient or ER visit;  successive records with > 180 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7410,65,Syncope,Syncope events,Syncope condition record of any type;  successive records with > 180 day gap are considered independent episodes,x,,,,,,
+Hypertension,7402,66,Thrombocytopenia,Persons with thrombocytopenia,The first condition record of thrombocytopenia,x,,,,,,
+Hypertension,7370,67,Transient ischemic attack,Transient ischemic attack events,Transient ischemic attack condition record during an inpatient or ER visit;  successive records with > 30 day gap are considered independent episodes,x,x,,,,,
+Hypertension,7403,68,Type 2 diabetes mellitus,Persons with type 2 diabetes mellitus,"The first condition record of Type 2 Diabetes Mellitus, which is followed by another Type 2 Diabetes Mellitus condition record, at least 2 drugs used to treat Type 2 diabetes, or at least 2 HbA1c measurements with value > 6.5%",x,,,x,x,,
+Hypertension,7406,69,Vasculitis,Persons with vasculitis,"The first condition record of vasculitis, which is followed by another vasculitis condition record or drug to treat vasculitis",x,,,x,,,
+Hypertension,7398,70,Venous thromboembolic events ,Venous thromboembolic (pulmonary embolism and deep vein thrombosis) events ,Venous thromboembolism condition record of any type;  successive records with > 180 day gap are considered independent episodes,x,,,,,,
+Hypertension,7393,23,Vertigo,Persons with vertigo,The first condition record of vertigo,x,,,,,,
+Hypertension,7390,71,Vomiting,Vomiting events,Vomiting condition record of any type;  successive records with > 30 day gap are considered independent episodes,x,,,,,,

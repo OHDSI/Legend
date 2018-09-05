@@ -355,7 +355,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                                            addExposureDaysToEnd = FALSE,
                                                                            minDaysAtRisk = 1)
 
-    subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+    subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
 
     createPsArgs <- CohortMethod::createCreatePsArgs(control = Cyclops::createControl(noiseLevel = "silent",
                                                                                       cvType = "auto",
@@ -601,11 +601,54 @@ createAnalysesDetails <- function(outputFolder) {
 
     # Hypertension --------------------------------------------------------------
 
-    # For now, just use same as depression
+    # Main analyses: just use same as depression
 
     CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisListHypertension.json"))
 
     CohortMethod::saveCmAnalysisList(cmAnalysisListAsym, file.path(outputFolder, "cmAnalysisListAsymHypertension.json"))
+	
+	# Interactions: add type 2 diabetes mellitus subgroup
+	
+	fitOutcomeModelArgsI7998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
+                                                                        modelType = "cox",
+                                                                        interactionCovariateIds = 7998)
+
+    cmAnalysis17 <- CohortMethod::createCmAnalysis(analysisId = 17,
+                                                  description = "PS stratification, on-treatment, T2DM interactions",
+                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                  createPs = TRUE,
+                                                  createPsArgs = createPsArgs,
+                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPsArgs = stratifyByPsArgs,
+                                                  fitOutcomeModel = TRUE,
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
+
+    cmAnalysis18 <- CohortMethod::createCmAnalysis(analysisId = 18,
+                                                  description = "PS stratification, intent-to-treat, T2DM interactions",
+                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                  createStudyPopArgs = createStudyPopArgsItt,
+                                                  createPs = TRUE,
+                                                  createPsArgs = createPsArgs,
+                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPsArgs = stratifyByPsArgs,
+                                                  fitOutcomeModel = TRUE,
+                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
+												  
+	cmAnalysisListInteractions <- list(cmAnalysis5,
+                                       cmAnalysis6,
+                                       cmAnalysis7,
+                                       cmAnalysis8,
+                                       cmAnalysis9,
+                                       cmAnalysis10,
+                                       cmAnalysis11,
+                                       cmAnalysis12,
+                                       cmAnalysis13,
+                                       cmAnalysis14,
+                                       cmAnalysis15,
+                                       cmAnalysis16,
+                                       cmAnalysis17,
+                                       cmAnalysis18)
 
     CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions, file.path(outputFolder, "cmAnalysisListInteractionsHypertension.json"))
 

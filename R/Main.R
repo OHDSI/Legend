@@ -157,7 +157,7 @@ execute <- function(connectionDetails,
                       outputFolder = outputFolder,
                       databaseId = databaseId,
                       databaseName = databaseName,
-                      databaseDescriptio = databaseDescription,
+                      databaseDescription = databaseDescription,
                       minCellCount = minCellCount,
                       maxCores = maxCores)
     }

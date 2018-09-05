@@ -20,6 +20,7 @@ limitations under the License.
 --4.  children (age<18)
 --5.  elderly (age >= 65)
 --6.  male
+--7.  Type 2 diabetes mellitus
 {DEFAULT @cdm_database_schema = 'cdm.dbo'}
 {DEFAULT @window_end = 0}
 {DEFAULT @window_start = -365}
@@ -45,6 +46,9 @@ IF OBJECT_ID('tempdb..#cov_5', 'U') IS NOT NULL
 
 IF OBJECT_ID('tempdb..#cov_6', 'U') IS NOT NULL
 	DROP TABLE #cov_6;
+	
+IF OBJECT_ID('tempdb..#cov_7', 'U') IS NOT NULL
+	DROP TABLE #cov_7;
 	
 --1.  renal impairment
 SELECT DISTINCT row_id,
@@ -462,3 +466,162 @@ FROM (
 			AND p.gender_concept_id = 8532
 {@cohort_id != -1} ? {		AND c.cohort_definition_id = @cohort_id}	
 	) tmp;
+	
+--7. Type 2 diabetes mellitus
+CREATE TABLE #codesets (
+	codeset_id INT NOT NULL,
+	concept_id BIGINT NOT NULL
+	);
+
+--Concept set 4: Type 2 diabetes mellitus 
+INSERT INTO #codesets (
+	codeset_id,
+	concept_id
+	)
+SELECT 4 AS codeset_id,
+	c.concept_id
+FROM (
+	SELECT DISTINCT I.concept_id
+	FROM (
+		SELECT concept_id
+		FROM @cdm_database_schema.concept
+		WHERE concept_id IN (443735, 443767, 192279, 443732, 376065, 443729, 201826)
+			AND invalid_reason IS NULL
+		
+		UNION
+		
+		SELECT c.concept_id
+		FROM @cdm_database_schema.concept c
+		JOIN @cdm_database_schema.concept_ancestor ca
+			ON c.concept_id = ca.descendant_concept_id
+				AND ca.ancestor_concept_id IN (443735, 443767, 192279, 443732, 376065, 443729, 201826)
+				AND c.invalid_reason IS NULL
+		) I
+	LEFT JOIN (
+		SELECT concept_id
+		FROM @cdm_database_schema.concept
+		WHERE concept_id IN (4225656, 4227210, 435216, 37016355, 4228112, 4224254, 200687, 201254, 201531, 4295011)
+			AND invalid_reason IS NULL
+		
+		UNION
+		
+		SELECT c.concept_id
+		FROM @cdm_database_schema.concept c
+		JOIN @cdm_database_schema.concept_ancestor ca
+			ON c.concept_id = ca.descendant_concept_id
+				AND ca.ancestor_concept_id IN (4225656, 4227210, 435216, 37016355, 4228112, 4224254, 200687, 201254, 201531, 4295011)
+				AND c.invalid_reason IS NULL
+		) e
+		on i.concept_id = e.concept_id
+	WHERE E.concept_id IS NULL
+	) c;
+
+-- Concept set 5: Drugs to treat Type 2 Diabetes Mellitus excluding insulin
+INSERT INTO #codesets (
+	codeset_id,
+	concept_id
+	)
+SELECT 5 AS codeset_id,
+	c.concept_id
+FROM (
+	SELECT DISTINCT I.concept_id
+	FROM (
+		SELECT concept_id
+		FROM @cdm_database_schema.concept
+		WHERE concept_id IN (21600744)
+			AND invalid_reason IS NULL
+		
+		UNION
+		
+		SELECT c.concept_id
+		FROM @cdm_database_schema.concept c
+		JOIN @cdm_database_schema.concept_ancestor ca
+			ON c.concept_id = ca.descendant_concept_id
+				AND ca.ancestor_concept_id IN (21600744)
+				AND c.invalid_reason IS NULL
+		) i
+	) c;
+
+-- Concept set 6: Hemoglobin A1c measurement
+INSERT INTO #codesets (
+	codeset_id,
+	concept_id
+	)
+SELECT 6 AS codeset_id,
+	c.concept_id
+FROM (
+	SELECT DISTINCT I.concept_id
+	FROM (
+		SELECT concept_id
+		FROM @cdm_database_schema.concept
+		WHERE concept_id IN (4197971, 44786901, 3004410, 3034639, 40758583, 3007263, 3003309, 3005673, 40762352, 2212392)
+			AND invalid_reason IS NULL
+		) i
+	) c;
+	
+SELECT @row_id_field AS row_id,
+	person_id,
+	condition_start_date
+INTO #initial_cohort
+FROM @cohort_temp_table c
+INNER JOIN @cdm_database_schema.condition_occurrence co
+	ON c.subject_id = co.person_id
+		AND co.condition_start_date <= DATEADD(DAY, @window_end, c.cohort_start_date)
+		AND co.condition_start_date >= DATEADD(DAY, @window_start, c.cohort_start_date)
+		AND co.condition_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 4)
+{@cohort_id != -1} ? {WHERE c.cohort_definition_id = @cohort_id}		
+;
+
+SELECT DISTINCT row_id,
+	CAST(7000 + @analysis_id AS BIGINT) AS covariate_id,
+	1 AS covariate_value
+INTO #cov_7	
+FROM (
+	SELECT row_id
+	FROM #initial_cohort c
+	INNER JOIN @cdm_database_schema.condition_occurrence co2
+		ON c.person_id = co2.person_id
+		AND co2.condition_start_date > c.condition_start_date 
+		AND co2.condition_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 4)	
+		
+	UNION ALL
+	
+	SELECT row_id
+	FROM #initial_cohort c
+	INNER JOIN @cdm_database_schema.drug_exposure de
+		ON c.person_id = de.person_id
+		AND de.drug_exposure_start_date >= c.condition_start_date 
+		AND de.drug_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 5)	
+	INNER JOIN @cdm_database_schema.drug_exposure de2
+		ON c.person_id = de2.person_id
+		AND de2.drug_exposure_start_date > de.drug_exposure_start_date
+		AND de2.drug_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 5)	
+
+	UNION ALL
+	
+	SELECT row_id
+	FROM #initial_cohort c
+	INNER JOIN @cdm_database_schema.measurement me
+		ON c.person_id = me.person_id
+		AND me.measurement_date >= c.condition_start_date 
+		AND me.measurement_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 6)	
+		AND me.value_as_number >= 6.5
+		AND me.value_as_number <= 30.0
+		AND me.unit_concept_id = 8554
+	INNER JOIN @cdm_database_schema.measurement me2
+		ON c.person_id = me2.person_id
+		AND me2.measurement_date > me.measurement_date
+		AND me2.measurement_concept_id IN (SELECT concept_id FROM #codesets WHERE codeset_id = 6)	
+		AND  me2.value_as_number >= 6.5
+		AND me2.value_as_number <= 30.0
+		AND me2.unit_concept_id = 8554
+	) tmp;
+	
+	
+TRUNCATE TABLE #codesets;
+
+DROP TABLE #codesets;
+
+TRUNCATE TABLE #initial_cohort;
+
+DROP TABLE #initial_cohort;

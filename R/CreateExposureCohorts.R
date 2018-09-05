@@ -156,27 +156,6 @@ createExposureCohorts <- function(connectionDetails,
 
         exposurePairs <- rbind(drugPairs, classPairs, majorclassPairs)
         exposurePairs <- exposurePairs[exposurePairs$exposureId1 < exposurePairs$exposureId2, ]
-        # exposurePairs$exposureId3 <- -1
-
-        # drugTriplets <- expand.grid(exposureId1 = drugsOfInterest$cohortId,
-        #                             exposureId2 = drugsOfInterest$cohortId,
-        #                             exposureId3 = drugsOfInterest$cohortId)
-        # drugTriplets$exposureType <- "Drug"
-        # classTriplets <- expand.grid(exposureId1 = classesOfInterest$cohortId,
-        #                              exposureId2 = classesOfInterest$cohortId,
-        #                              exposureId3 = classesOfInterest$cohortId)
-        # classTriplets$exposureType <- "Drug class"
-        # majorClassTriplets <- expand.grid(exposureId1 = majorClassesOfInterest$cohortId,
-        #                                   exposureId2 = majorClassesOfInterest$cohortId,
-        #                                   exposureId3 = majorClassesOfInterest$cohortId)
-        # majorClassTriplets$exposureType <- "Drug major class"
-        #
-        #
-        # exposureTriplets <- rbind(drugTriplets, classTriplets, majorClassTriplets)
-        # exposureTriplets <- exposureTriplets[exposureTriplets$exposureId1 < exposureTriplets$exposureId2 &
-        #                                          exposureTriplets$exposureId2 < exposureTriplets$exposureId3, ]
-        #
-        # exposureCombis <- rbind(exposurePairs, exposureTriplets)
         exposureCombis <- exposurePairs
         exposureCombis$cohortDefinitionId <- 1000 + 1:nrow(exposureCombis)
         if (any(exposureCombis$cohortDefinitionId %in% exposuresOfInterest$cohortId)) {
@@ -187,14 +166,6 @@ createExposureCohorts <- function(connectionDetails,
                                                                             exposuresOfInterest$cohortId)]
         namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match(namedExposureCombis$exposureId2,
                                                                             exposuresOfInterest$cohortId)]
-        # namedExposureCombis$exposureName3 <- exposuresOfInterest$name[match(namedExposureCombis$exposureId3,
-        #                                                                     exposuresOfInterest$cohortId)]
-        # idx <- namedExposureCombis$exposureId3 == -1
-        # namedExposureCombis$cohortName[idx] <- paste(namedExposureCombis$exposureName1[idx],
-        #                                              namedExposureCombis$exposureName2[idx], sep = " & ")
-        # namedExposureCombis$cohortName[!idx] <- paste(namedExposureCombis$exposureName1[!idx],
-        #                                               namedExposureCombis$exposureName2[!idx],
-        #                                               namedExposureCombis$exposureName3[!idx], sep = " & ")
         namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1,
                                                 namedExposureCombis$exposureName2, sep = " & ")
         write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)

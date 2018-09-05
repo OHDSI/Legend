@@ -6,12 +6,13 @@
 \usage{
 execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, outputFolder, indicationId = "Depression",
-  tablePrefix, createExposureCohorts = TRUE,
-  createOutcomeCohorts = TRUE, fetchAllDataFromServer = TRUE,
-  synthesizePositiveControls = TRUE,
+  tablePrefix, databaseId = "Unknown", databaseName = "Unknown",
+  databaseDescription = "Unknown", minCellCount = 5,
+  createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
+  fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
   computeIncidence = TRUE, fetchChronographData = TRUE,
-  computeCovariateBalance = TRUE, maxCores)
+  computeCovariateBalance = TRUE, exportToCsv = TRUE, maxCores)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -37,6 +38,14 @@ performance.}
 
 \item{tablePrefix}{A prefix to be used for all table names created for this study.}
 
+\item{databaseId}{A short string for identifying the database (e.g. 'Synpuf').}
+
+\item{databaseName}{The full name of the database.}
+
+\item{databaseDescription}{A short description (several sentences) of the database.}
+
+\item{minCellCount}{The minimum cell count for fields contains person counts or fractions when exporting to CSV.}
+
 \item{createExposureCohorts}{Create the tables with the exposure cohorts?}
 
 \item{createOutcomeCohorts}{Create the tables with the outcome cohorts?}
@@ -54,6 +63,8 @@ performance.}
 \item{fetchChronographData}{Fetch the data for constructing chronographs?}
 
 \item{computeCovariateBalance}{Fetch the data for constructing chronographs?}
+
+\item{exportToCsv}{Export all results to CSV files?}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available
 this can speed up the analyses.}
