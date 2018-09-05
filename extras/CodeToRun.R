@@ -147,6 +147,9 @@ mailSettings <- list(from = Sys.getenv("mailAddress"),
                      authenticate = TRUE,
                      send = TRUE)
 
+sinkFile <- file(file.path(outputFolder, indicationId, "console.txt"), open = "wt")
+sink(sinkFile, split = TRUE)
+
 OhdsiRTools::runAndNotify({
     execute(connectionDetails = connectionDetails,
             cdmDatabaseSchema = cdmDatabaseSchema,
@@ -169,6 +172,8 @@ OhdsiRTools::runAndNotify({
             computeCovariateBalance = TRUE,
             maxCores = maxCores)
 }, mailSettings = mailSettings, label = "Legend")
+
+sink()
 
 
 createExposureCohorts(connectionDetails = connectionDetails,
