@@ -6,10 +6,9 @@ install.packages(c("assertthat", "crayon", "bit", "cli", "devtools", "colorspace
 # assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
 # find_rtools()
 
-devtools::install_github("r-lib/zip", dep = FALSE)
 devtools::install_github("ohdsi/SqlRender", dep = FALSE)
 devtools::install_github("ohdsi/DatabaseConnectorJars", dep = FALSE)
-devtools::install_github("ohdsi/DatabaseConnector", dep = FALSE)
+devtools::install_github("ohdsi/DatabaseConnector", ref = "develop", dep = FALSE)
 devtools::install_github("ohdsi/Cyclops", dep = FALSE)
 devtools::install_github("ohdsi/FeatureExtraction", dep = FALSE)
 devtools::install_github("ohdsi/OhdsiRTools", dep = FALSE)

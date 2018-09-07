@@ -92,7 +92,7 @@ exportResults <- function(indicationId = "Depression",
     files <- list.files(exportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(exportFolder)
     on.exit(setwd(oldWd))
-    zip::zip(zipfile = zipName, files = files, recurse = FALSE)
+    DatabaseConnector::createZipFile(zipFile = zipName, files = files)
     ParallelLogger::logInfo("Results are ready for sharing at:", zipName)
 }
 
