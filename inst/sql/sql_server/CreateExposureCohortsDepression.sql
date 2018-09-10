@@ -169,7 +169,7 @@ FROM (
 				SELECT person_id,
 					concept_id,
 					exposure_start_date AS event_date,
-					0 AS event_type,
+					CAST(0 AS INT) AS event_type,
 					ROW_NUMBER() OVER (
 						PARTITION BY person_id, concept_id ORDER BY exposure_start_date
 						) AS start_ordinal
@@ -181,8 +181,8 @@ FROM (
 				SELECT person_id,
 					concept_id,
 					DATEADD(day, @max_gap, exposure_end_date),
-					1 AS event_type,
-					NULL
+					CAST(1 AS INT)  AS event_type,
+					CAST(NULL AS INT) AS start_ordinal
 				FROM #exposure
 				) rawdata
 			) events
