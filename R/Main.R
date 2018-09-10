@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#' Execute OHDSI Large-Scale Population-Level Evidence Generation study
+#' Execute OHDSI LEGEND study
 #'
 #' @details
-#' This function executes the OHDSI Large-Scale Population-Level Evidence Generation study.
+#' This function executes the OHDSI LEGEND study.
 #'
 #' @param connectionDetails                    An object of type \code{connectionDetails} as created
 #'                                             using the
@@ -41,7 +41,8 @@
 #'                                             study.
 #' @param databaseId                           A short string for identifying the database (e.g.
 #'                                             'Synpuf').
-#' @param databaseName                         The full name of the database.
+#' @param databaseName                         The full name of the database (e.g. 'Medicare Claims
+#'                                             Synthetic Public Use Files (SynPUFs)').
 #' @param databaseDescription                  A short description (several sentences) of the database.
 #' @param minCellCount                         The minimum cell count for fields contains person counts
 #'                                             or fractions when exporting to CSV.
@@ -55,7 +56,7 @@
 #'                                             models?
 #' @param computeIncidence                     Compute incidence rates?
 #' @param fetchChronographData                 Fetch the data for constructing chronographs?
-#' @param computeCovariateBalance              Fetch the data for constructing chronographs?
+#' @param computeCovariateBalance              Compute covariate balance?
 #' @param exportToCsv                          Export all results to CSV files?
 #' @param maxCores                             How many parallel cores should be used? If more cores
 #'                                             are made available this can speed up the analyses.
@@ -67,7 +68,7 @@ execute <- function(connectionDetails,
                     cohortDatabaseSchema,
                     outputFolder,
                     indicationId = "Depression",
-                    tablePrefix,
+                    tablePrefix = "legend",
                     databaseId = "Unknown",
                     databaseName = "Unknown",
                     databaseDescription = "Unknown",
@@ -82,7 +83,7 @@ execute <- function(connectionDetails,
                     fetchChronographData = TRUE,
                     computeCovariateBalance = TRUE,
                     exportToCsv = TRUE,
-                    maxCores) {
+                    maxCores = 4) {
 
     indicationFolder <- file.path(outputFolder, indicationId)
     if (!file.exists(indicationFolder)) {
@@ -98,7 +99,6 @@ execute <- function(connectionDetails,
                               indicationId = indicationId,
                               oracleTempSchema = oracleTempSchema,
                               outputFolder = outputFolder)
-
         filterByExposureCohortsSize(outputFolder = outputFolder, indicationId = indicationId)
     }
     if (createOutcomeCohorts) {

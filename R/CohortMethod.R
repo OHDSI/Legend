@@ -123,7 +123,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     file.rename(from = file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"),
                 to = file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
 
-    # Second run: Forward paris only, only target positive controls ---------------------------------
+    # Second run: Forward pairs only, only target positive controls ---------------------------------
 
     tcos <- lapply(1:nrow(exposureSummary),
                    createTcos,

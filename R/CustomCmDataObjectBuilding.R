@@ -49,12 +49,14 @@ fetchAllDataFromServer <- function(connectionDetails,
                                    tablePrefix = "legend",
                                    useSample = FALSE,
                                    outputFolder) {
-    # Some ad-hoc nomenclature: exposureId: Denotes a T or C in a specific TC combination, so filtered to
-    # common calendar time cohortId: Denotes a T or C independent of each other exposureConceptId:
-    # Denotes the main concept(s) for each cohort. For each combi treatments there are 2 of these.
-    # ancestorConceptId: a concept ID explicitly related to a cohort (eequivalent to xposureConceptId).
-    # descendantConceptId: a concept ID related to the ancestor concept ID through a custom ancestry
-    # filterConceptId: A concept ID that needs to be filtered when fitting propensity model.
+    # For efficiency reasons, we fetch all necessary data from the server in one go. We take the union
+    # of all exposure cohorts, extract the union as well as the covariates and outcomes for union. Then,
+    # when constructing the CohortMethodData object, we split them up for the respective target-comarator
+    # pairs.
+    # Covariates that are to be excluded during the data fetch for the union (so those that apply to all
+    # TCs) are specified in inst/settings/indications.csv. Covariates that are to be excluded when
+    # constructing the CohortMethodData objects (so those specific to a TC) are stored in the file
+    # filterConceps.rds.
 
     ParallelLogger::logInfo("Fetching all data from the server")
     indicationFolder <- file.path(outputFolder, indicationId)
@@ -64,11 +66,11 @@ fetchAllDataFromServer <- function(connectionDetails,
     outcomeIds <- counts$cohortDefinitionId
 
     if (useSample) {
+        # Sample is used for feasibility assessment
         pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "sample_cohort", sep = "_")
         covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
         cohortsFolder <- file.path(indicationFolder, "sampleCohorts")
         outcomesFolder <- file.path(indicationFolder, "sampleOutcomes")
-
     } else {
         pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
         covariatesFolder <- file.path(indicationFolder, "allCovariates")
@@ -254,8 +256,69 @@ fetchAllDataFromServer <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 }
 
+#' Construct all cohortMethodData object
+#'
+#' @details
+#' This function constructs all cohortMethodData objects using the data fetched earlier using the
+#' \code{\link{fetchAllDataFromServer}} function.
+#'
+#' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/)
+#' @param indicationId   A string denoting the indicationId.
+#' @param useSample      Use the sampled cohort table instead of the main cohort table (for PS model
+#'                       feasibility).
+#' @param maxCores       How many parallel cores should be used? If more cores are made available this
+#'                       can speed up the analyses.
+#'
+#' @export
+generateAllCohortMethodDataObjects <- function(outputFolder,
+                                               indicationId = "Depression",
+                                               useSample = FALSE,
+                                               maxCores = 4) {
+    ParallelLogger::logInfo("Constructing CohortMethodData objects")
+    indicationFolder <- file.path(outputFolder, indicationId)
+    start <- Sys.time()
+    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+
+    # for (i in 1:nrow(exposureSummary)) {
+    createObject <- function(i, exposureSummary, indicationFolder, useSample) {
+        targetId <- exposureSummary$targetId[i]
+        comparatorId <- exposureSummary$comparatorId[i]
+        if (useSample) {
+            # Sample is used for feasibility assessment
+            folderName <- file.path(indicationFolder,
+                                    "cmSampleOutput",
+                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        } else {
+            folderName <- file.path(indicationFolder,
+                                    "cmOutput",
+                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        }
+        if (!file.exists(folderName)) {
+            cmData <- Legend:::constructCohortMethodDataObject(targetId = targetId,
+                                                               comparatorId = comparatorId,
+                                                               indicationFolder = indicationFolder,
+                                                               useSample = useSample)
+            CohortMethod::saveCohortMethodData(cmData, folderName, compress = TRUE)
+        }
+        return(NULL)
+    }
+    cluster <- ParallelLogger::makeCluster(min(maxCores, 3))
+    ParallelLogger::clusterApply(cluster = cluster,
+                                 x = 1:nrow(exposureSummary),
+                                 fun = createObject,
+                                 exposureSummary = exposureSummary,
+                                 indicationFolder = indicationFolder,
+                                 useSample = useSample)
+    ParallelLogger::stopCluster(cluster)
+    delta <- Sys.time() - start
+    ParallelLogger::logInfo(paste("Generating all CohortMethodData objects took",
+                                  signif(delta, 3),
+                                  attr(delta, "units")))
+}
+
 constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFolder, useSample) {
     if (useSample) {
+        # Sample is used for feasibility assessment
         covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
         cohortsFolder <- file.path(indicationFolder, "sampleCohorts")
         outcomesFolder <- file.path(indicationFolder, "sampleOutcomes")
@@ -351,64 +414,4 @@ constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFo
 
     class(result) <- "cohortMethodData"
     return(result)
-}
-
-#' Construct all cohortMethodData object
-#'
-#' @details
-#' This function constructs all cohortMethodData objects using the data fetched earlier using the
-#' \code{\link{fetchAllDataFromServer}} function.
-#'
-#' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/)
-#' @param indicationId   A string denoting the indicationId.
-#' @param useSample      Use the sampled cohort table instead of the main cohort table (for PS model
-#'                       feasibility).
-#' @param maxCores       How many parallel cores should be used? If more cores are made available this
-#'                       can speed up the analyses.
-#'
-#' @export
-generateAllCohortMethodDataObjects <- function(outputFolder,
-                                               indicationId = "Depression",
-                                               useSample = FALSE,
-                                               maxCores = 4) {
-    ParallelLogger::logInfo("Constructing CohortMethodData objects")
-    indicationFolder <- file.path(outputFolder, indicationId)
-    start <- Sys.time()
-    exposureSummary <- read.csv(file.path(indicationFolder,
-                                          "pairedExposureSummaryFilteredBySize.csv"))
-
-    # for (i in 1:nrow(exposureSummary)) {
-    createObject <- function(i, exposureSummary, indicationFolder, useSample) {
-        targetId <- exposureSummary$targetId[i]
-        comparatorId <- exposureSummary$comparatorId[i]
-        if (useSample) {
-            folderName <- file.path(indicationFolder,
-                                    "cmSampleOutput",
-                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
-        } else {
-            folderName <- file.path(indicationFolder,
-                                    "cmOutput",
-                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
-        }
-        if (!file.exists(folderName)) {
-            cmData <- Legend:::constructCohortMethodDataObject(targetId = targetId,
-                                                               comparatorId = comparatorId,
-                                                               indicationFolder = indicationFolder,
-                                                               useSample = useSample)
-            CohortMethod::saveCohortMethodData(cmData, folderName, compress = TRUE)
-        }
-        return(NULL)
-    }
-    cluster <- ParallelLogger::makeCluster(min(maxCores, 3))
-    ParallelLogger::clusterApply(cluster = cluster,
-                                 x = 1:nrow(exposureSummary),
-                                 fun = createObject,
-                                 exposureSummary = exposureSummary,
-                                 indicationFolder = indicationFolder,
-                                 useSample = useSample)
-    ParallelLogger::stopCluster(cluster)
-    delta <- Sys.time() - start
-    ParallelLogger::logInfo(paste("Generating all CohortMethodData objects took",
-                                  signif(delta, 3),
-                                  attr(delta, "units")))
 }

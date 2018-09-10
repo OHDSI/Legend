@@ -234,7 +234,6 @@ createExposureCohorts <- function(connectionDetails,
         DatabaseConnector::executeSql(conn, sql)
 
         # Drop temp tables created in R
-
         sql <- "TRUNCATE TABLE #drug_ancestor; DROP TABLE #drug_ancestor;"
         sql <- SqlRender::translateSql(sql = sql,
                                        targetDialect = connectionDetails$dbms,

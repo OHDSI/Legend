@@ -59,6 +59,8 @@ synthesizePositiveControls <- function(connectionDetails,
         dir.create(signalInjectionFolder)
     outcomeCohortTable <- paste(tablePrefix, tolower(indicationId), "out_cohort", sep = "_")
 
+    # Here we reuse the data previosuly fetched, rather than have MethodEvaluation::injectSignals
+    # fetch the data again from the server:
     createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = sampleSize)
 
     # Get all possible exposure IDs, including ones not found in this database to make sure new outcome
@@ -104,7 +106,6 @@ synthesizePositiveControls <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     DatabaseConnector::disconnect(conn)
 
-    # exposureOutcomePairs <- exposureOutcomePairs[1,]
     ParallelLogger::logTrace("Calling injectSignals function")
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
