@@ -8,7 +8,7 @@ install.packages(c("assertthat", "crayon", "bit", "cli", "devtools", "colorspace
 
 devtools::install_github("ohdsi/SqlRender", dep = FALSE)
 devtools::install_github("ohdsi/DatabaseConnectorJars", dep = FALSE)
-devtools::install_github("ohdsi/DatabaseConnector", ref = "develop", dep = FALSE)
+devtools::install_github("ohdsi/DatabaseConnector", dep = FALSE)
 devtools::install_github("ohdsi/Cyclops", dep = FALSE)
 devtools::install_github("ohdsi/FeatureExtraction", dep = FALSE)
 devtools::install_github("ohdsi/OhdsiRTools", dep = FALSE)
