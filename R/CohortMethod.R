@@ -19,25 +19,24 @@
 #' @details
 #' Runs the cohort method package to produce propensity scores and outcome models.
 #'
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/). Do not use a folder on a network drive since this greatly impacts
-#'                             performance.
-#' @param indicationId         A string denoting the indicationId.
-#' @param maxCores             How many parallel cores should be used? If more cores are made available
-#'                             this can speed up the analyses.
+#' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/).
+#'                       Do not use a folder on a network drive since this greatly impacts performance.
+#' @param indicationId   A string denoting the indicationId.
+#' @param maxCores       How many parallel cores should be used? If more cores are made available this
+#'                       can speed up the analyses.
 #'
 #' @export
 runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores = 4) {
-    # Note: we don't want to run all analyses on all TCO pairs. Specifically, analyses
-    # that are symmetrical (e.g. PS stratification) we only want to do one way,
-    # and the interaction analyses we don't want to run on the positive controls.
-    # To do this, we split up the analyses across several CohortMethod runs. We must
-    # be careful not to have intermediary files in the different runs with the same name
-    # but different content.
+    # Note: we don't want to run all analyses on all TCO pairs. Specifically, analyses that are
+    # symmetrical (e.g. PS stratification) we only want to do one way, and the interaction analyses we
+    # don't want to run on the positive controls.  To do this, we split up the analyses across several
+    # CohortMethod runs. We must be careful not to have intermediary files in the different runs with the
+    # same name but different content.
 
     indicationFolder <- file.path(outputFolder, indicationId)
     cmFolder <- file.path(indicationFolder, "cmOutput")
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     hois <- read.csv(pathToCsv)
     hois <- hois[hois$indicationId == indicationId, ]
@@ -54,21 +53,24 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
             targetId <- exposureSummary$targetId[i]
             comparatorId <- exposureSummary$comparatorId[i]
         }
-        fileName <- file.path(cmFolder, paste0("CmData_l1_t", targetId, "_c", comparatorId), "outcomes.rds")
+        fileName <- file.path(cmFolder,
+                              paste0("CmData_l1_t", targetId, "_c", comparatorId),
+                              "outcomes.rds")
         outcomes <- readRDS(fileName)
         outcomeIds <- unique(outcomes$outcomeId)
-        # cmData <- CohortMethod::loadCohortMethodData(folderName, readOnly = TRUE)
-        # outcomeIds <-   attr(cmData$outcomes, "metaData")$outcomeIds
         if (positiveControls == "exclude") {
             outcomeIds <- outcomeIds[outcomeIds %in% c(hois$cohortId, negativeControls$cohortId)]
         } else if (positiveControls == "onlyTarget") {
-            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == targetId]]
+            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId ==
+                                                                                       targetId]]
         } else if (positiveControls == "onlyComparator") {
-            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == comparatorId]]
+            outcomeIds <- outcomeIds[outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId ==
+                                                                                       comparatorId]]
         } else if (positiveControls == "excludeComparator") {
-            outcomeIds <- outcomeIds[!(outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId == comparatorId])]
+            outcomeIds <- outcomeIds[!(outcomeIds %in% injectionSummary$newOutcomeId[injectionSummary$exposureId ==
+                                                                                         comparatorId])]
         } else {
-            stop("Unknown positive control setting: " , positiveControls)
+            stop("Unknown positive control setting: ", positiveControls)
         }
         tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
                                                             comparatorId = comparatorId,
@@ -123,7 +125,10 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
 
     # Second run: Forward paris only, only target positive controls ---------------------------------
 
-    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "onlyTarget", reverse = FALSE)
+    tcos <- lapply(1:nrow(exposureSummary),
+                   createTcos,
+                   positiveControls = "onlyTarget",
+                   reverse = FALSE)
     cmAnalyses <- c(cmAnalysisList, cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -153,7 +158,10 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
 
     # Third run: Forward pairs only, only comparator positive controls ----------------
 
-    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "onlyComparator", reverse = FALSE)
+    tcos <- lapply(1:nrow(exposureSummary),
+                   createTcos,
+                   positiveControls = "onlyComparator",
+                   reverse = FALSE)
     cmAnalyses <- c(cmAnalysisList)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -183,9 +191,8 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
 
     # Fourth run: Reverse pairs, exclude comparator controls ------------------------------------
 
-    # Create reverse (comparator-target) cohortMethodData and ps objects:
-    # Warning: cohortMethodData will not have covariate and covariateRef data, since we
-    # won't need them (PS is already computed)
+    # Create reverse (comparator-target) cohortMethodData and ps objects: Warning: cohortMethodData will
+    # not have covariate and covariateRef data, since we won't need them (PS is already computed)
     pathToRds <- file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds")
     reference <- readRDS(pathToRds)
     reference <- reference[order(reference$cohortMethodDataFolder), ]
@@ -241,7 +248,10 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     }
     plyr::llply(1:nrow(reference), addOtherHalf, .progress = "text")
 
-    tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControl = "excludeComparator", reverse = TRUE)
+    tcos <- lapply(1:nrow(exposureSummary),
+                   createTcos,
+                   positiveControl = "excludeComparator",
+                   reverse = TRUE)
     cmAnalyses <- c(cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -269,10 +279,18 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                 to = file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
 
     # Create analysis summaries -------------------------------------------------------------------
-    outcomeModelReference1 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
-    outcomeModelReference2 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
-    outcomeModelReference3 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference3.rds"))
-    outcomeModelReference4 <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference4.rds"))
+    outcomeModelReference1 <- readRDS(file.path(indicationFolder,
+                                                "cmOutput",
+                                                "outcomeModelReference1.rds"))
+    outcomeModelReference2 <- readRDS(file.path(indicationFolder,
+                                                "cmOutput",
+                                                "outcomeModelReference2.rds"))
+    outcomeModelReference3 <- readRDS(file.path(indicationFolder,
+                                                "cmOutput",
+                                                "outcomeModelReference3.rds"))
+    outcomeModelReference4 <- readRDS(file.path(indicationFolder,
+                                                "cmOutput",
+                                                "outcomeModelReference4.rds"))
 
     # Check to make sure no file names were used twice:
     if (any(outcomeModelReference1$studyPopFile != "" & outcomeModelReference1$studyPopFile %in% outcomeModelReference2$studyPopFile)) {
@@ -313,16 +331,20 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     }
 
     ParallelLogger::logInfo("Summarizing results")
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference1, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference1,
+                                                   outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary1.csv"), row.names = FALSE)
 
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference2, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference2,
+                                                   outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary2.csv"), row.names = FALSE)
 
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference3, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference3,
+                                                   outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary3.csv"), row.names = FALSE)
 
-    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference4, outputFolder = cmFolder)
+    analysesSum <- CohortMethod::summarizeAnalyses(referenceTable = outcomeModelReference4,
+                                                   outputFolder = cmFolder)
     write.csv(analysesSum, file.path(indicationFolder, "analysisSummary4.csv"), row.names = FALSE)
 }
 
@@ -365,9 +387,10 @@ createAnalysesDetails <- function(outputFolder) {
                                                                                       seed = 123),
                                                      stopOnError = FALSE,
                                                      excludeCovariateIds = subgroupCovariateIds,
-                                                     maxCohortSizeForFitting = 100000)
+                                                     maxCohortSizeForFitting = 1e+05)
 
-    stratifyByPsArgs <- CohortMethod::createStratifyByPsArgs(numberOfStrata = 10, baseSelection = "all")
+    stratifyByPsArgs <- CohortMethod::createStratifyByPsArgs(numberOfStrata = 10,
+                                                             baseSelection = "all")
 
     fitOutcomeModelArgs1 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                     modelType = "cox")
@@ -378,7 +401,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgs1)
@@ -389,14 +412,15 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsItt,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
     cmAnalysisList <- list(cmAnalysis1, cmAnalysis2)
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisListDepression.json"))
+    CohortMethod::saveCmAnalysisList(cmAnalysisList,
+                                     file.path(outputFolder, "cmAnalysisListDepression.json"))
 
     matchOnPsArgs <- CohortMethod::createMatchOnPsArgs(caliper = 0.2,
                                                        caliperScale = "standardized logit",
@@ -408,7 +432,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  matchOnPs =  TRUE,
+                                                  matchOnPs = TRUE,
                                                   matchOnPsArgs = matchOnPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgs1)
@@ -419,18 +443,19 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsItt,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  matchOnPs =  TRUE,
+                                                  matchOnPs = TRUE,
                                                   matchOnPsArgs = matchOnPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
     cmAnalysisListAsym <- list(cmAnalysis3, cmAnalysis4)
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym, file.path(outputFolder, "cmAnalysisListAsymDepression.json"))
+    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym,
+                                     file.path(outputFolder, "cmAnalysisListAsymDepression.json"))
 
     fitOutcomeModelArgsI1998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
-                                                                       modelType = "cox",
-                                                                       interactionCovariateIds = 1998)
+                                                                        modelType = "cox",
+                                                                        interactionCovariateIds = 1998)
 
     cmAnalysis5 <- CohortMethod::createCmAnalysis(analysisId = 5,
                                                   description = "PS stratification, on-treatment, renal impairment interactions",
@@ -438,7 +463,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI1998)
@@ -449,7 +474,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsItt,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI1998)
@@ -465,7 +490,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI2998)
@@ -476,7 +501,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsItt,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI2998)
@@ -490,99 +515,99 @@ createAnalysesDetails <- function(outputFolder) {
                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
                                                   createPs = TRUE,
                                                   createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
+                                                  stratifyByPs = TRUE,
                                                   stratifyByPsArgs = stratifyByPsArgs,
                                                   fitOutcomeModel = TRUE,
                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI3998)
 
     cmAnalysis10 <- CohortMethod::createCmAnalysis(analysisId = 10,
-                                                  description = "PS stratification, intent-to-treat, pregnancy interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsItt,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI3998)
+                                                   description = "PS stratification, intent-to-treat, pregnancy interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI3998)
 
     fitOutcomeModelArgsI4998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                         modelType = "cox",
                                                                         interactionCovariateIds = 4998)
 
     cmAnalysis11 <- CohortMethod::createCmAnalysis(analysisId = 11,
-                                                  description = "PS stratification, on-treatment, children interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI4998)
+                                                   description = "PS stratification, on-treatment, children interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI4998)
 
     cmAnalysis12 <- CohortMethod::createCmAnalysis(analysisId = 12,
-                                                  description = "PS stratification, intent-to-treat, children interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsItt,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI4998)
+                                                   description = "PS stratification, intent-to-treat, children interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI4998)
 
     fitOutcomeModelArgsI5998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                         modelType = "cox",
                                                                         interactionCovariateIds = 5998)
 
     cmAnalysis13 <- CohortMethod::createCmAnalysis(analysisId = 13,
-                                                  description = "PS stratification, on-treatment, elderly interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI5998)
+                                                   description = "PS stratification, on-treatment, elderly interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI5998)
 
     cmAnalysis14 <- CohortMethod::createCmAnalysis(analysisId = 14,
-                                                  description = "PS stratification, intent-to-treat, elderly interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsItt,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI5998)
+                                                   description = "PS stratification, intent-to-treat, elderly interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI5998)
 
     fitOutcomeModelArgsI6998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                         modelType = "cox",
                                                                         interactionCovariateIds = 6998)
 
     cmAnalysis15 <- CohortMethod::createCmAnalysis(analysisId = 15,
-                                                  description = "PS stratification, on-treatment, female interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI6998)
+                                                   description = "PS stratification, on-treatment, female interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI6998)
 
     cmAnalysis16 <- CohortMethod::createCmAnalysis(analysisId = 16,
-                                                  description = "PS stratification, intent-to-treat, female interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsItt,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI6998)
+                                                   description = "PS stratification, intent-to-treat, female interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI6998)
 
     cmAnalysisListInteractions <- list(cmAnalysis5,
                                        cmAnalysis6,
@@ -597,45 +622,49 @@ createAnalysesDetails <- function(outputFolder) {
                                        cmAnalysis15,
                                        cmAnalysis16)
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions, file.path(outputFolder, "cmAnalysisListInteractionsDepression.json"))
+    CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions,
+                                     file.path(outputFolder,
+                                               "cmAnalysisListInteractionsDepression.json"))
 
     # Hypertension --------------------------------------------------------------
 
     # Main analyses: just use same as depression
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisList, file.path(outputFolder, "cmAnalysisListHypertension.json"))
+    CohortMethod::saveCmAnalysisList(cmAnalysisList,
+                                     file.path(outputFolder, "cmAnalysisListHypertension.json"))
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym, file.path(outputFolder, "cmAnalysisListAsymHypertension.json"))
-	
-	# Interactions: add type 2 diabetes mellitus subgroup
-	
-	fitOutcomeModelArgsI7998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
+    CohortMethod::saveCmAnalysisList(cmAnalysisListAsym,
+                                     file.path(outputFolder, "cmAnalysisListAsymHypertension.json"))
+
+    # Interactions: add type 2 diabetes mellitus subgroup
+
+    fitOutcomeModelArgsI7998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
                                                                         modelType = "cox",
                                                                         interactionCovariateIds = 7998)
 
     cmAnalysis17 <- CohortMethod::createCmAnalysis(analysisId = 17,
-                                                  description = "PS stratification, on-treatment, T2DM interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsOnTreatment,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
+                                                   description = "PS stratification, on-treatment, T2DM interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
 
     cmAnalysis18 <- CohortMethod::createCmAnalysis(analysisId = 18,
-                                                  description = "PS stratification, intent-to-treat, T2DM interactions",
-                                                  getDbCohortMethodDataArgs = getDbCmDataArgs,
-                                                  createStudyPopArgs = createStudyPopArgsItt,
-                                                  createPs = TRUE,
-                                                  createPsArgs = createPsArgs,
-                                                  stratifyByPs =  TRUE,
-                                                  stratifyByPsArgs = stratifyByPsArgs,
-                                                  fitOutcomeModel = TRUE,
-                                                  fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
-												  
-	cmAnalysisListInteractions <- list(cmAnalysis5,
+                                                   description = "PS stratification, intent-to-treat, T2DM interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
+
+    cmAnalysisListInteractions <- list(cmAnalysis5,
                                        cmAnalysis6,
                                        cmAnalysis7,
                                        cmAnalysis8,
@@ -650,6 +679,7 @@ createAnalysesDetails <- function(outputFolder) {
                                        cmAnalysis17,
                                        cmAnalysis18)
 
-    CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions, file.path(outputFolder, "cmAnalysisListInteractionsHypertension.json"))
-
+    CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions,
+                                     file.path(outputFolder,
+                                               "cmAnalysisListInteractionsHypertension.json"))
 }

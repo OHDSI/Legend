@@ -20,19 +20,17 @@
 #' @details
 #' Creates a marker covariate for each of the subgroups of interest.
 #'
-#' @param windowStart            Start day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
-#' @param windowEnd              End day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
-#' @param analysisId             A unique identifier for this analysis.
+#' @param windowStart   Start day of the window where covariates are captured, relative to the index
+#'                      date (0 = index date).
+#' @param windowEnd     End day of the window where covariates are captured, relative to the index date
+#'                      (0 = index date).
+#' @param analysisId    A unique identifier for this analysis.
 #'
 #' @return
 #' A covariateSettings object.
 #'
 #' @export
-createSubgroupCovariateSettings <- function(windowStart = -365,
-                                            windowEnd = -1,
-                                            analysisId = 998) {
+createSubgroupCovariateSettings <- function(windowStart = -365, windowEnd = -1, analysisId = 998) {
     covariateSettings <- list(windowStart = windowStart,
                               windowEnd = windowEnd,
                               analysisId = analysisId)

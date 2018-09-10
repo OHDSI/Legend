@@ -6,15 +6,16 @@ if (!file.exists(diagnosticsFolder)) {
 }
 cmFolder <- file.path(indicationFolder, "cmOutput")
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference.rds"))
 
-i = 22
+i <- 22
 
 preparePlot <- function(i, exposureSummary, outcomeModelReference) {
     targetId <- exposureSummary$targetId[i]
     comparatorId <- exposureSummary$comparatorId[i]
-    idx <- outcomeModelReference$targetId == targetId &
-        outcomeModelReference$comparatorId == comparatorId &
+    idx <- outcomeModelReference$targetId == targetId & outcomeModelReference$comparatorId == comparatorId &
         outcomeModelReference$analysisId == 1
     psFileName <- outcomeModelReference$sharedPsFile[idx][1]
     if (file.exists(file.path(cmFolder, psFileName))) {
@@ -44,7 +45,11 @@ preparePlot <- function(i, exposureSummary, outcomeModelReference) {
     return(NULL)
 }
 
-data <- plyr::llply(1:nrow(exposureSummary), preparePlot, exposureSummary = exposureSummary, outcomeModelReference = outcomeModelReference, .progress = "text")
+data <- plyr::llply(1:nrow(exposureSummary),
+                    preparePlot,
+                    exposureSummary = exposureSummary,
+                    outcomeModelReference = outcomeModelReference,
+                    .progress = "text")
 data <- do.call("rbind", data)
 saveRDS(data, file.path(diagnosticsFolder, "ps.rds"))
 
@@ -53,15 +58,12 @@ plotAllPs <- function(data, fileName) {
     data$GROUP[data$treatment == 0] <- "Comparator"
     data$GROUP <- factor(data$GROUP, levels = c("Target", "Comparator"))
     library(ggplot2)
-    plot <- ggplot(data, aes(x = x,
-                             y = y,
-                             color = GROUP,
-                             group = GROUP,
-                             fill = GROUP)) +
+    plot <- ggplot(data, aes(x = x, y = y, color = GROUP, group = GROUP, fill = GROUP)) +
         geom_density(stat = "identity") +
         scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
         scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-        scale_x_continuous("Preference score", limits = c(0, 1)) + scale_y_continuous("Density") +
+        scale_x_continuous("Preference score", limits = c(0, 1)) +
+        scale_y_continuous("Density") +
         facet_grid(targetName ~ comparatorName) +
         theme(legend.title = element_blank(),
               axis.title.x = element_blank(),
@@ -83,7 +85,8 @@ if (indicationId == "Hypertension") {
     exposuresOfInterest <- read.csv(pathToCsv)
     exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
     exposureCombis <- read.csv(file.path(indicationFolder, "exposureCombis.csv"))
-    # exposureCombis$type <- exposuresOfInterest$type[match(exposureCombis$exposureId1, exposuresOfInterest$cohortId)]
+    # exposureCombis$type <- exposuresOfInterest$type[match(exposureCombis$exposureId1,
+    # exposuresOfInterest$cohortId)]
     exposureTypes <- exposuresOfInterest[, c("cohortId", "type")]
     exposureTypes <- rbind(exposureTypes, data.frame(cohortId = exposureCombis$cohortDefinitionId,
                                                      type = exposureCombis$exposureType))
@@ -112,7 +115,8 @@ if (indicationId == "Hypertension") {
 
 
 
-# Calibration plots -----------------------------------------------------------------------------------
+# Calibration plots
+# -----------------------------------------------------------------------------------
 indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
@@ -169,8 +173,8 @@ for (i in sample) {
                                                     xLabel = "Hazard ratio",
                                                     fileName = fileName)
 
-        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == targetId &
-                                                  signalInjectionSum$injectedOutcomes != 0, ]
+        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == targetId & signalInjectionSum$injectedOutcomes !=
+                                                  0, ]
         negativeControlIdSubsets <- unique(injectedSignals$outcomeId)
         injectedSignals <- data.frame(outcomeId = injectedSignals$newOutcomeId,
                                       trueLogRr = log(injectedSignals$targetEffectSize))
@@ -195,8 +199,8 @@ for (i in sample) {
 
         }
 
-        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == comparatorId &
-                                                  signalInjectionSum$injectedOutcomes != 0, ]
+        injectedSignals <- signalInjectionSum[signalInjectionSum$exposureId == comparatorId & signalInjectionSum$injectedOutcomes !=
+                                                  0, ]
         negativeControlIdSubsets <- unique(injectedSignals$outcomeId)
         injectedSignals <- data.frame(outcomeId = injectedSignals$newOutcomeId,
                                       trueLogRr = log(injectedSignals$targetEffectSize))
@@ -241,7 +245,7 @@ pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
 negativeControls <- read.csv(pathToCsv)
 negativeControlIds <- negativeControls$cohortId
 covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
-subgroups <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
+subgroups <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998, ])
 analysisId <- 3
 
 sample <- 1:nrow(exposureSummary)
@@ -259,8 +263,10 @@ for (i in sample) {
                                      analysesSum$comparatorId == comparatorId, ]
 
         negControls <- estimates[estimates$outcomeId %in% negativeControlIds, ]
-        subgroupEstimates <- data.frame(logRr = negControls[, paste0("logRrI", subgroupCovariateId)],
-                                        seLogRr = negControls[, paste0("seLogRrI", subgroupCovariateId)])
+        subgroupEstimates <- data.frame(logRr = negControls[,
+                                                            paste0("logRrI", subgroupCovariateId)],
+                                        seLogRr = negControls[,
+                                                              paste0("seLogRrI", subgroupCovariateId)])
         fileName <- file.path(calibrationFolder, paste0("negControls_a",
                                                         analysisId,
                                                         "_t",
@@ -287,7 +293,9 @@ if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference.rds"))
 datas <- list()
 for (i in 1:nrow(exposureSummary)) {
     targetId <- exposureSummary$tprimeCohortDefinitionId[i]
@@ -295,16 +303,18 @@ for (i in 1:nrow(exposureSummary)) {
     cmDataFolder <- outcomeModelReference$cohortMethodDataFolder[outcomeModelReference$targetId == targetId &
                                                                      outcomeModelReference$comparatorId == comparatorId][1]
     cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-    ref <- ff::as.ram(cmData$covariateRef[cmData$covariateRef$analysisId == 999,])
-    covSubset <- ff::as.ram(cmData$covariates[ffbase::`%in%`(cmData$covariates$covariateId, ff::as.ff(ref$covariateId)), ])
+    ref <- ff::as.ram(cmData$covariateRef[cmData$covariateRef$analysisId == 999, ])
+    covSubset <- ff::as.ram(cmData$covariates[ffbase::`%in%`(cmData$covariates$covariateId,
+                                                             ff::as.ff(ref$covariateId)), ])
     covSubset <- merge(covSubset, cmData$cohorts[, c("rowId", "treatment")])
     counts <- aggregate(covariateValue ~ covariateId + treatment, covSubset, sum)
     counts <- merge(counts, ref[, c("covariateId", "covariateName")])
-    counts <- rbind(counts[, c("covariateName", "treatment", "covariateValue")],
+    counts <- rbind(counts[,
+                           c("covariateName", "treatment", "covariateValue")],
                     data.frame(covariateName = "Prior treatments: 0",
-                               treatment = c(1,0),
-                               covariateValue = c(sum(cmData$cohorts$treatment == 1) - sum(counts$covariateValue[counts$treatment == 1]),
-                                                  sum(cmData$cohorts$treatment == 0) - sum(counts$covariateValue[counts$treatment == 0]))))
+                               treatment = c(1, 0),
+                               covariateValue = c(sum(cmData$cohorts$treatment == 1) - sum(counts$covariateValue[counts$treatment ==
+                                                                                                                     1]), sum(cmData$cohorts$treatment == 0) - sum(counts$covariateValue[counts$treatment == 0]))))
     counts$covariateName <- as.character(counts$covariateName)
     counts <- counts[order(counts$treatment, counts$covariateName), ]
     counts$targetName <- exposureSummary$tName[i]
@@ -324,20 +334,23 @@ if (!file.exists(diagnosticsFolder)) {
 covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
 covariateData$analysisRef
 
-ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
-covSubset <- ff::as.ram(covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ])
+ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998, ])
+covSubset <- ff::as.ram(covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId,
+                                                                ff::as.ff(ref$covariateId)), ])
 counts <- aggregate(covariateValue ~ covariateId, covSubset, sum)
 counts <- merge(counts, ref[, c("covariateId", "covariateName")])
 covariateData$metaData$populationSize
 
-1# Propensiy models --------------------------------------------------------------------------------------
+1  # Propensiy models --------------------------------------------------------------------------------------
 indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
 if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference1.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference1.rds"))
 cmFolder <- file.path(indicationFolder, "cmOutput")
 
 # for (i in 1:nrow(exposureSummary)) {
@@ -345,8 +358,7 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
     # i <- which(exposureSummary$targetId == 11 & exposureSummary$comparatorId == 17)
     treatmentId <- exposureSummary$targetId[i]
     comparatorId <- exposureSummary$comparatorId[i]
-    idx <- outcomeModelReference$targetId == treatmentId &
-        outcomeModelReference$comparatorId == comparatorId &
+    idx <- outcomeModelReference$targetId == treatmentId & outcomeModelReference$comparatorId == comparatorId &
         outcomeModelReference$analysisId == 1
     psFileName <- outcomeModelReference$sharedPsFile[idx][1]
     if (file.exists(file.path(cmFolder, psFileName))) {
@@ -366,7 +378,8 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
         } else if (metaData$psError == "High correlation between covariate(s) and treatment detected. Perhaps you forgot to exclude part of the exposure definition from the covariates?") {
             model <- data.frame(coefficient = Inf,
                                 covariateId = metaData$psHighCorrelation$covariateId,
-                                covariateName = paste("High corr:", metaData$psHighCorrelation$covariateName))
+                                covariateName = paste("High corr:",
+                                                      metaData$psHighCorrelation$covariateName))
         } else {
             model <- data.frame(coefficient = NA,
                                 covariateId = NA,
@@ -384,7 +397,11 @@ getModel <- function(i, exposureSummary, outcomeModelReference) {
     return(NULL)
 }
 
-data <- plyr::llply(1:nrow(exposureSummary), getModel, exposureSummary = exposureSummary, outcomeModelReference = outcomeModelReference, .progress = "text")
+data <- plyr::llply(1:nrow(exposureSummary),
+                    getModel,
+                    exposureSummary = exposureSummary,
+                    outcomeModelReference = outcomeModelReference,
+                    .progress = "text")
 data <- do.call("rbind", data)
 write.csv(data, file.path(diagnosticsFolder, "propensityModels.csv"), row.names = FALSE)
 
@@ -397,7 +414,9 @@ if (!file.exists(diagnosticsFolder)) {
     dir.create(diagnosticsFolder)
 }
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-outcomeModelReference <- readRDS(file.path(indicationFolder, "cmOutput", "outcomeModelReference2.rds"))
+outcomeModelReference <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference2.rds"))
 interactionModels <- outcomeModelReference[outcomeModelReference$analysisId == 3, ]
 
 pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
@@ -408,17 +427,14 @@ if (showNegativeControls) {
 } else {
     interactionModels <- outcomeModelReference[!(outcomeModelReference$outcomeId %in% negativeControlIds), ]
 }
-# model <- readRDS(file.path(indicationFolder, "cmOutput", "Analysis_3", "om_t7035481505_c7976181505_o2829.rds"))
-# summary(model)
-# strataPop <- readRDS(file.path(indicationFolder, "cmOutput", "StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds"))
-# cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", "CmData_l1_t587129_c1197129"))
-# subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
-# debug(CohortMethod::fitOutcomeModel)
-# CohortMethod::fitOutcomeModel(population = strataPop,
-#                               cohortMethodData = cmData,
-#                               stratified = TRUE,
-#                               modelType = "cox",
-#                               interactionCovariateIds = subgroupCovariateIds)
+# model <- readRDS(file.path(indicationFolder, 'cmOutput', 'Analysis_3',
+# 'om_t7035481505_c7976181505_o2829.rds')) summary(model) strataPop <-
+# readRDS(file.path(indicationFolder, 'cmOutput', 'StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds'))
+# cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, 'cmOutput',
+# 'CmData_l1_t587129_c1197129')) subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
+# debug(CohortMethod::fitOutcomeModel) CohortMethod::fitOutcomeModel(population = strataPop,
+# cohortMethodData = cmData, stratified = TRUE, modelType = 'cox', interactionCovariateIds =
+# subgroupCovariateIds)
 
 files <- interactionModels$outcomeModelFile
 sample <- sample(files, 10)
@@ -460,18 +476,43 @@ theme <- element_text(colour = "#000000", size = 12)
 themeRA <- element_text(colour = "#000000", size = 12, hjust = 1)
 themeLA <- element_text(colour = "#000000", size = 12, hjust = 0)
 
-alpha <- 1 - min(0.95*(nrow(d)/nrow(dd)/50000)^0.1, 0.95)
+alpha <- 1 - min(0.95 * (nrow(d)/nrow(dd)/50000)^0.1, 0.95)
 plot <- ggplot(d, aes(x = logRr, y = seLogRr), environment = environment()) +
     geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
-    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.025)), colour = rgb(0.8, 0, 0), linetype = "dashed", size = 1, alpha = 0.5, data = dd) +
-    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.975)), colour = rgb(0.8, 0, 0), linetype = "dashed", size = 1, alpha = 0.5, data = dd) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.025)),
+                colour = rgb(0.8, 0, 0),
+                linetype = "dashed",
+                size = 1,
+                alpha = 0.5,
+                data = dd) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.975)),
+                colour = rgb(0.8, 0, 0),
+                linetype = "dashed",
+                size = 1,
+                alpha = 0.5,
+                data = dd) +
     geom_point(size = 1, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
     geom_hline(yintercept = 0) +
-    geom_label(x = log(0.15), y = 0.95, alpha = 1, hjust = "left", aes(label = nLabel), size = 5, data = dd) +
-    geom_label(x = log(0.15), y = 0.8, alpha = 1, hjust = "left", aes(label = meanLabel), size = 5, data = dd) +
-    scale_x_continuous("Hazard ratio ratio", limits = log(c(0.1, 10)), breaks = log(breaks), labels = breaks) +
+    geom_label(x = log(0.15),
+               y = 0.95,
+               alpha = 1,
+               hjust = "left",
+               aes(label = nLabel),
+               size = 5,
+               data = dd) +
+    geom_label(x = log(0.15),
+               y = 0.8,
+               alpha = 1,
+               hjust = "left",
+               aes(label = meanLabel),
+               size = 5,
+               data = dd) +
+    scale_x_continuous("Hazard ratio ratio",
+                       limits = log(c(0.1, 10)),
+                       breaks = log(breaks),
+                       labels = breaks) +
     scale_y_continuous("Standard Error", limits = c(0, 1)) +
-    facet_wrap(~ Group) +
+    facet_wrap(~Group) +
     theme(panel.grid.minor = element_blank(),
           panel.background = element_blank(),
           panel.grid.major = element_blank(),
@@ -485,7 +526,12 @@ plot <- ggplot(d, aes(x = logRr, y = seLogRr), environment = environment()) +
           strip.background = element_blank(),
           legend.position = "none")
 if (showNegativeControls) {
-    ggsave(plot = plot, filename = file.path(diagnosticsFolder, "InteractionsNCs.png"), width = 12, height = 5, dpi = 300)
+    ggsave(plot = plot,
+           filename = file.path(diagnosticsFolder, "InteractionsNCs.png"),
+           width = 12,
+           height = 5,
+           dpi = 300)
 } else {
-    ggsave(plot = plot, filename = file.path(diagnosticsFolder, "Interactions.png"), width = 12, height = 5, dpi = 300)
+    ggsave(plot = plot, filename = file.path(diagnosticsFolder,
+                                             "Interactions.png"), width = 12, height = 5, dpi = 300)
 }

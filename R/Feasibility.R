@@ -17,27 +17,29 @@
 #' Assess propensity models
 #'
 #' @details
-#' This function will sample the exposure cohorts, and fit propensity models to identify issues. Assumes
-#' the exposure and outcome cohorts have already been created.
+#' This function will sample the exposure cohorts, and fit propensity models to identify issues.
+#' Assumes the exposure and outcome cohorts have already been created.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indicationId          A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
-#' @param sampleSize           What is the maximum sample size across exposure cohorts?
-#' @param minCellCount         The minimum cell count for fields contains person counts or fractions.
-#' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts
+#'                               should be created.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param outputFolder           Name of local folder to place results; make sure to use forward
+#'                               slashes (/)
+#' @param sampleSize             What is the maximum sample size across exposure cohorts?
+#' @param minCellCount           The minimum cell count for fields contains person counts or fractions.
+#' @param databaseId             A short string for identifying the database (e.g. 'Synpuf').
 #'
 #' @export
 assessPhenotypes <- function(connectionDetails,
@@ -47,7 +49,7 @@ assessPhenotypes <- function(connectionDetails,
                              indicationId = "Depression",
                              oracleTempSchema,
                              outputFolder,
-                             sampleSize = 100000,
+                             sampleSize = 1e+05,
                              minCellCount = 5,
                              databaseId) {
     indicationFolder <- file.path(outputFolder, indicationId)
@@ -74,7 +76,7 @@ assessPhenotypes <- function(connectionDetails,
     sql <- SqlRender::renderSql(sql = sql,
                                 cohort_database_schema = cohortDatabaseSchema,
                                 exposure_cohort_table = exposureCohortTable)$sql
-    sql <- SqlRender::translateSql(sql, targetDialect =  connectionDetails$dbms)$sql
+    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     conn <- DatabaseConnector::connect(connectionDetails)
     exposureCounts <- DatabaseConnector::querySql(conn, sql)
     DatabaseConnector::disconnect(conn)
@@ -83,12 +85,13 @@ assessPhenotypes <- function(connectionDetails,
     exposuresOfInterest <- read.csv(pathToCsv)
     exposureCounts <- merge(exposureCounts, exposuresOfInterest[, c("cohortId", "type", "name")])
     # To do: handle combination exposures for hypertension
-    exposureCounts$exposureCount[exposureCounts$exposureCount < minCellCount] <- paste0("<", minCellCount)
+    exposureCounts$exposureCount[exposureCounts$exposureCount < minCellCount] <- paste0("<",
+                                                                                        minCellCount)
     exposureCounts$indicationId <- indicationId
     exposureCounts$databaseId <- databaseId
     write.csv(exposureCounts, file.path(assessmentExportFolder, "exposures.csv"), row.names = FALSE)
 
-    # Outcomes -------------------------------------------------------------------------------------------
+    # Outcomes ----------------------------------------------------------------------------------
     createOutcomeCohorts(connectionDetails = connectionDetails,
                          cdmDatabaseSchema = cdmDatabaseSchema,
                          cohortDatabaseSchema = cohortDatabaseSchema,
@@ -102,7 +105,7 @@ assessPhenotypes <- function(connectionDetails,
     outcomeCounts$databaseId <- databaseId
     write.csv(outcomeCounts, file.path(assessmentExportFolder, "outcomes.csv"), row.names = FALSE)
 
-    # Subgroups -------------------------------------------------------------------------------------------
+    # Subgroups ---------------------------------------------------------------------------------
     ParallelLogger::logInfo("Sampling cohorts for subgroup feasibility")
     pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     smallSampleTable <- paste(tablePrefix, tolower(indicationId), "small_sample", sep = "_")
@@ -132,16 +135,17 @@ assessPhenotypes <- function(connectionDetails,
     covs <- merge(covs, data.frame(covariateId = ff::as.ram(subgroupCovs$covariateRef$covariateId),
                                    covariateName = ff::as.ram(subgroupCovs$covariateRef$covariateName)))
 
-    covs$fraction <- round(covs$covariateValue / subgroupCovs$metaData$populationSize, 3)
+    covs$fraction <- round(covs$covariateValue/subgroupCovs$metaData$populationSize, 3)
     idx <- covs$covariateValue < minCellCount
-    covs$fraction[idx] <- paste0("<", round(minCellCount / subgroupCovs$metaData$populationSize, 3))
+    covs$fraction[idx] <- paste0("<", round(minCellCount/subgroupCovs$metaData$populationSize, 3))
     covs <- covs[, c("covariateId", "covariateName", "fraction")]
     covs$indicationId <- indicationId
     covs$databaseId <- databaseId
     write.csv(covs, file.path(assessmentExportFolder, "subgroups.csv"), row.names = FALSE)
 
-    # Compress -------------------------------------------------------------------------------------------
-    zipName <- file.path(assessmentExportFolder, sprintf("PhenotypeAssessment%s%s.zip", indicationId, databaseId))
+    # Compress ----------------------------------------------------------------------------------
+    zipName <- file.path(assessmentExportFolder,
+                         sprintf("PhenotypeAssessment%s%s.zip", indicationId, databaseId))
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
@@ -152,28 +156,30 @@ assessPhenotypes <- function(connectionDetails,
 #' Assess propensity models
 #'
 #' @details
-#' This function will sample the exposure cohorts, and fit propensity models to identify issues. Assumes
-#' the exposure and outcome cohorts have already been created.
+#' This function will sample the exposure cohorts, and fit propensity models to identify issues.
+#' Assumes the exposure and outcome cohorts have already been created.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indicationId          A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
-#' @param sampleSize           What is the maximum sample size for each exposure cohort?
-#' @param maxCores             How many parallel cores should be used? If more cores are made available
-#'                             this can speed up the analyses.
-#' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts
+#'                               should be created.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param outputFolder           Name of local folder to place results; make sure to use forward
+#'                               slashes (/)
+#' @param sampleSize             What is the maximum sample size for each exposure cohort?
+#' @param maxCores               How many parallel cores should be used? If more cores are made
+#'                               available this can speed up the analyses.
+#' @param databaseId             A short string for identifying the database (e.g. 'Synpuf').
 #'
 #' @export
 assessPropensityModels <- function(connectionDetails,
@@ -207,8 +213,7 @@ assessPropensityModels <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql)
     DatabaseConnector::disconnect(conn)
 
-    filterByExposureCohortsSize(outputFolder = outputFolder,
-                                indicationId = indicationId)
+    filterByExposureCohortsSize(outputFolder = outputFolder, indicationId = indicationId)
 
     fetchAllDataFromServer(connectionDetails = connectionDetails,
                            cdmDatabaseSchema = cdmDatabaseSchema,
@@ -227,7 +232,9 @@ assessPropensityModels <- function(connectionDetails,
     fitPsModel <- function(i, exposureSummary, psCvThreads, indicationFolder) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        folderName <- file.path(indicationFolder, "cmSampleOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        folderName <- file.path(indicationFolder,
+                                "cmSampleOutput",
+                                paste0("CmData_l1_t", targetId, "_c", comparatorId))
         cmData <- CohortMethod::loadCohortMethodData(folderName)
         studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
                                                         removeDuplicateSubjects = "keep first",
@@ -243,13 +250,16 @@ assessPropensityModels <- function(connectionDetails,
                                                                       startingVariance = 0.01,
                                                                       seed = 123,
                                                                       threads = psCvThreads))
-        fileName <- file.path(indicationFolder, "cmSampleOutput", paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
+        fileName <- file.path(indicationFolder,
+                              "cmSampleOutput",
+                              paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
         saveRDS(ps, fileName)
         return(NULL)
     }
     createPsThreads <- max(1, round(maxCores/10))
     psCvThreads <- min(10, maxCores)
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
     cluster <- ParallelLogger::makeCluster(createPsThreads)
     ParallelLogger::clusterApply(cluster = cluster,
                                  fun = fitPsModel,
@@ -263,12 +273,16 @@ assessPropensityModels <- function(connectionDetails,
     getModel <- function(i, exposureSummary, indicationFolder) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        psFileName <- file.path(indicationFolder, "cmSampleOutput", paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
+        psFileName <- file.path(indicationFolder,
+                                "cmSampleOutput",
+                                paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
         if (file.exists(psFileName)) {
             ps <- readRDS(psFileName)
             metaData <- attr(ps, "metaData")
             if (is.null(metaData$psError)) {
-                folderName <- file.path(indicationFolder, "cmSampleOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+                folderName <- file.path(indicationFolder,
+                                        "cmSampleOutput",
+                                        paste0("CmData_l1_t", targetId, "_c", comparatorId))
                 cmData <- CohortMethod::loadCohortMethodData(folderName)
                 model <- CohortMethod::getPsModel(ps, cmData)
                 ff::close.ffdf(cmData$covariates)
@@ -299,7 +313,11 @@ assessPropensityModels <- function(connectionDetails,
         return(NULL)
     }
 
-    data <- plyr::llply(1:nrow(exposureSummary), getModel, exposureSummary = exposureSummary, indicationFolder = indicationFolder, .progress = "text")
+    data <- plyr::llply(1:nrow(exposureSummary),
+                        getModel,
+                        exposureSummary = exposureSummary,
+                        indicationFolder = indicationFolder,
+                        .progress = "text")
     data <- do.call("rbind", data)
     data$databaseId <- databaseId
     data$indicationId <- indicationId
@@ -309,7 +327,9 @@ assessPropensityModels <- function(connectionDetails,
     getAuc <- function(i, exposureSummary, indicationFolder) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        psFileName <- file.path(indicationFolder, "cmSampleOutput", paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
+        psFileName <- file.path(indicationFolder,
+                                "cmSampleOutput",
+                                paste0("Ps_t", targetId, "_c", comparatorId, ".rds"))
         if (file.exists(psFileName)) {
             ps <- readRDS(psFileName)
             targetName <- exposureSummary$targetName[i]
@@ -325,16 +345,21 @@ assessPropensityModels <- function(connectionDetails,
         return(NULL)
     }
 
-    data <- plyr::llply(1:nrow(exposureSummary), getAuc, exposureSummary = exposureSummary, indicationFolder = indicationFolder, .progress = "text")
+    data <- plyr::llply(1:nrow(exposureSummary),
+                        getAuc,
+                        exposureSummary = exposureSummary,
+                        indicationFolder = indicationFolder,
+                        .progress = "text")
     data <- do.call("rbind", data)
     data$databaseId <- databaseId
     data$indicationId <- indicationId
     write.csv(data, file.path(assessmentExportFolder, "aucs.csv"), row.names = FALSE)
 
-    zipName <- file.path(assessmentExportFolder, sprintf("PropensityModelAssessment.zip%s%s.zip", indicationId, databaseId))
+    zipName <- file.path(assessmentExportFolder,
+                         sprintf("PropensityModelAssessment.zip%s%s.zip", indicationId, databaseId))
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
-    DatabaseConnector::createZipFile(zipFile = zipName, files = files, recurse = FALSE)
+    DatabaseConnector::createZipFile(zipFile = zipName, files = files)
     ParallelLogger::logInfo("Results are ready for sharing at:", zipName)
 }

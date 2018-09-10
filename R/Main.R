@@ -19,38 +19,46 @@
 #' @details
 #' This function executes the OHDSI Large-Scale Population-Level Evidence Generation study.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/). Do not use a folder on a network drive since this greatly impacts
-#'                             performance.
-#' @param indicationId         A string denoting the indicationId.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param databaseId           A short string for identifying the database (e.g. 'Synpuf').
-#' @param databaseName         The full name of the database.
-#' @param databaseDescription  A short description (several sentences) of the database.
-#' @param minCellCount         The minimum cell count for fields contains person counts or fractions when exporting to CSV.
-#' @param createExposureCohorts     Create the tables with the exposure cohorts?
-#' @param createOutcomeCohorts     Create the tables with the outcome cohorts?
-#' @param fetchAllDataFromServer          Fetch all relevant data from the server?
-#' @param synthesizePositiveControls       Inject signals to create synthetic controls?
-#' @param generateAllCohortMethodDataObjects  Create the cohortMethodData objects from the fetched data and injected signals?
-#' @param runCohortMethod      Run the CohortMethod package to produce the outcome models?
-#' @param computeIncidence     Compute incidence rates?
-#' @param fetchChronographData Fetch the data for constructing chronographs?
-#' @param computeCovariateBalance Fetch the data for constructing chronographs?
-#' @param exportToCsv          Export all results to CSV files?
-#' @param maxCores             How many parallel cores should be used? If more cores are made available
-#'                             this can speed up the analyses.
+#' @param connectionDetails                    An object of type \code{connectionDetails} as created
+#'                                             using the
+#'                                             \code{\link[DatabaseConnector]{createConnectionDetails}}
+#'                                             function in the DatabaseConnector package.
+#' @param cdmDatabaseSchema                    Schema name where your patient-level data in OMOP CDM
+#'                                             format resides. Note that for SQL Server, this should
+#'                                             include both the database and schema name, for example
+#'                                             'cdm_data.dbo'.
+#' @param oracleTempSchema                     Should be used in Oracle to specify a schema where the
+#'                                             user has write priviliges for storing temporary tables.
+#' @param cohortDatabaseSchema                 Schema name where intermediate data can be stored. You
+#'                                             will need to have write priviliges in this schema. Note
+#'                                             that for SQL Server, this should include both the
+#'                                             database and schema name, for example 'cdm_data.dbo'.
+#' @param outputFolder                         Name of local folder to place results; make sure to use
+#'                                             forward slashes (/). Do not use a folder on a network
+#'                                             drive since this greatly impacts performance.
+#' @param indicationId                         A string denoting the indicationId.
+#' @param tablePrefix                          A prefix to be used for all table names created for this
+#'                                             study.
+#' @param databaseId                           A short string for identifying the database (e.g.
+#'                                             'Synpuf').
+#' @param databaseName                         The full name of the database.
+#' @param databaseDescription                  A short description (several sentences) of the database.
+#' @param minCellCount                         The minimum cell count for fields contains person counts
+#'                                             or fractions when exporting to CSV.
+#' @param createExposureCohorts                Create the tables with the exposure cohorts?
+#' @param createOutcomeCohorts                 Create the tables with the outcome cohorts?
+#' @param fetchAllDataFromServer               Fetch all relevant data from the server?
+#' @param synthesizePositiveControls           Inject signals to create synthetic controls?
+#' @param generateAllCohortMethodDataObjects   Create the cohortMethodData objects from the fetched
+#'                                             data and injected signals?
+#' @param runCohortMethod                      Run the CohortMethod package to produce the outcome
+#'                                             models?
+#' @param computeIncidence                     Compute incidence rates?
+#' @param fetchChronographData                 Fetch the data for constructing chronographs?
+#' @param computeCovariateBalance              Fetch the data for constructing chronographs?
+#' @param exportToCsv                          Export all results to CSV files?
+#' @param maxCores                             How many parallel cores should be used? If more cores
+#'                                             are made available this can speed up the analyses.
 #'
 #' @export
 execute <- function(connectionDetails,
@@ -91,8 +99,7 @@ execute <- function(connectionDetails,
                               oracleTempSchema = oracleTempSchema,
                               outputFolder = outputFolder)
 
-        filterByExposureCohortsSize(outputFolder = outputFolder,
-                                    indicationId = indicationId)
+        filterByExposureCohortsSize(outputFolder = outputFolder, indicationId = indicationId)
     }
     if (createOutcomeCohorts) {
         createOutcomeCohorts(connectionDetails = connectionDetails,
@@ -128,14 +135,11 @@ execute <- function(connectionDetails,
                                            maxCores = maxCores)
     }
     if (runCohortMethod) {
-        runCohortMethod(outputFolder = outputFolder,
-                        indicationId = indicationId,
-                        maxCores = maxCores)
+        runCohortMethod(outputFolder = outputFolder, indicationId = indicationId, maxCores = maxCores)
     }
 
     if (computeIncidence) {
-        computeIncidence(outputFolder = outputFolder,
-                         indicationId = indicationId)
+        computeIncidence(outputFolder = outputFolder, indicationId = indicationId)
     }
     if (fetchChronographData) {
         fetchChronographData(connectionDetails = connectionDetails,

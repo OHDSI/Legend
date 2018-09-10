@@ -19,24 +19,26 @@
 #' @details
 #' This function will create covariates and fetch outcomes and person information from the server.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param indicationId         A string denoting the indicationId.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param useSample            Use the sampled cohort table instead of the main cohort table (for PS model
-#'                             feasibility).
-#' @param outputFolder         Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param indicationId           A string denoting the indicationId.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param useSample              Use the sampled cohort table instead of the main cohort table (for PS
+#'                               model feasibility).
+#' @param outputFolder           Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
 #'
 #' @export
 fetchAllDataFromServer <- function(connectionDetails,
@@ -47,18 +49,17 @@ fetchAllDataFromServer <- function(connectionDetails,
                                    tablePrefix = "legend",
                                    useSample = FALSE,
                                    outputFolder) {
-    # Some ad-hoc nomenclature:
-    #
-    # exposureId: Denotes a T or C in a specific TC combination, so filtered to common calendar time
-    # cohortId: Denotes a T or C independent of each other
-    # exposureConceptId: Denotes the main concept(s) for each cohort. For each combi treatments there are 2 of these.
+    # Some ad-hoc nomenclature: exposureId: Denotes a T or C in a specific TC combination, so filtered to
+    # common calendar time cohortId: Denotes a T or C independent of each other exposureConceptId:
+    # Denotes the main concept(s) for each cohort. For each combi treatments there are 2 of these.
     # ancestorConceptId: a concept ID explicitly related to a cohort (eequivalent to xposureConceptId).
     # descendantConceptId: a concept ID related to the ancestor concept ID through a custom ancestry
     # filterConceptId: A concept ID that needs to be filtered when fitting propensity model.
 
     ParallelLogger::logInfo("Fetching all data from the server")
     indicationFolder <- file.path(outputFolder, indicationId)
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
     counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
     outcomeIds <- counts$cohortDefinitionId
 
@@ -102,7 +103,9 @@ fetchAllDataFromServer <- function(connectionDetails,
 
     # Drop comparisons temp table ----------------------------------------------------------------
     sql <- "TRUNCATE TABLE #comparisons; DROP TABLE #comparisons;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
 
@@ -120,7 +123,9 @@ fetchAllDataFromServer <- function(connectionDetails,
         exposureEraTable <- paste(tablePrefix, tolower(indicationId), "exp_era", sep = "_")
         priorExposureCovariateSettings <- createPriorExposureCovariateSettings(cohortDatabaseSchema = cohortDatabaseSchema,
                                                                                exposureEraTable = exposureEraTable)
-        covariateSettings <- list(priorExposureCovariateSettings, subgroupCovariateSettings, defaultCovariateSettings)
+        covariateSettings <- list(priorExposureCovariateSettings,
+                                  subgroupCovariateSettings,
+                                  defaultCovariateSettings)
     }
 
     covariates <- FeatureExtraction::getDbCovariateData(connection = conn,
@@ -138,7 +143,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     ParallelLogger::logInfo("Retrieving cohorts")
     start <- Sys.time()
     if (!file.exists(cohortsFolder)) {
-       dir.create(cohortsFolder)
+        dir.create(cohortsFolder)
     }
     getCohorts <- function(i) {
         targetId <- exposureSummary$targetId[i]
@@ -171,8 +176,10 @@ fetchAllDataFromServer <- function(connectionDetails,
         comparatorId <- exposureSummary$comparatorId[i]
         fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
         cohorts <- readRDS(fileName)
-        idxTarget <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == targetId]) & cohorts$treatment == 1
-        idxComparator <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == comparatorId]) & cohorts$treatment == 0
+        idxTarget <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == targetId]) & cohorts$treatment ==
+            1
+        idxComparator <- !(cohorts$rowId %in% allCohorts$rowId[allCohorts$cohortId == comparatorId]) &
+            cohorts$treatment == 0
         if (any(idxTarget) | any(idxComparator)) {
             cohorts$cohortId <- targetId
             cohorts$cohortId[cohorts$treatment == 0] <- comparatorId
@@ -201,9 +208,7 @@ fetchAllDataFromServer <- function(connectionDetails,
     # Retrieve filter concepts ---------------------------------------------------------
     if (indicationId == "Hypertension") {
         # First-line therapy only: hypertension drugs already filtered at data fetch
-        filterConcepts <- data.frame(conceptId = -1,
-                                     filterConceptId = -1,
-                                     filterConceptName = "")
+        filterConcepts <- data.frame(conceptId = -1, filterConceptId = -1, filterConceptName = "")
         saveRDS(filterConcepts, file.path(indicationFolder, "filterConceps.rds"))
     } else {
         ParallelLogger::logInfo("Retrieving filter concepts")
@@ -215,7 +220,8 @@ fetchAllDataFromServer <- function(connectionDetails,
                 ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$cohortId[i],
                                        descendantConceptId = exposuresOfInterest$conceptId[i])
             } else {
-                descendantConceptIds <- as.numeric(strsplit(as.character(exposuresOfInterest$includedConceptIds[i]), ";")[[1]])
+                descendantConceptIds <- as.numeric(strsplit(as.character(exposuresOfInterest$includedConceptIds[i]),
+                                                            ";")[[1]])
                 ancestor <- data.frame(ancestorConceptId = exposuresOfInterest$cohortId[i],
                                        descendantConceptId = descendantConceptIds)
             }
@@ -242,14 +248,13 @@ fetchAllDataFromServer <- function(connectionDetails,
 
     # Drop exposure_cohorts temp table ----------------------------------------------------------------
     sql <- "TRUNCATE TABLE #exposure_cohorts; DROP TABLE #exposure_cohorts;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 }
 
-constructCohortMethodDataObject <- function(targetId,
-                                            comparatorId,
-                                            indicationFolder,
-                                            useSample) {
+constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFolder, useSample) {
     if (useSample) {
         covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
         cohortsFolder <- file.path(indicationFolder, "sampleCohorts")
@@ -271,44 +276,48 @@ constructCohortMethodDataObject <- function(targetId,
                          comparatorPersons = comparatorPersons,
                          targetExposures = targetExposures,
                          comparatorExposures = comparatorExposures)
-    metaData <- list(targetId = targetId,
-                     comparatorId = comparatorId,
-                     attrition = counts)
+    metaData <- list(targetId = targetId, comparatorId = comparatorId, attrition = counts)
     attr(cohorts, "metaData") <- metaData
 
     # Subsetting outcomes
     outcomes <- NULL
-    ffbase::load.ffdf(dir = outcomesFolder) # Loads outcomes
+    ffbase::load.ffdf(dir = outcomesFolder)  # Loads outcomes
     ff::open.ffdf(outcomes, readonly = TRUE)
     idx <- ffbase::`%in%`(outcomes$rowId, ff::as.ff(cohorts$rowId))
     if (ffbase::any.ff(idx)) {
         outcomes <- ff::as.ram(outcomes[idx, ])
     } else {
         outcomes <- as.data.frame(outcomes[1, ])
-        outcomes <- outcomes[T == F,]
+        outcomes <- outcomes[T == F, ]
     }
     if (!useSample) {
         # Add injected outcomes (no signal injection when doing sampling)
         injectedOutcomes <- data.frame()
 
-        fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", targetId, ".rds"))
+        fileName <- file.path(indicationFolder,
+                              "injectedOutcomes",
+                              paste0("outcomes_e", targetId, ".rds"))
         if (file.exists(fileName)) {
             injectedOutcomesTarget <- readRDS(fileName)
             injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in% cohorts$subjectId, ]
             injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesTarget)
         }
-        fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", comparatorId, ".rds"))
+        fileName <- file.path(indicationFolder,
+                              "injectedOutcomes",
+                              paste0("outcomes_e", comparatorId, ".rds"))
         if (file.exists(fileName)) {
             injectedOutcomesComparator <- readRDS(fileName)
-            injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in% cohorts$subjectId, ]
+            injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in%
+                                                                         cohorts$subjectId, ]
             injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesComparator)
         }
 
         if (nrow(injectedOutcomes) != 0) {
             colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
             colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
-            injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
-            injectedOutcomes$daysToEvent = injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
+            injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")],
+                                      injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
+            injectedOutcomes$daysToEvent <- injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
             outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
         }
     }
@@ -322,7 +331,7 @@ constructCohortMethodDataObject <- function(targetId,
 
     # Filtering covariates
     filterConcepts <- readRDS(file.path(indicationFolder, "filterConceps.rds"))
-    filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetId, comparatorId),]
+    filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetId, comparatorId), ]
     filterConceptIds <- unique(filterConcepts$filterConceptId)
     if (length(filterConceptIds) == 0) {
         covariateRef <- covariateData$covariateRef
@@ -347,16 +356,15 @@ constructCohortMethodDataObject <- function(targetId,
 #' Construct all cohortMethodData object
 #'
 #' @details
-#' This function constructs all cohortMethodData objects using the data
-#' fetched earlier using the \code{\link{fetchAllDataFromServer}} function.
+#' This function constructs all cohortMethodData objects using the data fetched earlier using the
+#' \code{\link{fetchAllDataFromServer}} function.
 #'
-#' @param outputFolder           Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
-#' @param indicationId         A string denoting the indicationId.
-#' @param useSample            Use the sampled cohort table instead of the main cohort table (for PS model
-#'                             feasibility).
-#' @param maxCores             How many parallel cores should be used? If more cores are made available
-#'                             this can speed up the analyses.
+#' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/)
+#' @param indicationId   A string denoting the indicationId.
+#' @param useSample      Use the sampled cohort table instead of the main cohort table (for PS model
+#'                       feasibility).
+#' @param maxCores       How many parallel cores should be used? If more cores are made available this
+#'                       can speed up the analyses.
 #'
 #' @export
 generateAllCohortMethodDataObjects <- function(outputFolder,
@@ -366,22 +374,27 @@ generateAllCohortMethodDataObjects <- function(outputFolder,
     ParallelLogger::logInfo("Constructing CohortMethodData objects")
     indicationFolder <- file.path(outputFolder, indicationId)
     start <- Sys.time()
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
 
     # for (i in 1:nrow(exposureSummary)) {
     createObject <- function(i, exposureSummary, indicationFolder, useSample) {
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
         if (useSample) {
-            folderName <- file.path(indicationFolder, "cmSampleOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+            folderName <- file.path(indicationFolder,
+                                    "cmSampleOutput",
+                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
         } else {
-            folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+            folderName <- file.path(indicationFolder,
+                                    "cmOutput",
+                                    paste0("CmData_l1_t", targetId, "_c", comparatorId))
         }
         if (!file.exists(folderName)) {
             cmData <- Legend:::constructCohortMethodDataObject(targetId = targetId,
-                                                      comparatorId = comparatorId,
-                                                      indicationFolder = indicationFolder,
-                                                      useSample = useSample)
+                                                               comparatorId = comparatorId,
+                                                               indicationFolder = indicationFolder,
+                                                               useSample = useSample)
             CohortMethod::saveCohortMethodData(cmData, folderName, compress = TRUE)
         }
         return(NULL)
@@ -395,5 +408,7 @@ generateAllCohortMethodDataObjects <- function(outputFolder,
                                  useSample = useSample)
     ParallelLogger::stopCluster(cluster)
     delta <- Sys.time() - start
-    ParallelLogger::logInfo(paste("Generating all CohortMethodData objects took", signif(delta, 3), attr(delta, "units")))
+    ParallelLogger::logInfo(paste("Generating all CohortMethodData objects took",
+                                  signif(delta, 3),
+                                  attr(delta, "units")))
 }

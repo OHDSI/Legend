@@ -17,26 +17,29 @@
 #' Inject outcomes on top of negative controls
 #'
 #' @details
-#' This function injects outcomes on top of negative controls to create controls with predefined relative risks greater than one.
+#' This function injects outcomes on top of negative controls to create controls with predefined
+#' relative risks greater than one.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
-#' @param sampleSize           The maximum sample size to be used to fit the outcome models.
-#' @param maxCores             How many parallel cores should be used? If more cores are made available
-#'                             this can speed up the analyses.
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts
+#'                               should be created.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param outputFolder           Name of local folder to place results; make sure to use forward
+#'                               slashes (/)
+#' @param sampleSize             The maximum sample size to be used to fit the outcome models.
+#' @param maxCores               How many parallel cores should be used? If more cores are made
+#'                               available this can speed up the analyses.
 #'
 #' @export
 synthesizePositiveControls <- function(connectionDetails,
@@ -46,7 +49,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                        indicationId = "Depression",
                                        oracleTempSchema,
                                        outputFolder,
-                                       sampleSize = 100000,
+                                       sampleSize = 1e+05,
                                        maxCores = 4) {
     ParallelLogger::logInfo("Synthesizing positive controls for: ", indicationId)
 
@@ -58,8 +61,8 @@ synthesizePositiveControls <- function(connectionDetails,
 
     createSignalInjectionDataFiles(indicationFolder, signalInjectionFolder, sampleSize = sampleSize)
 
-    # Get all possible exposure IDs, including ones not found in this database
-    # to make sure new outcome IDs translate across databases:
+    # Get all possible exposure IDs, including ones not found in this database to make sure new outcome
+    # IDs translate across databases:
     pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
     exposuresOfInterest <- read.csv(pathToCsv)
     exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
@@ -76,7 +79,8 @@ synthesizePositiveControls <- function(connectionDetails,
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
     negativeControlIds <- negativeControls$cohortId
-    exposureOutcomePairs <- data.frame(exposureId = rep(exposureIds, each = length(negativeControlIds)),
+    exposureOutcomePairs <- data.frame(exposureId = rep(exposureIds,
+                                                        each = length(negativeControlIds)),
                                        outcomeId = rep(negativeControlIds, length(exposureIds)))
 
     pathToCsv <- system.file("settings", "Indications.csv", package = "Legend")
@@ -88,8 +92,11 @@ synthesizePositiveControls <- function(connectionDetails,
     dummyTable <- paste(tablePrefix, tolower(indicationId), "dummy", sep = "_")
     conn <- DatabaseConnector::connect(connectionDetails)
     sql <- "IF OBJECT_ID('@cohort_database_schema.@dummy_table', 'U') IS NOT NULL
-	DROP TABLE @cohort_database_schema.@dummy_table;
-    CREATE TABLE @cohort_database_schema.@dummy_table (cohort_definition_id BIGINT, subject_id BIGINT, cohort_start_date DATE, cohort_end_date DATE);"
+        DROP TABLE @cohort_database_schema.@dummy_table;
+        CREATE TABLE @cohort_database_schema.@dummy_table (cohort_definition_id BIGINT,
+                                                     subject_id BIGINT,
+                                                     cohort_start_date DATE,
+                                                     cohort_end_date DATE);"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
                                 dummy_table = dummyTable)$sql
@@ -97,7 +104,7 @@ synthesizePositiveControls <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     DatabaseConnector::disconnect(conn)
 
-    #exposureOutcomePairs <- exposureOutcomePairs[1,]
+    # exposureOutcomePairs <- exposureOutcomePairs[1,]
     ParallelLogger::logTrace("Calling injectSignals function")
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
@@ -113,7 +120,9 @@ synthesizePositiveControls <- function(connectionDetails,
                                             modelType = "survival",
                                             minOutcomeCountForModel = 100,
                                             minOutcomeCountForInjection = 25,
-                                            prior = Cyclops::createPrior("laplace", exclude = 0, useCrossValidation = TRUE),
+                                            prior = Cyclops::createPrior("laplace",
+                                                                         exclude = 0,
+                                                                         useCrossValidation = TRUE),
                                             control = Cyclops::createControl(cvType = "auto",
                                                                              startingVariance = 0.01,
                                                                              tolerance = 2e-07,
@@ -128,7 +137,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                             addIntentToTreat = TRUE,
                                             firstOutcomeOnly = TRUE,
                                             removePeopleWithPriorOutcomes = TRUE,
-                                            maxSubjectsForModel = 100000,
+                                            maxSubjectsForModel = 1e+05,
                                             effectSizes = c(1.5, 2, 4),
                                             precision = 0.01,
                                             outputIdOffset = positiveControlIdOffset,
@@ -136,7 +145,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                             cdmVersion = "5",
                                             modelThreads = max(1, round(maxCores/10)),
                                             generationThreads = min(6, maxCores))
-    # summ <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"))
+    # summ <- read.csv(file.path(indicationFolder, 'signalInjectionSummary.csv'))
     write.csv(summ, file.path(indicationFolder, "signalInjectionSummary.csv"), row.names = FALSE)
 
     counts <- read.csv(file.path(indicationFolder, "outcomeCohortCounts.csv"))
@@ -147,13 +156,15 @@ synthesizePositiveControls <- function(connectionDetails,
     ParallelLogger::logInfo("- Fetching new outcomes from server")
     conn <- DatabaseConnector::connect(connectionDetails)
 
-    # Only fetch outcomes for subjects in the exposure cohorts, because
-    # only those are used in a cohort method design:
+    # Only fetch outcomes for subjects in the exposure cohorts, because only those are used in a cohort
+    # method design:
     exposures <- readRDS(file.path(signalInjectionFolder, "exposures.rds"))
     subjectIds <- data.frame(subject_id = unique(exposures$personId))
 
     # Use non-temp table in case bulk loading is enabled:
-    subjectsTableName = paste0(cohortDatabaseSchema, ".temp_subjects_", paste(sample(letters, 5),collapse = ""))
+    subjectsTableName <- paste0(cohortDatabaseSchema,
+                                ".temp_subjects_",
+                                paste(sample(letters, 5), collapse = ""))
     DatabaseConnector::insertTable(connection = conn,
                                    tableName = subjectsTableName,
                                    data = subjectIds,
@@ -176,7 +187,8 @@ synthesizePositiveControls <- function(connectionDetails,
                                                  subjects_table = subjectsTableName)
         injectedOutcomes <- DatabaseConnector::querySql(conn, sql)
         colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
-        fileName <- file.path(injectedOutcomesFolder, paste0("outcomes_e", exposureSubset$exposureId[1], ".rds"))
+        fileName <- file.path(injectedOutcomesFolder,
+                              paste0("outcomes_e", exposureSubset$exposureId[1], ".rds"))
         saveRDS(injectedOutcomes, fileName)
         return(NULL)
     }
@@ -192,40 +204,50 @@ synthesizePositiveControls <- function(connectionDetails,
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     sql <- "TRUNCATE TABLE @subjects_table; DROP TABLE @subjects_table;"
-    sql <- SqlRender::renderSql(sql,
-                                subjects_table = subjectsTableName)$sql
+    sql <- SqlRender::renderSql(sql, subjects_table = subjectsTableName)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     DatabaseConnector::disconnect(conn)
 }
 
-createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFolder, sampleSize = 100000) {
+createSignalInjectionDataFiles <- function(indicationFolder,
+                                           signalInjectionFolder,
+                                           sampleSize = 1e+05) {
     # Creating all data files needed by MethodEvaluation::injectSignals from our big data fetch.
     ParallelLogger::logInfo("- Preparing data files")
 
     # Create exposures file ----------------------------------------------------------
     ParallelLogger::logTrace("Create exposures file")
     exposures <- readRDS(file.path(indicationFolder, "allCohorts", "allCohorts.rds"))
-    exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd]
+    exposures$daysToCohortEnd[exposures$daysToCohortEnd > exposures$daysToObsEnd] <- exposures$daysToObsEnd[exposures$daysToCohortEnd >
+                                                                                                                exposures$daysToObsEnd]
     colnames(exposures)[colnames(exposures) == "daysToCohortEnd"] <- "daysAtRisk"
     colnames(exposures)[colnames(exposures) == "daysToObsEnd"] <- "daysObserved"
     colnames(exposures)[colnames(exposures) == "cohortId"] <- "exposureId"
     colnames(exposures)[colnames(exposures) == "subjectId"] <- "personId"
     exposures$eraNumber <- 1
-    exposures <- exposures[, c("rowId", "exposureId", "personId", "cohortStartDate", "daysAtRisk", "daysObserved", "eraNumber")]
+    exposures <- exposures[, c("rowId",
+                               "exposureId",
+                               "personId",
+                               "cohortStartDate",
+                               "daysAtRisk",
+                               "daysObserved",
+                               "eraNumber")]
     saveRDS(exposures, file.path(signalInjectionFolder, "exposures.rds"))
 
     # Create outcomes file ----------------------------------------------------------
     ParallelLogger::logTrace("Create outcomes file")
     outcomes <- NULL
-    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes")) # Loads outcomes
+    ffbase::load.ffdf(dir = file.path(indicationFolder, "allOutcomes"))  # Loads outcomes
     ff::open.ffdf(outcomes)
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControlIds <- negativeControls$cohortId
-    negativeControlOutcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, negativeControlIds),]
-    negativeControlOutcomes <- merge(negativeControlOutcomes, ff::as.ffdf(exposures[, c("rowId", "daysAtRisk", "daysObserved")]))
+    negativeControlOutcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, negativeControlIds), ]
+    negativeControlOutcomes <- merge(negativeControlOutcomes,
+                                     ff::as.ffdf(exposures[,
+                                                           c("rowId", "daysAtRisk", "daysObserved")]))
 
     dedupeAndCount <- function(outcomeId, data) {
         if (!ffbase::any.ff(data$outcomeId == outcomeId)) {
@@ -247,11 +269,15 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
         result$outcomeId <- outcomeId
         return(result)
     }
-    outcomes2 <- sapply(negativeControlIds, dedupeAndCount, data = negativeControlOutcomes, simplify = FALSE)
+    outcomes2 <- sapply(negativeControlIds,
+                        dedupeAndCount,
+                        data = negativeControlOutcomes,
+                        simplify = FALSE)
     outcomes2 <- do.call("rbind", outcomes2)
     saveRDS(outcomes2, file.path(signalInjectionFolder, "outcomes.rds"))
 
-    priorOutcomes <- negativeControlOutcomes[negativeControlOutcomes$daysToEvent < 0, c("rowId", "outcomeId")]
+    priorOutcomes <- negativeControlOutcomes[negativeControlOutcomes$daysToEvent < 0, c("rowId",
+                                                                                        "outcomeId")]
     dedupe2 <- function(outcomeId, data) {
         if (!ffbase::any.ff(data$outcomeId == outcomeId)) {
             return(data.frame())
@@ -270,24 +296,26 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     if (file.exists(covariatesFolder)) {
         unlink(covariatesFolder, recursive = TRUE)
     }
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder,
+                                                                    "allCovariates"))
     covariateDataClone <- list(covariates = ff::clone.ffdf(covariateData$covariates),
                                covariateRef = ff::clone.ffdf(covariateData$covariateRef),
                                analysisRef = ff::clone.ffdf(covariateData$analysisRef),
                                metaData = covariateData$metaData)
     # Drop subgroup covariates, so positive control synthesis is independent of subgroup definitions:
-    subgroupCovariateIds <- covariateDataClone$covariateRef$covariateId[covariateDataClone$covariateRef$analysisId == 998]
+    subgroupCovariateIds <- covariateDataClone$covariateRef$covariateId[covariateDataClone$covariateRef$analysisId ==
+                                                                            998]
     covariateDataClone$covariates <- covariateDataClone$covariates[!ffbase::`%in%`(covariateDataClone$covariates$covariateId,
                                                                                    subgroupCovariateIds), ]
     covariateDataClone$covariateRef <- covariateDataClone$covariateRef[!ffbase::`%in%`(covariateDataClone$covariateRef$covariateId,
-                                                                                   subgroupCovariateIds), ]
+                                                                                       subgroupCovariateIds), ]
 
-    class(covariateDataClone) = class(covariateData)
+    class(covariateDataClone) <- class(covariateData)
     FeatureExtraction::saveCovariateData(covariateDataClone, covariatesFolder)
 
     # Sample for model fitting --------------------------------------------------------------
     ParallelLogger::logTrace("Sample for model fitting")
-    #sampleSize = 10000
+    # sampleSize = 10000
     uniqueGroups <- list(unique(exposures$exposureId))
     saveRDS(uniqueGroups, file.path(signalInjectionFolder, "uniqueGroups.rds"))
 
@@ -303,11 +331,13 @@ createSignalInjectionDataFiles <- function(indicationFolder, signalInjectionFold
     if (file.exists(covariatesFolder)) {
         unlink(covariatesFolder, recursive = TRUE)
     }
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
-    covariateDataSample <- list(covariates = covariateData$covariates[ffbase::`%in%`(covariateData$covariates$rowId, sampledRowIds)],
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder,
+                                                                    "allCovariates"))
+    covariateDataSample <- list(covariates = covariateData$covariates[ffbase::`%in%`(covariateData$covariates$rowId,
+                                                                                     sampledRowIds)],
                                 covariateRef = ff::clone.ffdf(covariateData$covariateRef),
                                 analysisRef = ff::clone.ffdf(covariateData$analysisRef),
                                 metaData = covariateData$metaData)
-    class(covariateDataSample) = class(covariateData)
+    class(covariateDataSample) <- class(covariateData)
     FeatureExtraction::saveCovariateData(covariateDataSample, covariatesFolder)
 }

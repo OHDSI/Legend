@@ -19,29 +19,31 @@
 #' @details
 #' Compute incidence using the CohortMethod data files.
 #'
-#' @param indicationId         A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
+#' @param indicationId   A string denoting the indicationId for which the exposure cohorts should be
+#'                       created.
+#' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/)
 #'
 #' @export
-computeIncidence <- function(indicationId = "Depression",
-                             outputFolder) {
+computeIncidence <- function(indicationId = "Depression", outputFolder) {
     ParallelLogger::logInfo("Computing incidence rates based on extracted data")
     indicationFolder <- file.path(outputFolder, indicationId)
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     outcomesOfInterest <- read.csv(pathToCsv)
     cohorts <- readRDS(file.path(indicationFolder, "allCohorts", "allCohorts.rds"))
     outcomes <- NULL
-    ffbase::load.ffdf(file.path(indicationFolder, "allOutcomes")) # Loads outcomes ffdf
+    ffbase::load.ffdf(file.path(indicationFolder, "allOutcomes"))  # Loads outcomes ffdf
     ff::open.ffdf(outcomes, readonly = TRUE)
     on.exit({
         ff::close.ffdf(outcomes)
     })
     outcomes <- outcomes[ffbase::`%in%`(outcomes$outcomeId, outcomesOfInterest$cohortId), ]
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder, "allCovariates"))
-    ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998,])
-    covSubset <- covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId, ff::as.ff(ref$covariateId)), ]
+    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder,
+                                                                    "allCovariates"))
+    ref <- ff::as.ram(covariateData$covariateRef[covariateData$covariateRef$analysisId == 998, ])
+    covSubset <- covariateData$covariates[ffbase::`%in%`(covariateData$covariates$covariateId,
+                                                         ff::as.ff(ref$covariateId)), ]
     cohortIds <- unique(c(exposureSummary$targetId, exposureSummary$comparatorId))
     computeCohortIrs <- function(cohortId) {
         subsetCohort <- cohorts[cohorts$cohortId == cohortId, ]
@@ -51,7 +53,10 @@ computeIncidence <- function(indicationId = "Depression",
         # Compute overall and per-subgroup IRs
         irs <- computeIrs(subsetCohort, subsetOutcomes)
         irs$interactionCovariateId <- NA
-        subgroupIrs <- lapply(split(subsetCovariates, subsetCovariates$covariateId), computeSubgroupIrs, cohort = subsetCohort, outcomes = subsetOutcomes)
+        subgroupIrs <- lapply(split(subsetCovariates, subsetCovariates$covariateId),
+                              computeSubgroupIrs,
+                              cohort = subsetCohort,
+                              outcomes = subsetOutcomes)
         irs <- rbind(irs, do.call("rbind", subgroupIrs))
         irs$exposureId <- cohortId
         return(irs)
@@ -62,7 +67,7 @@ computeIncidence <- function(indicationId = "Depression",
 }
 
 computeSubgroupIrs <- function(cohort, outcomes, subgroupCovs) {
-    subgroupCohort <- cohort[cohort$rowId %in% subgroupCovs$rowId,]
+    subgroupCohort <- cohort[cohort$rowId %in% subgroupCovs$rowId, ]
     subgroupIrs <- computeIrs(subgroupCohort, outcomes)
     subgroupIrs$interactionCovariateId <- subgroupCovs$covariateId[1]
     return(subgroupIrs)
@@ -78,12 +83,15 @@ computeIrs <- function(cohort, outcomes) {
         outcome <- outcome[order(outcome$rowId, outcome$daysToEvent), ]
         firstOutcomePostIndex <- outcome[!duplicated(outcome$rowId), ]
         m <- merge(cohort, firstOutcomePostIndex, all.x = TRUE)
-        m$eventOnTreatment <- !is.na(m$daysToEvent) & m$daysToEvent <= m$daysToCohortEnd & m$daysToEvent <= m$daysToObsEnd
+        m$eventOnTreatment <- !is.na(m$daysToEvent) & m$daysToEvent <= m$daysToCohortEnd & m$daysToEvent <=
+            m$daysToObsEnd
         m$eventItt <- !is.na(m$daysToEvent) & m$daysToEvent <= m$daysToObsEnd
         m$timeItt <- m$daysToObsEnd
-        m$timeItt[!is.na(m$daysToEvent) & (m$daysToEvent < m$timeItt)] <- m$daysToEvent[!is.na(m$daysToEvent) & (m$daysToEvent < m$timeItt)]
+        m$timeItt[!is.na(m$daysToEvent) & (m$daysToEvent < m$timeItt)] <- m$daysToEvent[!is.na(m$daysToEvent) &
+                                                                                            (m$daysToEvent < m$timeItt)]
         m$timeOnTreatment <- m$timeItt
-        m$timeOnTreatment[m$daysToCohortEnd < m$timeOnTreatment] <- m$daysToCohortEnd[m$daysToCohortEnd < m$timeOnTreatment]
+        m$timeOnTreatment[m$daysToCohortEnd < m$timeOnTreatment] <- m$daysToCohortEnd[m$daysToCohortEnd <
+                                                                                          m$timeOnTreatment]
         m$dummy <- 1
         result <- data.frame(outcomeId = outcomeId,
                              incidenceAnalysisId = c("On-treatment", "Intent-to-treat"),
@@ -91,8 +99,7 @@ computeIrs <- function(cohort, outcomes) {
                                           sum(m$eventItt[!m$priorOutcome])),
                              days = c(sum(m$timeOnTreatment[!m$priorOutcome]),
                                       sum(m$timeItt[!m$priorOutcome])),
-                             subjects = c( sum(m$dummy[!m$priorOutcome]),
-                                           sum(m$dummy[!m$priorOutcome])),
+                             subjects = c(sum(m$dummy[!m$priorOutcome]), sum(m$dummy[!m$priorOutcome])),
                              stringsAsFactors = FALSE)
         return(result)
     }

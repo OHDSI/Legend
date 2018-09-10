@@ -16,15 +16,19 @@
 
 #' Filter exposure pairs by size of the cohorts
 #'
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
-#' @param indicationId         A string denoting the indicationId.
-#' @param minCohortsSize       Minimum number of people that have to be in each cohort to keep a pair of
-#'                             cohorts.
+#' @param outputFolder     Name of local folder to place results; make sure to use forward slashes (/)
+#' @param indicationId     A string denoting the indicationId.
+#' @param minCohortsSize   Minimum number of people that have to be in each cohort to keep a pair of
+#'                         cohorts.
 #'
 #' @export
-filterByExposureCohortsSize <- function(outputFolder, indicationId = "Depression", minCohortsSize = 2500) {
+filterByExposureCohortsSize <- function(outputFolder,
+                                        indicationId = "Depression",
+                                        minCohortsSize = 2500) {
     exposureSummary <- read.csv(file.path(outputFolder, indicationId, "pairedExposureSummary.csv"))
-    filtered <- exposureSummary[exposureSummary$targetPairedPersons > minCohortsSize & exposureSummary$comparatorPairedPersons > minCohortsSize, ]
-    write.csv(filtered, file.path(outputFolder, indicationId, "pairedExposureSummaryFilteredBySize.csv"), row.names = FALSE)
+    filtered <- exposureSummary[exposureSummary$targetPairedPersons > minCohortsSize & exposureSummary$comparatorPairedPersons >
+                                    minCohortsSize, ]
+    write.csv(filtered,
+              file.path(outputFolder, indicationId, "pairedExposureSummaryFilteredBySize.csv"),
+              row.names = FALSE)
 }

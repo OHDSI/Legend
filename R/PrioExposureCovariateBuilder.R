@@ -20,14 +20,13 @@
 #' @details
 #' Counts the number of prior treatments.
 #'
-#' @param cohortDatabaseSchema  The name of the database schema that is the location
-#'                               where the data used to define the exposure cohorts is
-#'                               available.
+#' @param cohortDatabaseSchema   The name of the database schema that is the location where the data
+#'                               used to define the exposure cohorts is available.
 #' @param exposureEraTable       The tablename that contains the exposure eras.
-#' @param windowStart            Start day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
-#' @param windowEnd              End day of the window where covariates are captured,
-#'                               relative to the index date (0 = index date).
+#' @param windowStart            Start day of the window where covariates are captured, relative to the
+#'                               index date (0 = index date).
+#' @param windowEnd              End day of the window where covariates are captured, relative to the
+#'                               index date (0 = index date).
 #' @param analysisId             A unique identifier for this analysis.
 #'
 #' @return
@@ -76,8 +75,13 @@ getDbPriorExposuresCovariateData <- function(connection,
                                              exposure_era_table = covariateSettings$exposureEraTable)
     covariates <- DatabaseConnector::querySql.ffdf(connection, sql)
     colnames(covariates) <- SqlRender::snakeCaseToCamelCase(colnames(covariates))
-    covariateRef <- data.frame(covariateId = c(1000, 2000, 3000, 4000, 5000) + covariateSettings$analysisId,
-                               covariateName = paste("Prior treatments:", c("1", "2", "3", "4", "5 or more")),
+    covariateRef <- data.frame(covariateId = c(1000,
+                                               2000,
+                                               3000,
+                                               4000,
+                                               5000) + covariateSettings$analysisId,
+                               covariateName = paste("Prior treatments:",
+                                                     c("1", "2", "3", "4", "5 or more")),
                                analysisId = as.numeric(covariateSettings$analysisId),
                                conceptId = 0)
     covariateRef <- ff::as.ffdf(covariateRef)

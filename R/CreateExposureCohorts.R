@@ -17,24 +17,25 @@
 #' Create the exposure cohorts
 #'
 #' @details
-#' This function will create the exposure cohorts following the definitions included in
-#' this package.
+#' This function will create the exposure cohorts following the definitions included in this package.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indicationId          A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts
+#'                               should be created.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param outputFolder           Name of local folder to place results; make sure to use forward
+#'                               slashes (/)
 #'
 #' @export
 createExposureCohorts <- function(connectionDetails,
@@ -127,7 +128,7 @@ createExposureCohorts <- function(connectionDetails,
 
         # Upload exposure group table (determines which exposures can be paired)
         exposureGroups <- data.frame(exposureId = exposuresOfInterest$cohortId,
-                                           exposureGroup = exposuresOfInterest$type)
+                                     exposureGroup = exposuresOfInterest$type)
         exposureGroups$exposureGroup[exposureGroups$exposureGroup == "Procedure"] <- "Drug"
         colnames(exposureGroups) <- SqlRender::camelCaseToSnakeCase(colnames(exposureGroups))
         DatabaseConnector::insertTable(connection = conn,
@@ -151,7 +152,7 @@ createExposureCohorts <- function(connectionDetails,
                                   exposureId2 = classesOfInterest$cohortId)
         classPairs$exposureType <- "Drug class"
         majorclassPairs <- expand.grid(exposureId1 = majorClassesOfInterest$cohortId,
-                                  exposureId2 = majorClassesOfInterest$cohortId)
+                                       exposureId2 = majorClassesOfInterest$cohortId)
         majorclassPairs$exposureType <- "Drug major class"
 
         exposurePairs <- rbind(drugPairs, classPairs, majorclassPairs)
@@ -167,8 +168,10 @@ createExposureCohorts <- function(connectionDetails,
         namedExposureCombis$exposureName2 <- exposuresOfInterest$name[match(namedExposureCombis$exposureId2,
                                                                             exposuresOfInterest$cohortId)]
         namedExposureCombis$cohortName <- paste(namedExposureCombis$exposureName1,
-                                                namedExposureCombis$exposureName2, sep = " & ")
-        write.csv(namedExposureCombis, file.path(indicationFolder, "exposureCombis.csv"), row.names = FALSE)
+                                                namedExposureCombis$exposureName2,
+                                                sep = " & ")
+        write.csv(namedExposureCombis, file.path(indicationFolder,
+                                                 "exposureCombis.csv"), row.names = FALSE)
 
         colnames(exposureCombis) <- SqlRender::camelCaseToSnakeCase(colnames(exposureCombis))
         DatabaseConnector::insertTable(connection = conn,
@@ -178,11 +181,11 @@ createExposureCohorts <- function(connectionDetails,
                                        tempTable = TRUE,
                                        oracleTempSchema = oracleTempSchema,
                                        data = exposureCombis)
-        colnames(exposureCombis) <- SqlRender::snakeCaseToCamelCase(colnames(exposureCombis)) # Need this later
+        colnames(exposureCombis) <- SqlRender::snakeCaseToCamelCase(colnames(exposureCombis))  # Need this later
 
         # Upload exposures of interest
         exposuresOfInterest$exposureType <- exposuresOfInterest$type
-        eoi <- exposuresOfInterest[, c("cohortId" ,"exposureType")]
+        eoi <- exposuresOfInterest[, c("cohortId", "exposureType")]
         colnames(eoi) <- SqlRender::camelCaseToSnakeCase(colnames(eoi))
         DatabaseConnector::insertTable(connection = conn,
                                        tableName = "#eoi",
@@ -193,15 +196,17 @@ createExposureCohorts <- function(connectionDetails,
                                        data = eoi)
 
         # Upload custom drug ancestor table
-        classesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug class" |
-                                                     exposuresOfInterest$type == "Drug major class", ]
+        classesOfInterest <- exposuresOfInterest[exposuresOfInterest$type == "Drug class" | exposuresOfInterest$type ==
+                                                     "Drug major class", ]
         classesOfInterest <- classesOfInterest[, c("cohortId", "includedConceptIds")]
         classesOfInterest <- unique(classesOfInterest)
         drugAncestor <- data.frame()
         for (i in 1:nrow(classesOfInterest)) {
-            descendantConceptIds <- as.numeric(strsplit(as.character(classesOfInterest$includedConceptIds[i]), ";")[[1]])
-            drugAncestor <- rbind(drugAncestor, data.frame(ancestorConceptId = classesOfInterest$cohortId[i],
-                                                           descendantConceptId = descendantConceptIds))
+            descendantConceptIds <- as.numeric(strsplit(as.character(classesOfInterest$includedConceptIds[i]),
+                                                        ";")[[1]])
+            drugAncestor <- rbind(drugAncestor,
+                                  data.frame(ancestorConceptId = classesOfInterest$cohortId[i],
+                                             descendantConceptId = descendantConceptIds))
         }
         colnames(drugAncestor) <- SqlRender::camelCaseToSnakeCase(colnames(drugAncestor))
         DatabaseConnector::insertTable(connection = conn,
@@ -228,7 +233,7 @@ createExposureCohorts <- function(connectionDetails,
                                                  washout_period = 365)
         DatabaseConnector::executeSql(conn, sql)
 
-        # Drop  temp tables created in R
+        # Drop temp tables created in R
 
         sql <- "TRUNCATE TABLE #drug_ancestor; DROP TABLE #drug_ancestor;"
         sql <- SqlRender::translateSql(sql = sql,
@@ -305,20 +310,26 @@ createExposureCohorts <- function(connectionDetails,
     cohortNames <- data.frame(cohortDefinitionId = exposuresOfInterest$cohortId,
                               cohortName = exposuresOfInterest$name)
     if (!is.null(exposureCombis)) {
-        cohortNames <- rbind(cohortNames, data.frame(cohortDefinitionId = namedExposureCombis$cohortDefinitionId,
-                                                     cohortName = namedExposureCombis$cohortName))
+        cohortNames <- rbind(cohortNames,
+                             data.frame(cohortDefinitionId = namedExposureCombis$cohortDefinitionId,
+                                        cohortName = namedExposureCombis$cohortName))
     }
     cohortNames <- unique(cohortNames)
-    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(targetId = cohortNames$cohortDefinitionId,
-                                                                     targetName = cohortNames$cohortName))
-    pairedExposureSummary <- merge(pairedExposureSummary, data.frame(comparatorId = cohortNames$cohortDefinitionId,
-                                                                     comparatorName = cohortNames$cohortName))
-    write.csv(pairedExposureSummary, file.path(indicationFolder, "pairedExposureSummary.csv"), row.names = FALSE)
+    pairedExposureSummary <- merge(pairedExposureSummary,
+                                   data.frame(targetId = cohortNames$cohortDefinitionId,
+                                              targetName = cohortNames$cohortName))
+    pairedExposureSummary <- merge(pairedExposureSummary,
+                                   data.frame(comparatorId = cohortNames$cohortDefinitionId,
+                                              comparatorName = cohortNames$cohortName))
+    write.csv(pairedExposureSummary, file.path(indicationFolder,
+                                               "pairedExposureSummary.csv"), row.names = FALSE)
 
     # Drop temp tables -----------------------------------------------------------------------
     if (exposureGroupTable != "") {
         sql <- "TRUNCATE TABLE #exposure_group; DROP TABLE #exposure_group;"
-        sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+        sql <- SqlRender::translateSql(sql = sql,
+                                       targetDialect = connectionDetails$dbms,
+                                       oracleTempSchema = oracleTempSchema)$sql
         DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
     }
 }

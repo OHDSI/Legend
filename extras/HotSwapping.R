@@ -13,11 +13,13 @@ rerunOutcomesOnServer <- function() {
     ParallelLogger::logInfo("Done rerunning all outcome cohorts on server")
 }
 
-# Used by other data fetch functions. Creates #exposure_cohorts table and checks rowIds are consistent with original fetch.
+# Used by other data fetch functions. Creates #exposure_cohorts table and checks rowIds are
+# consistent with original fetch.
 prepareForDataFetch <- function(conn, indicationFolder) {
     pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
     cohortsFolder <- file.path(indicationFolder, "allCohorts")
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
     table <- exposureSummary[, c("targetId", "comparatorId")]
     colnames(table) <- SqlRender::camelCaseToSnakeCase(colnames(table))
     DatabaseConnector::insertTable(connection = conn,
@@ -37,20 +39,28 @@ prepareForDataFetch <- function(conn, indicationFolder) {
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     sql <- "TRUNCATE TABLE #comparisons; DROP TABLE #comparisons;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     # Just to make sure: check of rowIds are consistent with those generated before:
     sql <- "SELECT row_id, subject_id, cohort_start_date FROM #exposure_cohorts"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     newCohorts <- DatabaseConnector::querySql(conn, sql)
     colnames(newCohorts) <- SqlRender::snakeCaseToCamelCase(colnames(newCohorts))
-    newCohorts <- newCohorts[order(newCohorts$rowId, newCohorts$subjectId, newCohorts$cohortStartDate), ]
+    newCohorts <- newCohorts[order(newCohorts$rowId,
+                                   newCohorts$subjectId,
+                                   newCohorts$cohortStartDate), ]
     row.names(newCohorts) <- NULL
     allCohorts <- readRDS(file.path(cohortsFolder, "allCohorts.rds"))
     allCohorts <- allCohorts[, colnames(newCohorts)]
     allCohorts <- unique(allCohorts)
-    allCohorts <- allCohorts[order(allCohorts$rowId, allCohorts$subjectId, allCohorts$cohortStartDate), ]
+    allCohorts <- allCohorts[order(allCohorts$rowId,
+                                   allCohorts$subjectId,
+                                   allCohorts$cohortStartDate), ]
     row.names(allCohorts) <- NULL
     if (!all.equal(allCohorts, newCohorts)) {
         stop("row IDs have changed. Hot swap failed")
@@ -59,7 +69,7 @@ prepareForDataFetch <- function(conn, indicationFolder) {
 }
 
 # This function fetches the outcomes from the server, and updates the allOutcomes folder accordingly.
-fetchOutcomesToAllOutcomes <- function(outcomeIds){
+fetchOutcomesToAllOutcomes <- function(outcomeIds) {
     ParallelLogger::logInfo("Fetching outcomes from the server, and updating the allOutcomes folder")
     indicationFolder <- file.path(outputFolder, indicationId)
     conn <- DatabaseConnector::connect(connectionDetails)
@@ -81,7 +91,9 @@ fetchOutcomesToAllOutcomes <- function(outcomeIds){
     colnames(newOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(newOutcomes))
 
     sql <- "TRUNCATE TABLE #exposure_cohorts; DROP TABLE #exposure_cohorts;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     DatabaseConnector::disconnect(conn)
@@ -111,8 +123,9 @@ fetchOutcomesToAllOutcomes <- function(outcomeIds){
 }
 
 
-# This function fetches the subgroup covariates from the server, and updates the allCovariatess folder accordingly.
-fetchSubgroupCovarsToAllCovariates <- function(subgroupIds){
+# This function fetches the subgroup covariates from the server, and updates the allCovariatess
+# folder accordingly.
+fetchSubgroupCovarsToAllCovariates <- function(subgroupIds) {
     ParallelLogger::logInfo("Fetching subgroup covariates from the server, and updating the allCovariatess folder")
     indicationFolder <- file.path(outputFolder, indicationId)
     conn <- DatabaseConnector::connect(connectionDetails)
@@ -135,7 +148,9 @@ fetchSubgroupCovarsToAllCovariates <- function(subgroupIds){
                                                            aggregated = FALSE)
 
     sql <- "TRUNCATE TABLE #exposure_cohorts; DROP TABLE #exposure_cohorts;"
-    sql <- SqlRender::translateSql(sql = sql, targetDialect = connectionDetails$dbms, oracleTempSchema = oracleTempSchema)$sql
+    sql <- SqlRender::translateSql(sql = sql,
+                                   targetDialect = connectionDetails$dbms,
+                                   oracleTempSchema = oracleTempSchema)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
     DatabaseConnector::disconnect(conn)
@@ -175,17 +190,21 @@ fetchSubgroupCovarsToAllCovariates <- function(subgroupIds){
     ParallelLogger::logInfo("Done fetching subgroup covariates from the server, and updating the allCovariatess folder")
 }
 
-# Update the outcomes portion of the CohortMethod data objects. Includes both negative controls, positive controls, and HOIs
-updateCohortMethodDataOutcomes <- function(){
+# Update the outcomes portion of the CohortMethod data objects. Includes both negative controls,
+# positive controls, and HOIs
+updateCohortMethodDataOutcomes <- function() {
     ParallelLogger::logInfo("Updating CohortMethodData objects")
     indicationFolder <- file.path(outputFolder, indicationId)
-    exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+    exposureSummary <- read.csv(file.path(indicationFolder,
+                                          "pairedExposureSummaryFilteredBySize.csv"))
 
     redoOutcomes <- function(i) {
         useSample <- FALSE
         targetId <- exposureSummary$targetId[i]
         comparatorId <- exposureSummary$comparatorId[i]
-        folderName <- file.path(indicationFolder, "cmOutput", paste0("CmData_l1_t", targetId, "_c", comparatorId))
+        folderName <- file.path(indicationFolder,
+                                "cmOutput",
+                                paste0("CmData_l1_t", targetId, "_c", comparatorId))
         cohorts <- readRDS(file.path(folderName, "cohorts.rds"))
         outcomesFolder <- file.path(indicationFolder, "allOutcomes")
         ParallelLogger::logTrace("Updating ", folderName)
@@ -194,37 +213,46 @@ updateCohortMethodDataOutcomes <- function(){
 
         # Subsetting outcomes
         outcomes <- NULL
-        ffbase::load.ffdf(dir = outcomesFolder) # Loads outcomes
+        ffbase::load.ffdf(dir = outcomesFolder)  # Loads outcomes
         ff::open.ffdf(outcomes, readonly = TRUE)
         idx <- ffbase::`%in%`(outcomes$rowId, ff::as.ff(cohorts$rowId))
         if (ffbase::any.ff(idx)) {
             outcomes <- ff::as.ram(outcomes[idx, ])
         } else {
             outcomes <- as.data.frame(outcomes[1, ])
-            outcomes <- outcomes[T == F,]
+            outcomes <- outcomes[T == F, ]
         }
         if (!useSample) {
             # Add injected outcomes (no signal injection when doing sampling)
             injectedOutcomes <- data.frame()
 
-            fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", targetId, ".rds"))
+            fileName <- file.path(indicationFolder,
+                                  "injectedOutcomes",
+                                  paste0("outcomes_e", targetId, ".rds"))
             if (file.exists(fileName)) {
                 injectedOutcomesTarget <- readRDS(fileName)
-                injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in% cohorts$subjectId, ]
+                injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in%
+                                                                     cohorts$subjectId, ]
                 injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesTarget)
             }
-            fileName <- file.path(indicationFolder, "injectedOutcomes", paste0("outcomes_e", comparatorId, ".rds"))
+            fileName <- file.path(indicationFolder,
+                                  "injectedOutcomes",
+                                  paste0("outcomes_e", comparatorId, ".rds"))
             if (file.exists(fileName)) {
                 injectedOutcomesComparator <- readRDS(fileName)
-                injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in% cohorts$subjectId, ]
+                injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in%
+                                                                             cohorts$subjectId, ]
                 injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesComparator)
             }
 
             if (nrow(injectedOutcomes) != 0) {
                 colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
                 colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
-                injectedOutcomes <- merge(cohorts[, c("rowId", "subjectId", "cohortStartDate")], injectedOutcomes[, c("subjectId", "outcomeId", "eventDate")])
-                injectedOutcomes$daysToEvent = injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
+                injectedOutcomes <- merge(cohorts[,
+                                                  c("rowId", "subjectId", "cohortStartDate")],
+                                          injectedOutcomes[,
+                                                           c("subjectId", "outcomeId", "eventDate")])
+                injectedOutcomes$daysToEvent <- injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
                 outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
             }
         }
@@ -259,7 +287,10 @@ deleteSignalInjectionFiles <- function() {
     injectionSummary <- read.csv(summaryFile)
     for (outcomeId in injectionSummary$newOutcomeId) {
         ParallelLogger::logDebug("Deleting CohortMethod files for positive control outcome ", outcomeId)
-        files <- list.files(cmOutputFolder, pattern = paste0("_o", outcomeId), full.names = TRUE, recursive = TRUE)
+        files <- list.files(cmOutputFolder,
+                            pattern = paste0("_o", outcomeId),
+                            full.names = TRUE,
+                            recursive = TRUE)
         unlink(files)
     }
 
@@ -287,7 +318,10 @@ deleteCohortMethodObjectsForOutcomes <- function(outcomeIds) {
     cmOutputFolder <- file.path(indicationFolder, "cmOutput")
     for (outcomeId in outcomeIds) {
         ParallelLogger::logDebug("Deleting files for outcome ", outcomeId)
-        files <- list.files(cmOutputFolder, pattern = paste0("_o", outcomeId), full.names = TRUE, recursive = TRUE)
+        files <- list.files(cmOutputFolder,
+                            pattern = paste0("_o", outcomeId),
+                            full.names = TRUE,
+                            recursive = TRUE)
         unlink(files)
     }
     ParallelLogger::logInfo("Done deleting CohortMethod files specific to outcomes")
@@ -310,12 +344,16 @@ deleteCohortMethodObjectsForSubgroups <- function(subgroupIds) {
     }
     for (analysisId in analysisIds) {
         ParallelLogger::logDebug("Deleting files for analysis ", analysisId)
-        # Only need to delete outcome model files, because that is the first part of the analysis pipeline where subgroups come in:
-        folderName <- file.path(cmOutputFolder,  paste0("Analysis_", analysisId))
+        # Only need to delete outcome model files, because that is the first part of the analysis pipeline
+        # where subgroups come in:
+        folderName <- file.path(cmOutputFolder, paste0("Analysis_", analysisId))
         unlink(folderName, recursive = TRUE)
     }
     ParallelLogger::logDebug("Deleting all prefilter folders")
-    files <- list.files(cmOutputFolder, pattern = "Prefilter_", full.names = TRUE, include.dirs = TRUE)
+    files <- list.files(cmOutputFolder,
+                        pattern = "Prefilter_",
+                        full.names = TRUE,
+                        include.dirs = TRUE)
     unlink(files, recursive = TRUE)
     ParallelLogger::logInfo("Done deleting CohortMethod files specific to outcomes")
 }
@@ -335,10 +373,11 @@ regenerateAllCohortMethodData <- function() {
                                        maxCores = maxCores)
 }
 
-# Code to run -------------------------------------------------------------------------------------------
-# This assumes the inst/settings/OutcomesOfInterest.csv, R/SubgroupCovariateBuilder.R, inst/cohorts, and inst/sql have already been updated
-outcomeIds <- c(18) # Outcome IDs that are new (both completely new or those that replace older definitions)
-subgroupIds <- c() # Subgroup IDs that are new (both completely new or those that replace older definitions)
+# Code to run ------------------------------------------------------------------------------
+# This assumes the inst/settings/OutcomesOfInterest.csv, R/SubgroupCovariateBuilder.R,
+# inst/cohorts, and inst/sql have already been updated
+outcomeIds <- c(18)  # Outcome IDs that are new (both completely new or those that replace older definitions)
+subgroupIds <- c()  # Subgroup IDs that are new (both completely new or those that replace older definitions)
 negativeControlsChanged <- FALSE
 
 

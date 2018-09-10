@@ -1,28 +1,25 @@
 library(DatabaseConnector)
-# connectionDetails <- createConnectionDetails(dbms = "postgresql",
-#                                              server = "localhost/ohdsi",
-#                                              user = "postgres",
-#                                              password = Sys.getenv("pwPostgres"),
-#                                              schema = "legend")
+
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                             server = paste(Sys.getenv("legendServer"), Sys.getenv("legendDatabase"), sep = "/"),
+                                             server = paste(Sys.getenv("legendServer"),
+                                                            Sys.getenv("legendDatabase"),
+                                                            sep = "/"),
                                              port = Sys.getenv("legendPort"),
                                              user = Sys.getenv("legendUser"),
                                              password = Sys.getenv("legendPw"),
                                              schema = Sys.getenv("legendSchema"))
 conn <- connect(connectionDetails)
-batchSize <- 1000000
+batchSize <- 1e+06
 createTables <- TRUE
 resumeCount <- 0
 
 
-# exportFolder <- file.path(outputFolder, "export")
+# exportFolder <- file.path(outputFolder, 'export')
 exportFolder <- "r:/legend/mdcr"
 files <- list.files(exportFolder, pattern = ".*csv")
 
-# resumeCount <- querySql(conn, "SELECT COUNT(*) FROM legend.covariate_balance")[1,1]
-# createTables <- FALSE
-# i <- which(files == "covariate_balance.csv")
+# resumeCount <- querySql(conn, 'SELECT COUNT(*) FROM legend.covariate_balance')[1,1] createTables <-
+# FALSE i <- which(files == 'covariate_balance.csv')
 
 infinityToNa <- function(data) {
     # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
@@ -44,7 +41,7 @@ for (i in 19:length(files)) {
     tableName <- gsub(".csv$", "", file)
     writeLines(paste("Uploading table", tableName))
     start <- Sys.time()
-    fileCon = file(file.path(exportFolder, file), "r")
+    fileCon <- file(file.path(exportFolder, file), "r")
     data <- read.csv(fileCon, nrows = batchSize)
     columnNames <- colnames(data)
     data <- infinityToNa(data)

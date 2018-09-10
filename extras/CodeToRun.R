@@ -141,9 +141,11 @@ assessPropensityModels(connectionDetails = connectionDetails,
 # Run main study -----------------------------------------------------------------
 mailSettings <- list(from = Sys.getenv("mailAddress"),
                      to = c(Sys.getenv("mailAddress")),
-                     smtp = list(host.name = "smtp.gmail.com", port = 465,
+                     smtp = list(host.name = "smtp.gmail.com",
+                                 port = 465,
                                  user.name = Sys.getenv("mailAddress"),
-                                 passwd = Sys.getenv("mailPassword"), ssl = TRUE),
+                                 passwd = Sys.getenv("mailPassword"),
+                                 ssl = TRUE),
                      authenticate = TRUE,
                      send = TRUE)
 
@@ -176,72 +178,3 @@ OhdsiRTools::runAndNotify({
 sink()
 
 
-createExposureCohorts(connectionDetails = connectionDetails,
-                      cdmDatabaseSchema = cdmDatabaseSchema,
-                      cohortDatabaseSchema = cohortDatabaseSchema,
-                      tablePrefix = tablePrefix,
-                      indicationId = indicationId,
-                      oracleTempSchema = oracleTempSchema,
-                      outputFolder = outputFolder)
-
-filterByExposureCohortsSize(outputFolder = outputFolder,
-                            indicationId = indicationId)
-
-createOutcomeCohorts(connectionDetails = connectionDetails,
-                     cdmDatabaseSchema = cdmDatabaseSchema,
-                     cohortDatabaseSchema = cohortDatabaseSchema,
-                     tablePrefix = tablePrefix,
-                     indicationId = indicationId,
-                     oracleTempSchema = oracleTempSchema,
-                     outputFolder = outputFolder)
-
-
-
-
-fetchAllDataFromServer(connectionDetails = connectionDetails,
-                       cdmDatabaseSchema = cdmDatabaseSchema,
-                       oracleTempSchema = oracleTempSchema,
-                       cohortDatabaseSchema = cohortDatabaseSchema,
-                       tablePrefix = tablePrefix,
-                       indicationId = indicationId,
-                       outputFolder = outputFolder)
-
-synthesizePositiveControls(connectionDetails = connectionDetails,
-                           cdmDatabaseSchema = cdmDatabaseSchema,
-                           oracleTempSchema = oracleTempSchema,
-                           cohortDatabaseSchema = cohortDatabaseSchema,
-                           tablePrefix = tablePrefix,
-                           indicationId = indicationId,
-                           outputFolder = outputFolder,
-                           maxCores = maxCores)
-
-generateAllCohortMethodDataObjects(outputFolder = outputFolder,
-                                   indicationId = indicationId,
-                                   maxCores = maxCores)
-
-runCohortMethod(outputFolder = outputFolder,
-                indicationId = indicationId,
-                maxCores = maxCores)
-
-
-
-computeIncidence(outputFolder = outputFolder,
-                 indicationId = indicationId)
-
-fetchChronographData(connectionDetails = connectionDetails,
-                     cdmDatabaseSchema = cdmDatabaseSchema,
-                     oracleTempSchema = oracleTempSchema,
-                     cohortDatabaseSchema = cohortDatabaseSchema,
-                     tablePrefix = tablePrefix,
-                     indicationId = indicationId,
-                     outputFolder = outputFolder)
-
-computeCovariateBalance(outputFolder = outputFolder,
-                        indicationId = indicationId,
-                        maxCores = maxCores)
-
-exportResults(outputFolder = outputFolder,
-              databaseId = databaseId,
-              databaseName = databaseName,
-              minCellCount = 5,
-              maxCores = maxCores)

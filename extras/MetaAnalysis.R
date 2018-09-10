@@ -6,8 +6,7 @@ calibrated <- calibrated[calibrated$analysisId == 3, ]
 
 performMa <- function(i, tcos, calibrated) {
     tco <- tcos[i, ]
-    subset <- calibrated[calibrated$targetId == tco$targetId &
-                             calibrated$comparatorId == tco$comparatorId &
+    subset <- calibrated[calibrated$targetId == tco$targetId & calibrated$comparatorId == tco$comparatorId &
                              calibrated$outcomeName == tco$outcomeName, c("logRr", "seLogRr")]
     subset <- subset[!is.na(subset$seLogRr), ]
     if (nrow(subset) != 4)
@@ -26,13 +25,20 @@ performMa <- function(i, tcos, calibrated) {
                          ci95lb = exp(s$lower),
                          ci95ub = exp(s$upper),
                          logRr = s$TE,
-                         seLogRr = (s$upper - s$lower)/(2*qnorm(0.975)),
+                         seLogRr = (s$upper - s$lower)/(2 * qnorm(0.975)),
                          i2 = meta$I2)
     return(result)
 }
 
 calibrated$outcomeId[calibrated$outcomeType == "positive control"] <- NA
-tcos <- unique(calibrated[, c("targetId", "comparatorId", "outcomeId", "targetName", "comparatorName", "outcomeName", "outcomeType", "trueRr")])
+tcos <- unique(calibrated[, c("targetId",
+                              "comparatorId",
+                              "outcomeId",
+                              "targetName",
+                              "comparatorName",
+                              "outcomeName",
+                              "outcomeType",
+                              "trueRr")])
 meta <- lapply(1:nrow(tcos), performMa, tcos = tcos, calibrated = calibrated)
 meta <- do.call("rbind", meta)
 

@@ -19,21 +19,23 @@
 #' @details
 #' Fetch data for constructing chronographs from the server.
 #'
-#' @param connectionDetails    An object of type \code{connectionDetails} as created using the
-#'                             \code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-#'                             DatabaseConnector package.
-#' @param cdmDatabaseSchema    Schema name where your patient-level data in OMOP CDM format resides.
-#'                             Note that for SQL Server, this should include both the database and
-#'                             schema name, for example 'cdm_data.dbo'.
-#' @param cohortDatabaseSchema Schema name where intermediate data can be stored. You will need to have
-#'                             write priviliges in this schema. Note that for SQL Server, this should
-#'                             include both the database and schema name, for example 'cdm_data.dbo'.
-#' @param tablePrefix          A prefix to be used for all table names created for this study.
-#' @param indicationId           A string denoting the indicationId for which the exposure cohorts should be created.
-#' @param oracleTempSchema     Should be used in Oracle to specify a schema where the user has write
-#'                             priviliges for storing temporary tables.
-#' @param outputFolder         Name of local folder to place results; make sure to use forward slashes
-#'                             (/)
+#' @param connectionDetails      An object of type \code{connectionDetails} as created using the
+#'                               \code{\link[DatabaseConnector]{createConnectionDetails}} function in
+#'                               the DatabaseConnector package.
+#' @param cdmDatabaseSchema      Schema name where your patient-level data in OMOP CDM format resides.
+#'                               Note that for SQL Server, this should include both the database and
+#'                               schema name, for example 'cdm_data.dbo'.
+#' @param cohortDatabaseSchema   Schema name where intermediate data can be stored. You will need to
+#'                               have write priviliges in this schema. Note that for SQL Server, this
+#'                               should include both the database and schema name, for example
+#'                               'cdm_data.dbo'.
+#' @param tablePrefix            A prefix to be used for all table names created for this study.
+#' @param indicationId           A string denoting the indicationId for which the exposure cohorts
+#'                               should be created.
+#' @param oracleTempSchema       Should be used in Oracle to specify a schema where the user has write
+#'                               priviliges for storing temporary tables.
+#' @param outputFolder           Name of local folder to place results; make sure to use forward
+#'                               slashes (/)
 #'
 #' @export
 fetchChronographData <- function(connectionDetails,

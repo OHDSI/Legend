@@ -6,8 +6,7 @@ allExposures <- data.frame()
 allOutcomes <- data.frame()
 allSubgroups <- data.frame()
 for (zipFile in zipFiles) {
-    unzip(zipfile = file.path(mainFolder, zipFile),
-          exdir = file.path(mainFolder))
+    unzip(zipfile = file.path(mainFolder, zipFile), exdir = file.path(mainFolder))
     outcomes <- read.csv(file.path(mainFolder, "outcomes.csv"), stringsAsFactors = FALSE)
     allOutcomes <- rbind(allOutcomes, outcomes)
     exposures <- read.csv(file.path(mainFolder, "exposures.csv"), stringsAsFactors = FALSE)
@@ -42,12 +41,16 @@ hois <- allOutcomes[allOutcomes$cohortDefinitionId %in% outcomesOfInterest$cohor
 drugs <- allExposures[allExposures$type == "Drug" | allExposures$type == "Procedure", ]
 drugClasses <- allExposures[allExposures$type == "Drug class", ]
 for (indicationId in unique(outcomes$indicationId)) {
-    plotCounts(subset = hois[hois$indicationId == indicationId, ],
+    plotCounts(subset = hois[hois$indicationId == indicationId,
+                             ],
                fileName = file.path(mainFolder, sprintf("Hois%s.png", indicationId)))
-    plotCounts(subset = drugs[drugs$indicationId == indicationId, ],
+    plotCounts(subset = drugs[drugs$indicationId == indicationId,
+                              ],
                fileName = file.path(mainFolder, sprintf("Drugs%s.png", indicationId)))
-    plotCounts(subset = drugClasses[drugClasses$indicationId == indicationId, ],
+    plotCounts(subset = drugClasses[drugClasses$indicationId == indicationId,
+                                    ],
                fileName = file.path(mainFolder, sprintf("DrugClasses%s.png", indicationId)))
-    plotCounts(subset = allSubgroups[allSubgroups$indicationId == indicationId, ],
+    plotCounts(subset = allSubgroups[allSubgroups$indicationId == indicationId,
+                                     ],
                fileName = file.path(mainFolder, sprintf("Subgroups%s.png", indicationId)))
 }
