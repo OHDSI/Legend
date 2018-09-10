@@ -20,7 +20,6 @@ r_github_packages:
   - OHDSI/OhdsiRTools
   - OHDSI/EmpiricalCalibration
   - OHDSI/IcTemporalPatternDiscovery
-  - r-lib/zip
 
 before_script:
   - export PKG_NAME=$(Rscript -e 'cat(paste0(devtools::as.package(".")$package))')

@@ -145,7 +145,7 @@ assessPhenotypes <- function(connectionDetails,
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
-    zip::zip(zipfile = zipName, files = files, recurse = FALSE)
+    DatabaseConnector::createZipFile(zipFile = zipName, files = files)
     ParallelLogger::logInfo("Results are ready for sharing at:", zipName)
 }
 
@@ -335,6 +335,6 @@ assessPropensityModels <- function(connectionDetails,
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
-    zip::zip(zipfile = zipName, files = files, recurse = FALSE)
+    DatabaseConnector::createZipFile(zipFile = zipName, files = files, recurse = FALSE)
     ParallelLogger::logInfo("Results are ready for sharing at:", zipName)
 }
