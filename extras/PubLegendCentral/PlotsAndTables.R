@@ -102,15 +102,12 @@ preparePowerTable <- function(mainResults, analyses) {
   return(table)
 }
 
-rnd <- function(x) {
-  ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
-  # signif(x, 3), signif(x, 2))
-}
 
 prepareSubgroupTable <- function(subgroupResults) {
-  # subgroupResults$hrr <- sprintf('%.2f (%.2f - %.2f)', subgroupResults$rrr, subgroupResults$ci95Lb,
-  # subgroupResults$ci95Ub)
-
+  rnd <- function(x) {
+    ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
+  }
+  
   subgroupResults$hrr <- paste0(rnd(subgroupResults$rrr),
                                 " (",
                                 rnd(subgroupResults$ci95Lb),
@@ -296,6 +293,26 @@ plotPs <- function(ps, targetName, comparatorName) {
                          legend.text = theme,
                          axis.text = theme,
                          axis.title = theme)
+  return(plot)
+}
+
+plotCovariateBalanceScatterPlot <- function(balance, beforeLabel = "Before stratification", afterLabel = "After stratification") {
+  balance$absBeforeMatchingStdDiff <- abs(balance$beforeMatchingStdDiff)
+  balance$absAfterMatchingStdDiff <- abs(balance$afterMatchingStdDiff)
+  limits <- c(min(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
+                  na.rm = TRUE),
+              max(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
+                  na.rm = TRUE))
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = absAfterMatchingStdDiff)) +
+    ggplot2::geom_point(color = rgb(0, 0, 0.8, alpha = 0.3)) +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    ggplot2::geom_hline(yintercept = 0) +
+    ggplot2::geom_vline(xintercept = 0) +
+    ggplot2::scale_x_continuous(beforeLabel, limits = limits) +
+    ggplot2::scale_y_continuous(afterLabel, limits = limits) +
+    ggplot2::theme(text = theme)
+  
   return(plot)
 }
 
@@ -501,6 +518,83 @@ plotScatter <- function(controlResults) {
 
   return(plot)
 }
+
+plotLargeScatter <- function(d, selected, xLabel) {
+  d$Significant <- d$ci95lb > 1 | d$ci95ub < 1
+  
+  oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
+                       meanLabel = paste0(formatC(100 *
+                                                    mean(!d$Significant, na.rm = TRUE), digits = 1, format = "f"), "% of CIs includes 1"))
+  
+  breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
+  theme <- element_text(colour = "#000000", size = 12)
+  themeRA <- element_text(colour = "#000000", size = 12, hjust = 1)
+  themeLA <- element_text(colour = "#000000", size = 12, hjust = 0)
+  
+  alpha <- 1 - min(0.95 * (nrow(d)/50000)^0.1, 0.95)
+  plot <- ggplot(d, aes(x = logRr, y = seLogRr)) +
+    geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.025)),
+                colour = rgb(0.8, 0, 0),
+                linetype = "dashed",
+                size = 1,
+                alpha = 0.5) +
+    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.975)),
+                colour = rgb(0.8, 0, 0),
+                linetype = "dashed",
+                size = 1,
+                alpha = 0.5) +
+    geom_point(size = 2, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
+    geom_hline(yintercept = 0) +
+    geom_label(x = log(0.11),
+               y = 1,
+               alpha = 1,
+               hjust = "left",
+               aes(label = nLabel),
+               size = 5,
+               data = oneRow) +
+    geom_label(x = log(0.11),
+               y = 0.935,
+               alpha = 1,
+               hjust = "left",
+               aes(label = meanLabel),
+               size = 5,
+               data = oneRow) +
+    scale_x_continuous(xLabel, limits = log(c(0.1,
+                                              10)), breaks = log(breaks), labels = breaks) +
+    scale_y_continuous("Standard Error", limits = c(0, 1)) +
+    theme(panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text.y = themeRA,
+          axis.text.x = theme,
+          axis.title = theme,
+          legend.key = element_blank(),
+          strip.text.x = theme,
+          strip.background = element_blank(),
+          legend.position = "none")
+  if (!is.null(selected) && nrow(selected) != 0) {
+    if (!is.null(selected$db)) {
+      otherDbs <- d[d$db != selected$db[1] & d$targetName == selected$targetName[1] & d$comparatorName ==
+                      selected$comparatorName[1] & d$outcomeName == selected$outcomeName[1], ]
+      plot <- plot + geom_point(data = otherDbs,
+                                size = 4,
+                                color = rgb(0, 0, 0),
+                                fill = rgb(0.5, 0.5, 1),
+                                shape = 23,
+                                alpha = 0.8)
+    }
+    plot <- plot + geom_point(data = selected,
+                              size = 4,
+                              color = rgb(0, 0, 0),
+                              fill = rgb(1, 1, 0),
+                              shape = 23)
+    
+  }
+  return(plot)
+}
+
 
 
 drawAttritionDiagram <- function(attrition,

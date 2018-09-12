@@ -217,7 +217,7 @@ plotPs(ps, targetName, comparatorName)
 **Figure 2**. Preference score distribution. The preference score is a transformation of the propensity score that adjusts for differences in the sizes of the two treatment groups. A higher overlap indicates subjects in the two groups were more similar in terms of their predicted probability of receiving one treatment over the other.
 
 ```{r, echo = FALSE, fig.width=4, fig.height=4, out.width = '50%', fig.align='center', warning=FALSE}
-CohortMethod::plotCovariateBalanceScatterPlot(balance, beforeLabel = "Before stratification", afterLabel = "After stratification")
+plotCovariateBalanceScatterPlot(balance, beforeLabel = "Before stratification", afterLabel = "After stratification")
 ```
 **Figure 3**. Covariate balance before and after stratification. Each dot represents the standardizes difference of means for a single covariate before and after stratification on the propensity score. 
 
