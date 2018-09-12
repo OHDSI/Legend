@@ -9,17 +9,16 @@ createPriorExposureCovariateSettings(cohortDatabaseSchema = "unknown",
   analysisId = 999)
 }
 \arguments{
-\item{cohortDatabaseSchema}{The name of the database schema that is the location
-where the data used to define the exposure cohorts is
-available.}
+\item{cohortDatabaseSchema}{The name of the database schema that is the location where the data
+used to define the exposure cohorts is available.}
 
 \item{exposureEraTable}{The tablename that contains the exposure eras.}
 
-\item{windowStart}{Start day of the window where covariates are captured,
-relative to the index date (0 = index date).}
+\item{windowStart}{Start day of the window where covariates are captured, relative to the
+index date (0 = index date).}
 
-\item{windowEnd}{End day of the window where covariates are captured,
-relative to the index date (0 = index date).}
+\item{windowEnd}{End day of the window where covariates are captured, relative to the
+index date (0 = index date).}
 
 \item{analysisId}{A unique identifier for this analysis.}
 }

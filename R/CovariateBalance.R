@@ -74,6 +74,12 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
     outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
     outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
+
+    if (indicationId == "Depression") {
+        subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
+    } else if (indicationId == "Hyperttension") {
+        subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
+    }
     computeBalance <- function(exposureSummaryRow,
                                studyPopArgs,
                                stratifyByPsArgs,
@@ -81,7 +87,8 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
                                indicationFolder,
                                balanceFolder,
                                covarSubsetIds,
-                               outcomeModelReference) {
+                               outcomeModelReference,
+                               subgroupCovariateIds) {
         ParallelLogger::logTrace("Computing balance for target ",
                                  exposureSummaryRow$targetId,
                                  " and comparator ",
@@ -167,7 +174,6 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
             saveRDS(balance, fileName)
         }
         # Compute balance within subgroups, both for stratification and matching. Not specific to one outcome ----
-        subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
         for (subgroupCovariateId in subgroupCovariateIds) {
             fileName <- file.path(balanceFolder, paste0("Bal_t",
                                                         exposureSummaryRow$targetId,
@@ -282,7 +288,8 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
                                  indicationFolder = indicationFolder,
                                  balanceFolder = balanceFolder,
                                  covarSubsetIds = covarSubsetIds,
-                                 outcomeModelReference = outcomeModelReference)
+                                 outcomeModelReference = outcomeModelReference,
+                                 subgroupCovariateIds = subgroupCovariateIds)
     ParallelLogger::stopCluster(cluster)
 }
 

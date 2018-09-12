@@ -21,6 +21,7 @@ limitations under the License.
 --5.  elderly (age >= 65)
 --6.  male
 --7.  Type 2 diabetes mellitus
+--8.  Black or African American
 {DEFAULT @cdm_database_schema = 'cdm.dbo'}
 {DEFAULT @window_end = 0}
 {DEFAULT @window_start = -365}
@@ -49,6 +50,9 @@ IF OBJECT_ID('tempdb..#cov_6', 'U') IS NOT NULL
 	
 IF OBJECT_ID('tempdb..#cov_7', 'U') IS NOT NULL
 	DROP TABLE #cov_7;
+
+IF OBJECT_ID('tempdb..#cov_8', 'U') IS NOT NULL
+	DROP TABLE #cov_8;
 	
 --1.  renal impairment
 SELECT DISTINCT row_id,
@@ -625,3 +629,16 @@ DROP TABLE #codesets;
 TRUNCATE TABLE #initial_cohort;
 
 DROP TABLE #initial_cohort;
+
+--8.  black or african american
+SELECT DISTINCT row_id,
+	CAST(8000 + @analysis_id AS BIGINT) AS covariate_id,
+	1 AS covariate_value
+INTO #cov_8
+FROM (
+	SELECT @row_id_field AS row_id
+	FROM @cohort_temp_table c
+	INNER JOIN person p
+		ON c.subject_id = p.person_id
+			AND p.race_concept_id IN (8516, 38003598, 38003599, 38003600)
+	) tmp;

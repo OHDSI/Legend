@@ -8,18 +8,21 @@ computeCovariateBalance(indicationId = "Depression", outputFolder,
   maxCores)
 }
 \arguments{
-\item{indicationId}{A string denoting the indicationId for which the covariate balance should be computed.}
+\item{indicationId}{A string denoting the indicationId for which the covariate balance should be
+computed.}
 
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/)}
 
-\item{maxCores}{How many parallel cores should be used? If more cores are made available
-this can speed up the analyses.}
+\item{maxCores}{How many parallel cores should be used? If more cores are made available this
+can speed up the analyses.}
 }
 \description{
 Compute covariate balance for each comparison
 }
 \details{
-Compute covariate alance for each comparison. The balance is computed considering the entire target and comparator cohort,
-so note removing subjects with prior outcomes. Stores the results in a subfolder called 'balance'.
+Compute covariate balance for each comparison. We don't compute balance for every TCO, as this
+would be prohibitively large. Instead, we compute balance considering the entire target
+and comparator cohort, so not removing subjects with prior outcomes. We do compute covariate balance
+for every TCO for a small subset of covariates of interest (those used in the typical table 1).
+Stores the results in a subfolder called 'balance'.
 }

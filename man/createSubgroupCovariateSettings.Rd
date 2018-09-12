@@ -8,11 +8,11 @@ createSubgroupCovariateSettings(windowStart = -365, windowEnd = -1,
   analysisId = 998)
 }
 \arguments{
-\item{windowStart}{Start day of the window where covariates are captured,
-relative to the index date (0 = index date).}
+\item{windowStart}{Start day of the window where covariates are captured, relative to the index
+date (0 = index date).}
 
-\item{windowEnd}{End day of the window where covariates are captured,
-relative to the index date (0 = index date).}
+\item{windowEnd}{End day of the window where covariates are captured, relative to the index date
+(0 = index date).}
 
 \item{analysisId}{A unique identifier for this analysis.}
 }

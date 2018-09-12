@@ -431,7 +431,7 @@ if (showNegativeControls) {
 # 'om_t7035481505_c7976181505_o2829.rds')) summary(model) strataPop <-
 # readRDS(file.path(indicationFolder, 'cmOutput', 'StratPop_l1_s1_p1_t587129_c1197129_s1_o2829.rds'))
 # cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, 'cmOutput',
-# 'CmData_l1_t587129_c1197129')) subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
+# 'CmData_l1_t587129_c1197129')) subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
 # debug(CohortMethod::fitOutcomeModel) CohortMethod::fitOutcomeModel(population = strataPop,
 # cohortMethodData = cmData, stratified = TRUE, modelType = 'cox', interactionCovariateIds =
 # subgroupCovariateIds)

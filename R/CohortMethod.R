@@ -386,7 +386,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                                            addExposureDaysToEnd = FALSE,
                                                                            minDaysAtRisk = 1)
 
-    subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998)
+    subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
 
     createPsArgs <- CohortMethod::createCreatePsArgs(control = Cyclops::createControl(noiseLevel = "silent",
                                                                                       cvType = "auto",
@@ -672,6 +672,34 @@ createAnalysesDetails <- function(outputFolder) {
                                                    stratifyByPsArgs = stratifyByPsArgs,
                                                    fitOutcomeModel = TRUE,
                                                    fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
+												   
+	# Interactions: add black or african american subgroup
+
+    fitOutcomeModelArgsI8998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
+                                                                        modelType = "cox",
+                                                                        interactionCovariateIds = 8998)
+
+    cmAnalysis19 <- CohortMethod::createCmAnalysis(analysisId = 19,
+                                                   description = "PS stratification, on-treatment, black or african american interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsOnTreatment,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI8998)
+
+    cmAnalysis20 <- CohortMethod::createCmAnalysis(analysisId = 20,
+                                                   description = "PS stratification, intent-to-treat, black or african american interactions",
+                                                   getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                                   createStudyPopArgs = createStudyPopArgsItt,
+                                                   createPs = TRUE,
+                                                   createPsArgs = createPsArgs,
+                                                   stratifyByPs = TRUE,
+                                                   stratifyByPsArgs = stratifyByPsArgs,
+                                                   fitOutcomeModel = TRUE,
+                                                   fitOutcomeModelArgs = fitOutcomeModelArgsI8998)
 
     cmAnalysisListInteractions <- list(cmAnalysis5,
                                        cmAnalysis6,
@@ -686,7 +714,9 @@ createAnalysesDetails <- function(outputFolder) {
                                        cmAnalysis15,
                                        cmAnalysis16,
                                        cmAnalysis17,
-                                       cmAnalysis18)
+                                       cmAnalysis18,
+                                       cmAnalysis19,
+                                       cmAnalysis20)
 
     CohortMethod::saveCmAnalysisList(cmAnalysisListInteractions,
                                      file.path(outputFolder,

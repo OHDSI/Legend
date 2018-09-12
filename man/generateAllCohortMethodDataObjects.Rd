@@ -8,21 +8,20 @@ generateAllCohortMethodDataObjects(outputFolder,
   indicationId = "Depression", useSample = FALSE, maxCores = 4)
 }
 \arguments{
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/)}
 
 \item{indicationId}{A string denoting the indicationId.}
 
 \item{useSample}{Use the sampled cohort table instead of the main cohort table (for PS model
 feasibility).}
 
-\item{maxCores}{How many parallel cores should be used? If more cores are made available
-this can speed up the analyses.}
+\item{maxCores}{How many parallel cores should be used? If more cores are made available this
+can speed up the analyses.}
 }
 \description{
 Construct all cohortMethodData object
 }
 \details{
-This function constructs all cohortMethodData objects using the data
-fetched earlier using the \code{\link{fetchAllDataFromServer}} function.
+This function constructs all cohortMethodData objects using the data fetched earlier using the
+\code{\link{fetchAllDataFromServer}} function.
 }

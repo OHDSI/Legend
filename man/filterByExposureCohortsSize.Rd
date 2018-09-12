@@ -8,8 +8,7 @@ filterByExposureCohortsSize(outputFolder, indicationId = "Depression",
   minCohortsSize = 2500)
 }
 \arguments{
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/)}
 
 \item{indicationId}{A string denoting the indicationId.}
 

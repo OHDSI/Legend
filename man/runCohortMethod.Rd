@@ -8,14 +8,13 @@ runCohortMethod(outputFolder, indicationId = "Depression",
   maxCores = 4)
 }
 \arguments{
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/). Do not use a folder on a network drive since this greatly impacts
-performance.}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/).
+Do not use a folder on a network drive since this greatly impacts performance.}
 
 \item{indicationId}{A string denoting the indicationId.}
 
-\item{maxCores}{How many parallel cores should be used? If more cores are made available
-this can speed up the analyses.}
+\item{maxCores}{How many parallel cores should be used? If more cores are made available this
+can speed up the analyses.}
 }
 \description{
 Run the cohort method package

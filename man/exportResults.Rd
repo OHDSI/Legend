@@ -8,7 +8,8 @@ exportResults(indicationId = "Depression", outputFolder, databaseId,
   databaseName, databaseDescription, minCellCount = 5, maxCores)
 }
 \arguments{
-\item{indicationId}{A string denoting the indicationId for which the results should be exported.}
+\item{indicationId}{A string denoting the indicationId for which the results should be
+exported.}
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
 (/). Do not use a folder on a network drive since this greatly impacts
@@ -22,8 +23,8 @@ performance.}
 
 \item{minCellCount}{The minimum cell count for fields contains person counts or fractions.}
 
-\item{maxCores}{How many parallel cores should be used? If more cores are made available
-this can speed up the analyses.}
+\item{maxCores}{How many parallel cores should be used? If more cores are made
+available this can speed up the analyses.}
 }
 \description{
 Outputs all results to a folder called 'export', and zips them.

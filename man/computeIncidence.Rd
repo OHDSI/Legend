@@ -7,10 +7,10 @@
 computeIncidence(indicationId = "Depression", outputFolder)
 }
 \arguments{
-\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be created.}
+\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be
+created.}
 
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/)}
 }
 \description{
 Compute incidence

@@ -79,14 +79,15 @@ getDbSubgroupCovariateData <- function(connection,
                                              oracleTempSchema = oracleTempSchema)
     DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
-    covariateRef <- data.frame(covariateId = c(1000, 2000, 3000, 4000, 5000, 6000, 7000) + covariateSettings$analysisId,
+    covariateRef <- data.frame(covariateId = c(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000) + covariateSettings$analysisId,
                                covariateName = c("Subgroup: Renal impairment",
                                                  "Subgroup: Hepatic impairment",
                                                  "Subgroup: Pregnant women",
                                                  "Subgroup: Children (age < 18)",
                                                  "Subgroup: Elderly (age >=65)",
                                                  "Subgroup: Gender = female",
-                                                 "Subgroup: Type 2 Diabetes Mellitus"),
+                                                 "Subgroup: Type 2 Diabetes Mellitus",
+                                                 "Subgroup: Black or African American"),
                                analysisId = as.numeric(covariateSettings$analysisId),
                                conceptId = 0)
     covariateRef <- ff::as.ffdf(covariateRef)

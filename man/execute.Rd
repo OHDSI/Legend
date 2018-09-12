@@ -2,49 +2,57 @@
 % Please edit documentation in R/Main.R
 \name{execute}
 \alias{execute}
-\title{Execute OHDSI Large-Scale Population-Level Evidence Generation study}
+\title{Execute OHDSI LEGEND study}
 \usage{
 execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, outputFolder, indicationId = "Depression",
-  tablePrefix, databaseId = "Unknown", databaseName = "Unknown",
-  databaseDescription = "Unknown", minCellCount = 5,
-  createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
-  fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
+  tablePrefix = "legend", databaseId = "Unknown",
+  databaseName = "Unknown", databaseDescription = "Unknown",
+  minCellCount = 5, createExposureCohorts = TRUE,
+  createOutcomeCohorts = TRUE, fetchAllDataFromServer = TRUE,
+  synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
   computeIncidence = TRUE, fetchChronographData = TRUE,
-  computeCovariateBalance = TRUE, exportToCsv = TRUE, maxCores)
+  computeCovariateBalance = TRUE, exportToCsv = TRUE, maxCores = 4)
 }
 \arguments{
-\item{connectionDetails}{An object of type \code{connectionDetails} as created using the
-\code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-DatabaseConnector package.}
+\item{connectionDetails}{An object of type \code{connectionDetails} as created
+using the
+\code{\link[DatabaseConnector]{createConnectionDetails}}
+function in the DatabaseConnector package.}
 
-\item{cdmDatabaseSchema}{Schema name where your patient-level data in OMOP CDM format resides.
-Note that for SQL Server, this should include both the database and
-schema name, for example 'cdm_data.dbo'.}
+\item{cdmDatabaseSchema}{Schema name where your patient-level data in OMOP CDM
+format resides. Note that for SQL Server, this should
+include both the database and schema name, for example
+'cdm_data.dbo'.}
 
-\item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
-priviliges for storing temporary tables.}
+\item{oracleTempSchema}{Should be used in Oracle to specify a schema where the
+user has write priviliges for storing temporary tables.}
 
-\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
-write priviliges in this schema. Note that for SQL Server, this should
-include both the database and schema name, for example 'cdm_data.dbo'.}
+\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You
+will need to have write priviliges in this schema. Note
+that for SQL Server, this should include both the
+database and schema name, for example 'cdm_data.dbo'.}
 
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/). Do not use a folder on a network drive since this greatly impacts
-performance.}
+\item{outputFolder}{Name of local folder to place results; make sure to use
+forward slashes (/). Do not use a folder on a network
+drive since this greatly impacts performance.}
 
 \item{indicationId}{A string denoting the indicationId.}
 
-\item{tablePrefix}{A prefix to be used for all table names created for this study.}
+\item{tablePrefix}{A prefix to be used for all table names created for this
+study.}
 
-\item{databaseId}{A short string for identifying the database (e.g. 'Synpuf').}
+\item{databaseId}{A short string for identifying the database (e.g.
+'Synpuf').}
 
-\item{databaseName}{The full name of the database.}
+\item{databaseName}{The full name of the database (e.g. 'Medicare Claims
+Synthetic Public Use Files (SynPUFs)').}
 
 \item{databaseDescription}{A short description (several sentences) of the database.}
 
-\item{minCellCount}{The minimum cell count for fields contains person counts or fractions when exporting to CSV.}
+\item{minCellCount}{The minimum cell count for fields contains person counts
+or fractions when exporting to CSV.}
 
 \item{createExposureCohorts}{Create the tables with the exposure cohorts?}
 
@@ -54,24 +62,26 @@ performance.}
 
 \item{synthesizePositiveControls}{Inject signals to create synthetic controls?}
 
-\item{generateAllCohortMethodDataObjects}{Create the cohortMethodData objects from the fetched data and injected signals?}
+\item{generateAllCohortMethodDataObjects}{Create the cohortMethodData objects from the fetched
+data and injected signals?}
 
-\item{runCohortMethod}{Run the CohortMethod package to produce the outcome models?}
+\item{runCohortMethod}{Run the CohortMethod package to produce the outcome
+models?}
 
 \item{computeIncidence}{Compute incidence rates?}
 
 \item{fetchChronographData}{Fetch the data for constructing chronographs?}
 
-\item{computeCovariateBalance}{Fetch the data for constructing chronographs?}
+\item{computeCovariateBalance}{Compute covariate balance?}
 
 \item{exportToCsv}{Export all results to CSV files?}
 
-\item{maxCores}{How many parallel cores should be used? If more cores are made available
-this can speed up the analyses.}
+\item{maxCores}{How many parallel cores should be used? If more cores
+are made available this can speed up the analyses.}
 }
 \description{
-Execute OHDSI Large-Scale Population-Level Evidence Generation study
+Execute OHDSI LEGEND study
 }
 \details{
-This function executes the OHDSI Large-Scale Population-Level Evidence Generation study.
+This function executes the OHDSI LEGEND study.
 }

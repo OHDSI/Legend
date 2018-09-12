@@ -11,26 +11,28 @@ assessPhenotypes(connectionDetails, cdmDatabaseSchema,
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
-\code{\link[DatabaseConnector]{createConnectionDetails}} function in the
-DatabaseConnector package.}
+\code{\link[DatabaseConnector]{createConnectionDetails}} function in
+the DatabaseConnector package.}
 
 \item{cdmDatabaseSchema}{Schema name where your patient-level data in OMOP CDM format resides.
 Note that for SQL Server, this should include both the database and
 schema name, for example 'cdm_data.dbo'.}
 
-\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You will need to have
-write priviliges in this schema. Note that for SQL Server, this should
-include both the database and schema name, for example 'cdm_data.dbo'.}
+\item{cohortDatabaseSchema}{Schema name where intermediate data can be stored. You will need to
+have write priviliges in this schema. Note that for SQL Server, this
+should include both the database and schema name, for example
+'cdm_data.dbo'.}
 
 \item{tablePrefix}{A prefix to be used for all table names created for this study.}
 
-\item{indicationId}{A string denoting the indicationId for which the exposure cohorts should be created.}
+\item{indicationId}{A string denoting the indicationId for which the exposure cohorts
+should be created.}
 
 \item{oracleTempSchema}{Should be used in Oracle to specify a schema where the user has write
 priviliges for storing temporary tables.}
 
-\item{outputFolder}{Name of local folder to place results; make sure to use forward slashes
-(/)}
+\item{outputFolder}{Name of local folder to place results; make sure to use forward
+slashes (/)}
 
 \item{sampleSize}{What is the maximum sample size across exposure cohorts?}
 
@@ -42,6 +44,6 @@ priviliges for storing temporary tables.}
 Assess propensity models
 }
 \details{
-This function will sample the exposure cohorts, and fit propensity models to identify issues. Assumes
-the exposure and outcome cohorts have already been created.
+This function will sample the exposure cohorts, and fit propensity models to identify issues.
+Assumes the exposure and outcome cohorts have already been created.
 }
