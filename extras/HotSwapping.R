@@ -164,10 +164,13 @@ fetchSubgroupCovarsToAllCovariates <- function(subgroupIds) {
 
     # Drop old covariates:
     idx <- ffbase::`%in%`(covariates$covariates$covariateId, ff::as.ff(subgroupIds))
-    covariates$covariates <- covariates$covariates[!idx, ]
+    if (ffbase::any.ff(idx)) {
+        covariates$covariates <- covariates$covariates[!idx, ]
+    }
     idx <- ffbase::`%in%`(covariates$covariateRef$covariateId, ff::as.ff(subgroupIds))
-    covariates$covariateRef <- covariates$covariateRef[!idx, ]
-
+    if (ffbase::any.ff(idx)) {
+        covariates$covariateRef <- covariates$covariateRef[!idx, ]
+    }
     # Append new outcomes:
     idx <- ffbase::`%in%`(newCovariates$covariates$covariateId, ff::as.ff(subgroupIds))
     newCovariates$covariates <- newCovariates$covariates[idx, ]
@@ -373,6 +376,15 @@ regenerateAllCohortMethodData <- function() {
                                        maxCores = maxCores)
 }
 
+
+# Adding race subgroup to existing run ---------------------------------------------------
+subgroupIds <- c(8998)
+ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logHotSwap.txt"))
+fetchSubgroupCovarsToAllCovariates(subgroupIds)
+deleteAllCohortMethodData()
+regenerateAllCohortMethodData()
+
+
 # Code to run ------------------------------------------------------------------------------
 # This assumes the inst/settings/OutcomesOfInterest.csv, R/SubgroupCovariateBuilder.R,
 # inst/cohorts, and inst/sql have already been updated
@@ -381,7 +393,7 @@ subgroupIds <- c()  # Subgroup IDs that are new (both completely new or those th
 negativeControlsChanged <- FALSE
 
 
-ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logHotSwap.txt"))
+
 
 if (length(outcomeIds) > 0) {
 
