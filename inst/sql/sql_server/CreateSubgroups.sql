@@ -638,7 +638,7 @@ INTO #cov_8
 FROM (
 	SELECT @row_id_field AS row_id
 	FROM @cohort_temp_table c
-	INNER JOIN person p
+	INNER JOIN @cdm_database_schema.person p
 		ON c.subject_id = p.person_id
 			AND p.race_concept_id IN (8516, 38003598, 38003599, 38003600)
 	) tmp;
