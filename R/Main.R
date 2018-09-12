@@ -91,6 +91,10 @@ execute <- function(connectionDetails,
     }
     ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
 
+    sinkFile <- file(file.path(indicationFolder, "console.txt"), open = "wt")
+    sink(sinkFile, split = TRUE)
+    on.exit(sink())
+
     if (createExposureCohorts) {
         createExposureCohorts(connectionDetails = connectionDetails,
                               cdmDatabaseSchema = cdmDatabaseSchema,
