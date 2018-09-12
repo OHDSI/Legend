@@ -155,6 +155,15 @@ fetchSubgroupCovarsToAllCovariates <- function(subgroupIds) {
 
     DatabaseConnector::disconnect(conn)
 
+    # Subset fetched covariates to only the new ones:
+    idx <- ffbase::`%in%`(newCovariates$covariates$covariateId, ff::as.ff(subgroupIds))
+    if (!ffbase::any.ff(idx)) {
+        stop("New subgroup(s) not found in this database")
+    }
+    newCovariates$covariates <- newCovariates$covariates[idx, ]
+    idx <- ffbase::`%in%`(newCovariates$covariateRef$covariateId, ff::as.ff(subgroupIds))
+    newCovariates$covariateRef <- newCovariates$covariateRef[idx, ]
+
     tempFolder <- paste0(covariatesFolder, "_temp")
     ParallelLogger::logDebug("Renaming ", covariatesFolder, " to ", tempFolder)
     if (!file.rename(covariatesFolder, tempFolder)) {
@@ -172,10 +181,6 @@ fetchSubgroupCovarsToAllCovariates <- function(subgroupIds) {
         covariates$covariateRef <- covariates$covariateRef[!idx, ]
     }
     # Append new outcomes:
-    idx <- ffbase::`%in%`(newCovariates$covariates$covariateId, ff::as.ff(subgroupIds))
-    newCovariates$covariates <- newCovariates$covariates[idx, ]
-    idx <- ffbase::`%in%`(newCovariates$covariateRef$covariateId, ff::as.ff(subgroupIds))
-    newCovariates$covariateRef <- newCovariates$covariateRef[idx, ]
     covariates$covariates <- ffbase::ffdfappend(covariates$covariates, newCovariates$covariates)
     covariates$covariateRef <- ffbase::ffdfappend(covariates$covariateRef, newCovariates$covariateRef)
 
