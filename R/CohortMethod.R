@@ -72,10 +72,15 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
         } else {
             stop("Unknown positive control setting: ", positiveControls)
         }
-        tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
-                                                            comparatorId = comparatorId,
-                                                            outcomeIds = outcomeIds)
-        return(tco)
+        if (length(outcomeIds) == 0) {
+            ParallelLogger::logDebug("No outcome IDs for target ", targetId, " and comparator ", comparatorId)
+            return(NULL)
+        } else {
+            tco <- CohortMethod::createTargetComparatorOutcomes(targetId = targetId,
+                                                                comparatorId = comparatorId,
+                                                                outcomeIds = outcomeIds)
+            return(tco)
+        }
     }
 
     cmAnalysisListFile <- system.file("settings",
@@ -96,6 +101,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     # First run: Forward pairs only, no positive controls ---------------------------------
 
     tcos <- lapply(1:nrow(exposureSummary), createTcos, positiveControls = "exclude", reverse = FALSE)
+    tcos <- plyr::compact(tcos)
     cmAnalyses <- c(cmAnalysisList, cmAnalysisListAsym, cmAnalysisListInteractions)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -129,6 +135,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                    createTcos,
                    positiveControls = "onlyTarget",
                    reverse = FALSE)
+    tcos <- plyr::compact(tcos)
     cmAnalyses <- c(cmAnalysisList, cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -162,6 +169,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                    createTcos,
                    positiveControls = "onlyComparator",
                    reverse = FALSE)
+    tcos <- plyr::compact(tcos)
     cmAnalyses <- c(cmAnalysisList)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
@@ -252,6 +260,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                    createTcos,
                    positiveControl = "excludeComparator",
                    reverse = TRUE)
+    tcos <- plyr::compact(tcos)
     cmAnalyses <- c(cmAnalysisListAsym)
     CohortMethod::runCmAnalyses(connectionDetails = NULL,
                                 cdmDatabaseSchema = NULL,
