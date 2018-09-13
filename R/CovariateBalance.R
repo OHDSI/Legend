@@ -77,7 +77,7 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
 
     if (indicationId == "Depression") {
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
-    } else if (indicationId == "Hyperttension") {
+    } else if (indicationId == "Hypertension") {
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
     }
     computeBalance <- function(exposureSummaryRow,
