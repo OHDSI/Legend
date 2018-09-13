@@ -101,8 +101,8 @@ if (!useStoredObject) {
                                             outcomeId = params$outcomeId)
   
   ps <- getPs(connection = connection,
-              targetId = params$targetId,
-              comparatorId = params$comparatorId,
+              targetIds = params$targetId,
+              comparatorIds = params$comparatorId,
               databaseId = params$databaseId)
   
   kaplanMeier <- getKaplanMeier(connection = connection,

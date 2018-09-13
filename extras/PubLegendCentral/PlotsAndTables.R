@@ -296,6 +296,42 @@ plotPs <- function(ps, targetName, comparatorName) {
   return(plot)
 }
 
+plotAllPs <- function(ps) {
+  ps <- rbind(data.frame(targetName = ps$targetName,
+                         comparatorName = ps$comparatorName,
+                         x = ps$preferenceScore, 
+                         y = ps$targetDensity, 
+                         group = "Target"),
+              data.frame(targetName = ps$targetName,
+                         comparatorName = ps$comparatorName,
+                         x = ps$preferenceScore, 
+                         y = ps$comparatorDensity, 
+                         group = "Comparator"))
+  ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
+  plot <- ggplot2::ggplot(ps, ggplot2::aes(x = x, y = y, color = group, group = group, fill = group)) +
+    ggplot2::geom_density(stat = "identity") +
+    ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    ggplot2::scale_x_continuous("Preference score", limits = c(0, 1)) +
+    ggplot2::scale_y_continuous("Density") +
+    ggplot2::facet_grid(targetName ~ comparatorName) +
+    ggplot2::theme(legend.title = ggplot2::element_blank(),
+          axis.title.x = ggplot2::element_blank(),
+          axis.text.x = ggplot2::element_blank(),
+          axis.ticks.x = ggplot2::element_blank(),
+          axis.title.y = ggplot2::element_blank(),
+          axis.text.y = ggplot2::element_blank(),
+          axis.ticks.y = ggplot2::element_blank(),
+          panel.grid.major = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank(),
+          strip.text.x = ggplot2::element_text(size = 12, angle = 90, vjust = 0),
+          strip.text.y = ggplot2::element_text(size = 12, angle = 0, hjust = 0),
+          panel.spacing = ggplot2::unit(0.1, "lines"),
+          legend.position = "none")
+  return(plot)
+}
+
+
 plotCovariateBalanceScatterPlot <- function(balance, beforeLabel = "Before stratification", afterLabel = "After stratification") {
   balance$absBeforeMatchingStdDiff <- abs(balance$beforeMatchingStdDiff)
   balance$absAfterMatchingStdDiff <- abs(balance$afterMatchingStdDiff)
@@ -519,7 +555,7 @@ plotScatter <- function(controlResults) {
   return(plot)
 }
 
-plotLargeScatter <- function(d, selected, xLabel) {
+plotLargeScatter <- function(d, xLabel) {
   d$Significant <- d$ci95lb > 1 | d$ci95ub < 1
   
   oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
@@ -527,71 +563,53 @@ plotLargeScatter <- function(d, selected, xLabel) {
                                                     mean(!d$Significant, na.rm = TRUE), digits = 1, format = "f"), "% of CIs includes 1"))
   
   breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
-  theme <- element_text(colour = "#000000", size = 12)
-  themeRA <- element_text(colour = "#000000", size = 12, hjust = 1)
-  themeLA <- element_text(colour = "#000000", size = 12, hjust = 0)
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
+  themeLA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 0)
   
   alpha <- 1 - min(0.95 * (nrow(d)/50000)^0.1, 0.95)
-  plot <- ggplot(d, aes(x = logRr, y = seLogRr)) +
-    geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
-    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.025)),
-                colour = rgb(0.8, 0, 0),
-                linetype = "dashed",
-                size = 1,
-                alpha = 0.5) +
-    geom_abline(aes(intercept = 0, slope = 1/qnorm(0.975)),
-                colour = rgb(0.8, 0, 0),
-                linetype = "dashed",
-                size = 1,
-                alpha = 0.5) +
-    geom_point(size = 2, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
-    geom_hline(yintercept = 0) +
-    geom_label(x = log(0.11),
-               y = 1,
-               alpha = 1,
-               hjust = "left",
-               aes(label = nLabel),
-               size = 5,
-               data = oneRow) +
-    geom_label(x = log(0.11),
-               y = 0.935,
-               alpha = 1,
-               hjust = "left",
-               aes(label = meanLabel),
-               size = 5,
-               data = oneRow) +
-    scale_x_continuous(xLabel, limits = log(c(0.1,
-                                              10)), breaks = log(breaks), labels = breaks) +
-    scale_y_continuous("Standard Error", limits = c(0, 1)) +
-    theme(panel.grid.minor = element_blank(),
-          panel.background = element_blank(),
-          panel.grid.major = element_blank(),
-          axis.ticks = element_blank(),
-          axis.text.y = themeRA,
-          axis.text.x = theme,
-          axis.title = theme,
-          legend.key = element_blank(),
-          strip.text.x = theme,
-          strip.background = element_blank(),
-          legend.position = "none")
-  if (!is.null(selected) && nrow(selected) != 0) {
-    if (!is.null(selected$db)) {
-      otherDbs <- d[d$db != selected$db[1] & d$targetName == selected$targetName[1] & d$comparatorName ==
-                      selected$comparatorName[1] & d$outcomeName == selected$outcomeName[1], ]
-      plot <- plot + geom_point(data = otherDbs,
-                                size = 4,
-                                color = rgb(0, 0, 0),
-                                fill = rgb(0.5, 0.5, 1),
-                                shape = 23,
-                                alpha = 0.8)
-    }
-    plot <- plot + geom_point(data = selected,
-                              size = 4,
-                              color = rgb(0, 0, 0),
-                              fill = rgb(1, 1, 0),
-                              shape = 23)
-    
-  }
+  plot <- ggplot2::ggplot(d, ggplot2::aes(x = logRr, y = seLogRr)) +
+    ggplot2::geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
+    ggplot2::geom_abline(ggplot2::aes(intercept = 0, slope = 1/qnorm(0.025)),
+                         colour = rgb(0.8, 0, 0),
+                         linetype = "dashed",
+                         size = 1,
+                         alpha = 0.5) +
+    ggplot2::geom_abline(ggplot2::aes(intercept = 0, slope = 1/qnorm(0.975)),
+                         colour = rgb(0.8, 0, 0),
+                         linetype = "dashed",
+                         size = 1,
+                         alpha = 0.5) +
+    ggplot2::geom_point(size = 2, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
+    ggplot2::geom_hline(yintercept = 0) +
+    ggplot2::geom_label(x = log(0.11),
+                        y = 1,
+                        alpha = 1,
+                        hjust = "left",
+                        ggplot2::aes(label = nLabel),
+                        size = 5,
+                        data = oneRow) +
+    ggplot2::geom_label(x = log(0.11),
+                        y = 0.935,
+                        alpha = 1,
+                        hjust = "left",
+                        ggplot2::aes(label = meanLabel),
+                        size = 5,
+                        data = oneRow) +
+    ggplot2::scale_x_continuous(xLabel, limits = log(c(0.1,
+                                                       10)), breaks = log(breaks), labels = breaks) +
+    ggplot2::scale_y_continuous("Standard Error", limits = c(0, 1)) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   axis.text.y = themeRA,
+                   axis.text.x = theme,
+                   axis.title = theme,
+                   legend.key = ggplot2::element_blank(),
+                   strip.text.x = theme,
+                   strip.background = ggplot2::element_blank(),
+                   legend.position = "none")
   return(plot)
 }
 
