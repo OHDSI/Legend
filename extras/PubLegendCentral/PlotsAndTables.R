@@ -103,7 +103,7 @@ preparePowerTable <- function(mainResults, analyses) {
 }
 
 
-prepareSubgroupTable <- function(subgroupResults) {
+prepareSubgroupTable <- function(subgroupResults, output = "latex") {
   rnd <- function(x) {
     ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
   }
@@ -120,19 +120,32 @@ prepareSubgroupTable <- function(subgroupResults) {
   subgroupResults$p[subgroupResults$p == "NA"] <- ""
   subgroupResults$calibratedP <- sprintf("%.2f", subgroupResults$calibratedP)
   subgroupResults$calibratedP[subgroupResults$calibratedP == "NA"] <- ""
-  idx <- grepl("on-treatment", subgroupResults$analysisDescription)
-  onTreatment <- subgroupResults[idx, c("interactionCovariateName",
-                                        "targetSubjects",
-                                        "comparatorSubjects",
-                                        "hrr",
-                                        "p",
-                                        "calibratedP")]
-  itt <- subgroupResults[!idx, c("interactionCovariateName", "hrr", "p", "calibratedP")]
-  colnames(onTreatment)[4:6] <- paste("onTreatment", colnames(onTreatment)[4:6], sep = "_")
-  colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
-  table <- merge(onTreatment, itt)
+  
+  if (any(grepl("on-treatment", subgroupResults$analysisDescription)) && 
+      any(grepl("intent-to-treat", subgroupResults$analysisDescription))) {
+    idx <- grepl("on-treatment", subgroupResults$analysisDescription)
+    onTreatment <- subgroupResults[idx, c("interactionCovariateName",
+                                          "targetSubjects",
+                                          "comparatorSubjects",
+                                          "hrr",
+                                          "p",
+                                          "calibratedP")]
+    itt <- subgroupResults[!idx, c("interactionCovariateName", "hrr", "p", "calibratedP")]
+    colnames(onTreatment)[4:6] <- paste("onTreatment", colnames(onTreatment)[4:6], sep = "_")
+    colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
+    table <- merge(onTreatment, itt)
+  } else {
+    table <- subgroupResults[, c("interactionCovariateName",
+                                 "targetSubjects",
+                                 "comparatorSubjects",
+                                 "hrr",
+                                 "p",
+                                 "calibratedP")]
+  } 
   table$interactionCovariateName <- gsub("Subgroup: ", "", table$interactionCovariateName)
-  table$interactionCovariateName <- gsub(">=", "$\\\\ge$ ", table$interactionCovariateName)
+  if (output == "latex") {
+    table$interactionCovariateName <- gsub(">=", "$\\\\ge$ ", table$interactionCovariateName)
+  }
   table$targetSubjects <- formatC(table$targetSubjects, big.mark = ",", format = "d")
   table$targetSubjects <- gsub("^-", "<", table$targetSubjects)
   table$comparatorSubjects <- formatC(table$comparatorSubjects, big.mark = ",", format = "d")
@@ -333,15 +346,13 @@ plotAllPs <- function(ps) {
 
 
 plotCovariateBalanceScatterPlot <- function(balance, beforeLabel = "Before stratification", afterLabel = "After stratification") {
-  balance$absBeforeMatchingStdDiff <- abs(balance$beforeMatchingStdDiff)
-  balance$absAfterMatchingStdDiff <- abs(balance$afterMatchingStdDiff)
   limits <- c(min(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
                   na.rm = TRUE),
               max(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
                   na.rm = TRUE))
   theme <- ggplot2::element_text(colour = "#000000", size = 12)
   plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = absAfterMatchingStdDiff)) +
-    ggplot2::geom_point(color = rgb(0, 0, 0.8, alpha = 0.3)) +
+    ggplot2::geom_point(color = rgb(0, 0, 0.8, alpha = 0.3), shape = 16, size = 2) +
     ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
     ggplot2::geom_hline(yintercept = 0) +
     ggplot2::geom_vline(xintercept = 0) +
@@ -772,7 +783,9 @@ judgeEffectiveness <- function(hrLower, hrUpper) {
 }
 
 prettyHr <- function(x) {
-  sprintf("%.2f", x)
+  result <- sprintf("%.2f", x)
+  result[is.na(x) | x > 100] <- "NA"
+  return(result)
 }
 
 goodPropensityScore <- function(value) {
