@@ -102,15 +102,12 @@ preparePowerTable <- function(mainResults, analyses) {
   return(table)
 }
 
-rnd <- function(x) {
-  ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
-  # signif(x, 3), signif(x, 2))
-}
 
-prepareSubgroupTable <- function(subgroupResults) {
-  # subgroupResults$hrr <- sprintf('%.2f (%.2f - %.2f)', subgroupResults$rrr, subgroupResults$ci95Lb,
-  # subgroupResults$ci95Ub)
-
+prepareSubgroupTable <- function(subgroupResults, output = "latex") {
+  rnd <- function(x) {
+    ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
+  }
+  
   subgroupResults$hrr <- paste0(rnd(subgroupResults$rrr),
                                 " (",
                                 rnd(subgroupResults$ci95Lb),
@@ -123,19 +120,32 @@ prepareSubgroupTable <- function(subgroupResults) {
   subgroupResults$p[subgroupResults$p == "NA"] <- ""
   subgroupResults$calibratedP <- sprintf("%.2f", subgroupResults$calibratedP)
   subgroupResults$calibratedP[subgroupResults$calibratedP == "NA"] <- ""
-  idx <- grepl("on-treatment", subgroupResults$analysisDescription)
-  onTreatment <- subgroupResults[idx, c("interactionCovariateName",
-                                        "targetSubjects",
-                                        "comparatorSubjects",
-                                        "hrr",
-                                        "p",
-                                        "calibratedP")]
-  itt <- subgroupResults[!idx, c("interactionCovariateName", "hrr", "p", "calibratedP")]
-  colnames(onTreatment)[4:6] <- paste("onTreatment", colnames(onTreatment)[4:6], sep = "_")
-  colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
-  table <- merge(onTreatment, itt)
+  
+  if (any(grepl("on-treatment", subgroupResults$analysisDescription)) && 
+      any(grepl("intent-to-treat", subgroupResults$analysisDescription))) {
+    idx <- grepl("on-treatment", subgroupResults$analysisDescription)
+    onTreatment <- subgroupResults[idx, c("interactionCovariateName",
+                                          "targetSubjects",
+                                          "comparatorSubjects",
+                                          "hrr",
+                                          "p",
+                                          "calibratedP")]
+    itt <- subgroupResults[!idx, c("interactionCovariateName", "hrr", "p", "calibratedP")]
+    colnames(onTreatment)[4:6] <- paste("onTreatment", colnames(onTreatment)[4:6], sep = "_")
+    colnames(itt)[2:4] <- paste("itt", colnames(itt)[2:4], sep = "_")
+    table <- merge(onTreatment, itt)
+  } else {
+    table <- subgroupResults[, c("interactionCovariateName",
+                                 "targetSubjects",
+                                 "comparatorSubjects",
+                                 "hrr",
+                                 "p",
+                                 "calibratedP")]
+  } 
   table$interactionCovariateName <- gsub("Subgroup: ", "", table$interactionCovariateName)
-  table$interactionCovariateName <- gsub(">=", "$\\\\ge$ ", table$interactionCovariateName)
+  if (output == "latex") {
+    table$interactionCovariateName <- gsub(">=", "$\\\\ge$ ", table$interactionCovariateName)
+  }
   table$targetSubjects <- formatC(table$targetSubjects, big.mark = ",", format = "d")
   table$targetSubjects <- gsub("^-", "<", table$targetSubjects)
   table$comparatorSubjects <- formatC(table$comparatorSubjects, big.mark = ",", format = "d")
@@ -296,6 +306,60 @@ plotPs <- function(ps, targetName, comparatorName) {
                          legend.text = theme,
                          axis.text = theme,
                          axis.title = theme)
+  return(plot)
+}
+
+plotAllPs <- function(ps) {
+  ps <- rbind(data.frame(targetName = ps$targetName,
+                         comparatorName = ps$comparatorName,
+                         x = ps$preferenceScore, 
+                         y = ps$targetDensity, 
+                         group = "Target"),
+              data.frame(targetName = ps$targetName,
+                         comparatorName = ps$comparatorName,
+                         x = ps$preferenceScore, 
+                         y = ps$comparatorDensity, 
+                         group = "Comparator"))
+  ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
+  plot <- ggplot2::ggplot(ps, ggplot2::aes(x = x, y = y, color = group, group = group, fill = group)) +
+    ggplot2::geom_density(stat = "identity") +
+    ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    ggplot2::scale_x_continuous("Preference score", limits = c(0, 1)) +
+    ggplot2::scale_y_continuous("Density") +
+    ggplot2::facet_grid(targetName ~ comparatorName) +
+    ggplot2::theme(legend.title = ggplot2::element_blank(),
+          axis.title.x = ggplot2::element_blank(),
+          axis.text.x = ggplot2::element_blank(),
+          axis.ticks.x = ggplot2::element_blank(),
+          axis.title.y = ggplot2::element_blank(),
+          axis.text.y = ggplot2::element_blank(),
+          axis.ticks.y = ggplot2::element_blank(),
+          panel.grid.major = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank(),
+          strip.text.x = ggplot2::element_text(size = 12, angle = 90, vjust = 0),
+          strip.text.y = ggplot2::element_text(size = 12, angle = 0, hjust = 0),
+          panel.spacing = ggplot2::unit(0.1, "lines"),
+          legend.position = "none")
+  return(plot)
+}
+
+
+plotCovariateBalanceScatterPlot <- function(balance, beforeLabel = "Before stratification", afterLabel = "After stratification") {
+  limits <- c(min(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
+                  na.rm = TRUE),
+              max(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
+                  na.rm = TRUE))
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = absAfterMatchingStdDiff)) +
+    ggplot2::geom_point(color = rgb(0, 0, 0.8, alpha = 0.3), shape = 16, size = 2) +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    ggplot2::geom_hline(yintercept = 0) +
+    ggplot2::geom_vline(xintercept = 0) +
+    ggplot2::scale_x_continuous(beforeLabel, limits = limits) +
+    ggplot2::scale_y_continuous(afterLabel, limits = limits) +
+    ggplot2::theme(text = theme)
+  
   return(plot)
 }
 
@@ -502,6 +566,65 @@ plotScatter <- function(controlResults) {
   return(plot)
 }
 
+plotLargeScatter <- function(d, xLabel) {
+  d$Significant <- d$ci95lb > 1 | d$ci95ub < 1
+  
+  oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
+                       meanLabel = paste0(formatC(100 *
+                                                    mean(!d$Significant, na.rm = TRUE), digits = 1, format = "f"), "% of CIs includes 1"))
+  
+  breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
+  themeLA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 0)
+  
+  alpha <- 1 - min(0.95 * (nrow(d)/50000)^0.1, 0.95)
+  plot <- ggplot2::ggplot(d, ggplot2::aes(x = logRr, y = seLogRr)) +
+    ggplot2::geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
+    ggplot2::geom_abline(ggplot2::aes(intercept = 0, slope = 1/qnorm(0.025)),
+                         colour = rgb(0.8, 0, 0),
+                         linetype = "dashed",
+                         size = 1,
+                         alpha = 0.5) +
+    ggplot2::geom_abline(ggplot2::aes(intercept = 0, slope = 1/qnorm(0.975)),
+                         colour = rgb(0.8, 0, 0),
+                         linetype = "dashed",
+                         size = 1,
+                         alpha = 0.5) +
+    ggplot2::geom_point(size = 2, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
+    ggplot2::geom_hline(yintercept = 0) +
+    ggplot2::geom_label(x = log(0.11),
+                        y = 1,
+                        alpha = 1,
+                        hjust = "left",
+                        ggplot2::aes(label = nLabel),
+                        size = 5,
+                        data = oneRow) +
+    ggplot2::geom_label(x = log(0.11),
+                        y = 0.935,
+                        alpha = 1,
+                        hjust = "left",
+                        ggplot2::aes(label = meanLabel),
+                        size = 5,
+                        data = oneRow) +
+    ggplot2::scale_x_continuous(xLabel, limits = log(c(0.1,
+                                                       10)), breaks = log(breaks), labels = breaks) +
+    ggplot2::scale_y_continuous("Standard Error", limits = c(0, 1)) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   axis.text.y = themeRA,
+                   axis.text.x = theme,
+                   axis.title = theme,
+                   legend.key = ggplot2::element_blank(),
+                   strip.text.x = theme,
+                   strip.background = ggplot2::element_blank(),
+                   legend.position = "none")
+  return(plot)
+}
+
+
 
 drawAttritionDiagram <- function(attrition,
                                  targetLabel = "Target",
@@ -660,7 +783,9 @@ judgeEffectiveness <- function(hrLower, hrUpper) {
 }
 
 prettyHr <- function(x) {
-  sprintf("%.2f", x)
+  result <- sprintf("%.2f", x)
+  result[is.na(x) | x > 100] <- "NA"
+  return(result)
 }
 
 goodPropensityScore <- function(value) {

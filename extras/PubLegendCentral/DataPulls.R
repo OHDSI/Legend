@@ -24,9 +24,37 @@ getOutcomeName <- function(connection, outcomeId) {
   return(outcomeName[1, 1])
 }
 
+getIndications <- function(connection) {
+  sql <- "SELECT indication_id, indication_name FROM indication"
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  indications <- querySql(connection, sql)
+  colnames(indications) <- SqlRender::snakeCaseToCamelCase(colnames(indications))
+  return(indications)
+}
+
+getSubgroups <- function(connection) {
+  sql <- "SELECT DISTINCT interaction_covariate_id AS subgroup_id, covariate_name AS subgroup_name 
+    FROM (
+      SELECT DISTINCT interaction_covariate_id
+      FROM cm_interaction_result
+    ) ids
+    INNER JOIN covariate
+    ON interaction_covariate_id = covariate_id"
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  subgroups <- querySql(connection, sql)
+  colnames(subgroups) <- SqlRender::snakeCaseToCamelCase(colnames(subgroups))
+  subgroups$subgroupName <- gsub("Subgroup: ", "", subgroups$subgroupName)
+  return(subgroups)
+}
+
+
 getExposures <- function(connection) {
-  sql <- "SELECT exposure_id, exposure_name, indication_id FROM single_exposure_of_interest
-  UNION ALL SELECT exposure_id, exposure_name, indication_id FROM combi_exposure_of_interest"
+  sql <- "SELECT * FROM (
+    SELECT exposure_id, exposure_name, indication_id FROM single_exposure_of_interest
+    UNION ALL SELECT exposure_id, exposure_name, indication_id FROM combi_exposure_of_interest
+  ) exposure
+  INNER JOIN exposure_group
+  ON exposure.exposure_id = exposure_group.exposure_id;"
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   exposures <- querySql(connection, sql)
   colnames(exposures) <- SqlRender::snakeCaseToCamelCase(colnames(exposures))
@@ -47,6 +75,14 @@ getAnalyses <- function(connection) {
   analyses <- querySql(connection, sql)
   colnames(analyses) <- SqlRender::snakeCaseToCamelCase(colnames(analyses))
   return(analyses)
+}
+
+getDatabases <- function(connection) {
+  sql <- "SELECT * FROM database"
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  databases <- querySql(connection, sql)
+  colnames(databases) <- SqlRender::snakeCaseToCamelCase(colnames(databases))
+  return(databases)
 }
 
 getDatabaseDetails <- function(connection, databaseId) {
@@ -120,8 +156,13 @@ getMainResults <- function(connection,
                            comparatorIds = c(),
                            outcomeIds = c(),
                            databaseIds = c(),
-                           analysisIds = c()) {
-  sql <- "SELECT * FROM cohort_method_result"
+                           analysisIds = c(),
+                           estimatesOnly = FALSE) {
+  if (estimatesOnly) {
+    sql <- "SELECT calibrated_log_rr, calibrated_se_log_rr, calibrated_ci_95_lb, calibrated_ci_95_ub FROM cohort_method_result"
+  } else {
+    sql <- "SELECT * FROM cohort_method_result"
+  }
   parts <- c()
   if (length(targetIds) != 0) {
     parts <- c(parts, paste0("target_id IN (", paste(targetIds, collapse = ", "), ")"))
@@ -152,8 +193,19 @@ getSubgroupResults <- function(connection,
                                comparatorIds = c(),
                                outcomeIds = c(),
                                databaseIds = c(),
-                               analysisIds = c()) {
-  sql <- "SELECT target_id,
+                               analysisIds = c(),
+                               subgroupIds = c(),
+                               estimatesOnly = FALSE) {
+  if (estimatesOnly) {
+    sql <- "
+      SELECT ci_95_lb,
+        ci_95_ub,
+        log_rrr,
+        se_log_rrr
+      FROM cm_interaction_result
+    "
+  } else {
+    sql <- "SELECT target_id,
     comparator_id,
     outcome_id,
     cm_interaction_result.analysis_id,
@@ -181,6 +233,7 @@ getSubgroupResults <- function(connection,
   AND cm_interaction_result.database_id = covariate.database_id
   INNER JOIN cohort_method_analysis
   ON cm_interaction_result.analysis_id = cohort_method_analysis.analysis_id"
+  }
   parts <- c()
   if (length(targetIds) != 0) {
     parts <- c(parts, paste0("target_id IN (", paste(targetIds, collapse = ", "), ")"))
@@ -197,8 +250,12 @@ getSubgroupResults <- function(connection,
                              "')"))
   }
   if (length(analysisIds) != 0) {
-    parts <- c(parts, paste0("analysis_id IN ('", paste(analysisIds, collapse = "', '"), "')"))
+    parts <- c(parts, paste0("cm_interaction_result.analysis_id IN (", paste(analysisIds, collapse = ", "), ")"))
   }
+  if (length(subgroupIds) != 0) {
+    parts <- c(parts, paste0("interaction_covariate_id IN (", paste(subgroupIds, collapse = ", "), ")"))
+  }
+  
   if (length(parts) != 0) {
     sql <- paste(sql, "WHERE", paste(parts, collapse = " AND "))
   }
@@ -317,20 +374,24 @@ getCovariateBalance <- function(connection,
                          "afterMatchingMeanTreated",
                          "afterMatchingMeanComparator",
                          "afterMatchingStdDiff")
+  balance$absBeforeMatchingStdDiff <- abs(balance$beforeMatchingStdDiff)
+  balance$absAfterMatchingStdDiff <- abs(balance$afterMatchingStdDiff)
   return(balance)
 }
 
-getPs <- function(connection, targetId, comparatorId, databaseId) {
-  sql <- "SELECT preference_score,
+getPs <- function(connection, targetIds, comparatorIds, databaseId) {
+  sql <- "SELECT target_id,
+      comparator_id,
+      preference_score,
       target_density,
       comparator_density
       FROM preference_score_dist
-      WHERE target_id = @target_id
-      AND comparator_id = @comparator_id
+      WHERE target_id IN (@target_ids)
+      AND comparator_id IN (@comparator_ids)
       AND database_id = '@database_id'"
   sql <- SqlRender::renderSql(sql,
-                              target_id = targetId,
-                              comparator_id = comparatorId,
+                              target_ids = targetIds,
+                              comparator_ids = comparatorIds,
                               database_id = databaseId)$sql
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   ps <- querySql(connection, sql)
