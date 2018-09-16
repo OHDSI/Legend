@@ -118,7 +118,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(10, maxCores),
@@ -152,7 +152,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(2, maxCores),
@@ -186,7 +186,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(2, maxCores),
@@ -672,7 +672,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                    stratifyByPsArgs = stratifyByPsArgs,
                                                    fitOutcomeModel = TRUE,
                                                    fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
-												   
+
 	# Interactions: add black or african american subgroup
 
     fitOutcomeModelArgsI8998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,
