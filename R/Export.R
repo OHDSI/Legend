@@ -1151,14 +1151,18 @@ prepareKm <- function(i, outcomeModelReference, outputFolder, indicationId) {
         # Can happen when matching and treatment is predictable
         return(NULL)
     }
-    dataTc <- prepareKaplanMeier(population)
+    dataTc <- Legend:::prepareKaplanMeier(population)
+    if (is.null(dataTc)) {
+        # No shared strata
+        return(NULL)
+    }
     dataTc$targetId <- outcomeModelReference$targetId[i]
     dataTc$comparatorId <- outcomeModelReference$comparatorId[i]
     dataTc$outcomeId <- outcomeModelReference$outcomeId[i]
     dataTc$analysisId <- outcomeModelReference$analysisId[i]
 
     population$treatment <- 1 - population$treatment
-    dataCt <- prepareKaplanMeier(population)
+    dataCt <- Legend:::prepareKaplanMeier(population)
     dataCt$targetId <- outcomeModelReference$comparatorId[i]
     dataCt$comparatorId <- outcomeModelReference$targetId[i]
     dataCt$outcomeId <- outcomeModelReference$outcomeId[i]
@@ -1174,10 +1178,27 @@ prepareKaplanMeier <- function(population) {
     population$y[population$outcomeCount != 0] <- 1
     population$stratumSizeT <- 1
     strataSizesT <- aggregate(stratumSizeT ~ stratumId, population[population$treatment == 1, ], sum)
-    strataSizesC <- aggregate(stratumSizeT ~ stratumId, population[population$treatment == 0, ], sum)
-    colnames(strataSizesC)[2] <- "stratumSizeC"
-    weights <- merge(strataSizesT, strataSizesC)
-    weights$weight <- weights$stratumSizeT/weights$stratumSizeC
+    if (max(strataSizesT$stratumSizeT) == 1) {
+        # variable ratio matching: use propensity score to compute IPTW
+        if (is.null(population$propensityScore)) {
+            stop("Variable ratio matching detected, but no propensity score found")
+        }
+        weights <- aggregate(propensityScore ~ stratumId, population, mean)
+        if (max(weights$propensityScore) > 0.99999) {
+            return(NULL)
+        }
+        weights$weight <- weights$propensityScore / (1 - weights$propensityScore)
+    } else {
+        # stratification: infer probability of treatment from subject counts
+        strataSizesC <- aggregate(stratumSizeT ~ stratumId, population[population$treatment == 0, ], sum)
+        colnames(strataSizesC)[2] <- "stratumSizeC"
+        weights <- merge(strataSizesT, strataSizesC)
+        if (nrow(weights) == 0) {
+            warning("No shared strata between target and comparator")
+            return(NULL)
+        }
+        weights$weight <- weights$stratumSizeT/weights$stratumSizeC
+    }
     population <- merge(population, weights[, c("stratumId", "weight")])
     population$weight[population$treatment == 1] <- 1
     idx <- population$treatment == 1
