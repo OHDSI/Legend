@@ -39,7 +39,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -321,7 +321,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -603,7 +603,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -885,7 +885,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -1167,7 +1167,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -1449,7 +1449,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -1731,7 +1731,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
@@ -2013,7 +2013,7 @@
       "addExposureDaysToStart": false,
       "riskWindowEnd": 0,
       "addExposureDaysToEnd": true,
-      "censorAtNewRiskWindow": false,
+      "censorAtNewRiskWindow": true,
       "attr_class": "args"
     },
     "createPs": true,
