@@ -22,6 +22,10 @@ shinyUI(
             conditionalPanel(condition = "$('html').hasClass('shiny-busy')",
                              tags$div("Procesing...",id = "loadmessage")),
             tabsetPanel(id = "mainTabsetPanel",
+                        tabPanel("About",
+                                 HTML("</BR><P>This app is under development. All results are preliminary and may change without notice.</P>"),
+                                 HTML("</BR><P>Do not use.</P>")
+                        ),
                         tabPanel("Specific research questions",
                                  fluidRow(
                                    column(3,
