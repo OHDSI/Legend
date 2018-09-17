@@ -15,24 +15,16 @@
 \usepackage{longtable}
 
 <<params, echo=FALSE, message=FALSE, comment=FALSE, results=hide>>=
-params <- list(
-              # databaseId = "MDCR",
-              #  # targetId = 715259,
-              #  # comparatorId = 739138,
-              #  targetId = 739138,
-              #  comparatorId = 715259,
-              #  outcomeId = 18,
-              targetId = 1318853,
-              comparatorId = 1308842,
-              outcomeId = 815029,
-              databaseId = "JMDC",
+params <- list(databaseId = DATABASE_ID_TAG,
+               targetId = TARGET_ID_TAG,
+               comparatorId = COMPARATOR_ID_TAG,
+               outcomeId = OUTCOME_ID_TAG,
                primary = 1,
                ot = 1,
                itt = 2,
                matchOt = 3,
                matchItt = 4,
-               indication = tolower("major depressive disorder")#,
-               #databaseName = "Truven MarketScan Multi-State Medicaid"
+               indication = tolower("major depressive disorder")
                )
 @
 
