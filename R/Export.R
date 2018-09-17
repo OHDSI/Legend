@@ -1106,6 +1106,7 @@ exportDiagnostics <- function(indicationId,
     write.csv(data, fileName, row.names = FALSE)
 
     ParallelLogger::logInfo("- kaplan_meier_dist table")
+    ParallelLogger::logInfo("  Computing KM curves")
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
     outcomeModelReference1 <- readRDS(pathToRds)
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
@@ -1124,29 +1125,68 @@ exportDiagnostics <- function(indicationId,
                                                        "comparatorId",
                                                        "outcomeId",
                                                        "analysisId")]
-    cluster <- ParallelLogger::makeCluster(min(6, maxCores))
-    data <- ParallelLogger::clusterApply(cluster,
-                                         1:nrow(outcomeModelReference),
-                                         Legend:::prepareKm,
-                                         outcomeModelReference = outcomeModelReference,
-                                         outputFolder = outputFolder,
-                                         indicationId = indicationId)
+    tempFolder <- file.path(exportFolder, "temp")
+    if (!file.exists(tempFolder)) {
+        dir.create(tempFolder)
+    }
+    cluster <- ParallelLogger::makeCluster(min(10, maxCores))
+    tasks <- split(outcomeModelReference, seq(nrow(outcomeModelReference)))
+    ParallelLogger::clusterApply(cluster,
+                                 tasks,
+                                 Legend:::prepareKm,
+                                 outputFolder = outputFolder,
+                                 tempFolder = tempFolder,
+                                 indicationId = indicationId,
+                                 databaseId = databaseId,
+                                 minCellCount = minCellCount)
     ParallelLogger::stopCluster(cluster)
-    data <- do.call("rbind", data)
-    data$databaseId <- databaseId
-    data <- enforceMinCellValue(data, "targetAtRisk", minCellCount)
-    data <- enforceMinCellValue(data, "comparatorAtRisk", minCellCount)
-    colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
-    fileName <- file.path(exportFolder, "kaplan_meier_dist.csv")
-    write.csv(data, fileName, row.names = FALSE)
-    rm(data)  # Free up memory
+    ParallelLogger::logInfo("  Writing to single csv file")
+    saveKmToCsv <- function(file, first, outputFile) {
+        data <- readRDS(file)
+        colnames(data) <- SqlRender::camelCaseToSnakeCase(colnames(data))
+        write.table(x = data,
+                    file = outputFile,
+                    row.names = FALSE,
+                    col.names = first,
+                    sep = ",",
+                    dec = ".",
+                    qmethod = "double",
+                    append = !first)
+    }
+    outputFile <- file.path(exportFolder, "kaplan_meier_dist.csv")
+    files <- list.files(tempFolder, "km_.*.rds", full.names = TRUE)
+    saveKmToCsv(files[1], first = TRUE, outputFile = outputFile)
+    plyr::l_ply(files[2:length(files)], saveKmToCsv, first = FALSE, outputFile = outputFile, .progress = "text")
+
+    unlink(tempFolder, recursive = TRUE)
 }
 
-prepareKm <- function(i, outcomeModelReference, outputFolder, indicationId) {
+prepareKm <- function(task,
+                      outputFolder,
+                      tempFolder,
+                      indicationId,
+                      databaseId,
+                      minCellCount) {
+    ParallelLogger::logTrace("Preparing KM plot for target ",
+                             task$targetId,
+                             ", comparator ",
+                             task$comparatorId,
+                             ", outcome ",
+                             task$outcomeId,
+                             ", analysis ",
+                             task$analysisId)
+    outputFileName <- file.path(tempFolder, sprintf("km_t%s_c%s_o%s_a%s.rds",
+                                                    task$targetId,
+                                                    task$comparatorId,
+                                                    task$outcomeId,
+                                                    task$analysisId))
+    if (file.exists(outputFileName)) {
+        return(NULL)
+    }
     population <- readRDS(file.path(outputFolder,
                                     indicationId,
                                     "cmOutput",
-                                    outcomeModelReference$strataFile[i]))
+                                    task$strataFile))
     if (nrow(population) == 0) {
         # Can happen when matching and treatment is predictable
         return(NULL)
@@ -1156,20 +1196,21 @@ prepareKm <- function(i, outcomeModelReference, outputFolder, indicationId) {
         # No shared strata
         return(NULL)
     }
-    dataTc$targetId <- outcomeModelReference$targetId[i]
-    dataTc$comparatorId <- outcomeModelReference$comparatorId[i]
-    dataTc$outcomeId <- outcomeModelReference$outcomeId[i]
-    dataTc$analysisId <- outcomeModelReference$analysisId[i]
-
+    dataTc$targetId <- task$targetId
+    dataTc$comparatorId <- task$comparatorId
+    dataTc$outcomeId <- task$outcomeId
+    dataTc$analysisId <- task$analysisId
     population$treatment <- 1 - population$treatment
     dataCt <- Legend:::prepareKaplanMeier(population)
-    dataCt$targetId <- outcomeModelReference$comparatorId[i]
-    dataCt$comparatorId <- outcomeModelReference$targetId[i]
-    dataCt$outcomeId <- outcomeModelReference$outcomeId[i]
-    dataCt$analysisId <- outcomeModelReference$analysisId[i]
-
+    dataCt$targetId <- task$comparatorId
+    dataCt$comparatorId <- task$targetId
+    dataCt$outcomeId <- task$outcomeId
+    dataCt$analysisId <- task$analysisId
     data <- rbind(dataTc, dataCt)
-    return(data)
+    data$databaseId <- databaseId
+    data <- enforceMinCellValue(data, "targetAtRisk", minCellCount)
+    data <- enforceMinCellValue(data, "comparatorAtRisk", minCellCount)
+    saveRDS(data, outputFileName)
 }
 
 prepareKaplanMeier <- function(population) {
