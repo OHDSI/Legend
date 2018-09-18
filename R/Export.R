@@ -423,7 +423,7 @@ exportMetadata <- function(indicationId,
     attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
     attritionFromDb$targetId[attritionFromDb$targetId == -1] <- NA
     attritionFromDb$comparatorId[attritionFromDb$comparatorId == -1] <- NA
-    attritionFromDbTc <- attritionFromDb[attritionFromDb$targetId != -1, ]
+    attritionFromDbTc <- attritionFromDb[!is.na(attritionFromDb$targetId), ]
     attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc,
                                                                           "targetId",
                                                                           "comparatorId"))
