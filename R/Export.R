@@ -677,7 +677,7 @@ exportMainResults <- function(indicationId,
     temp <- 1/interactionsCt$ci95Lb
     interactionsCt$ci95Lb <- 1/interactionsCt$ci95Ub
     interactionsCt$ci95Ub <- temp
-    interactions <- rbind(interactionsCt)
+    interactions <- rbind(interactions, interactionsCt)
     interactions$databaseId <- databaseId
 
     interactions <- enforceMinCellValue(interactions, "targetSubjects", minCellCount)
