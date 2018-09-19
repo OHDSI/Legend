@@ -107,6 +107,7 @@ synthesizePositiveControls <- function(connectionDetails,
     DatabaseConnector::disconnect(conn)
 
     ParallelLogger::logTrace("Calling injectSignals function")
+    options(skipPositiveControlUpload = TRUE)
     summ <- MethodEvaluation::injectSignals(connectionDetails = connectionDetails,
                                             cdmDatabaseSchema = cdmDatabaseSchema,
                                             oracleTempSchema = cdmDatabaseSchema,
@@ -154,58 +155,11 @@ synthesizePositiveControls <- function(connectionDetails,
         stop("Collision between original outcome IDs and synthetic outcome IDs")
     }
 
-    ParallelLogger::logInfo("- Fetching new outcomes from server")
-    conn <- DatabaseConnector::connect(connectionDetails)
-
-    # Only fetch outcomes for subjects in the exposure cohorts, because only those are used in a cohort
-    # method design:
-    exposures <- readRDS(file.path(signalInjectionFolder, "exposures.rds"))
-    subjectIds <- data.frame(subject_id = unique(exposures$personId))
-
-    # Use non-temp table in case bulk loading is enabled:
-    subjectsTableName <- paste0(cohortDatabaseSchema,
-                                ".temp_subjects_",
-                                paste(sample(letters, 5), collapse = ""))
-    DatabaseConnector::insertTable(connection = conn,
-                                   tableName = subjectsTableName,
-                                   data = subjectIds,
-                                   dropTableIfExists = TRUE,
-                                   createTable = TRUE,
-                                   tempTable = FALSE,
-                                   oracleTempSchema = oracleTempSchema,
-                                   progressBar = TRUE)
-    injectedOutcomesFolder <- file.path(indicationFolder, "injectedOutcomes")
-    if (!file.exists(injectedOutcomesFolder)) {
-        dir.create(injectedOutcomesFolder)
-    }
-    loadPositiveControlOutcomes <- function(exposureSubset) {
-        sql <- SqlRender::loadRenderTranslateSql("GetInjectedOutcomes.sql",
-                                                 "Legend",
-                                                 dbms = connectionDetails$dbms,
-                                                 output_database_schema = cohortDatabaseSchema,
-                                                 output_table = outcomeCohortTable,
-                                                 cohort_ids = exposureSubset$newOutcomeId,
-                                                 subjects_table = subjectsTableName)
-        injectedOutcomes <- DatabaseConnector::querySql(conn, sql)
-        colnames(injectedOutcomes) <- SqlRender::snakeCaseToCamelCase(colnames(injectedOutcomes))
-        fileName <- file.path(injectedOutcomesFolder,
-                              paste0("outcomes_e", exposureSubset$exposureId[1], ".rds"))
-        saveRDS(injectedOutcomes, fileName)
-        return(NULL)
-    }
-    exposureSubsets <- split(summ, summ$exposureId)
-    plyr::l_ply(exposureSubsets, loadPositiveControlOutcomes, .progress = "text")
-
-    # Drop dummy and temp table:
+    # Drop dummy table:
     sql <- "TRUNCATE TABLE @cohort_database_schema.@dummy_table; DROP TABLE @cohort_database_schema.@dummy_table;"
     sql <- SqlRender::renderSql(sql,
                                 cohort_database_schema = cohortDatabaseSchema,
                                 dummy_table = dummyTable)$sql
-    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-
-    sql <- "TRUNCATE TABLE @subjects_table; DROP TABLE @subjects_table;"
-    sql <- SqlRender::renderSql(sql, subjects_table = subjectsTableName)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
