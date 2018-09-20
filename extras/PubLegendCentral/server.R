@@ -81,7 +81,7 @@ shinyServer(function(input, output, session) {
                        URLencode(input$query),
                        "'>",
                        titles,
-                       "</a></br><i>Annals of OHDSI</i>, October, 2018</br>")
+                       "</a></br><i>LEGEND version 1.0</i>, October 2018</br>")
       options <- list(pageLength = 15,
                       searching = FALSE,
                       lengthChange = TRUE,
@@ -103,20 +103,37 @@ shinyServer(function(input, output, session) {
     if (is.null(tcoDb)) {
       return(NULL)
     } else {
+      
+      targetName <- uncapitalize(exposures$exposureName[match(tcoDb$targetId, exposures$exposureId)])
+      comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
+      outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])
+      indicationId <- uncapitalize(exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)])
+      
       results <- getMainResults(connection,
                                 targetIds = tcoDb$targetId,
                                 comparatorIds = tcoDb$comparatorId,
                                 outcomeIds = tcoDb$outcomeId,
                                 databaseIds = tcoDb$databaseId)
-      mainResult <- results[results$analysisId == 1, ]
-      hr <- sprintf("%.2f (%.2f - %.2f).", mainResult$rr, mainResult$ci95lb, mainResult$ci95ub)
-
+      
+      studyPeriod <- getStudyPeriod(connection = connection,
+                                    targetId = tcoDb$targetId,
+                                    comparatorId = tcoDb$comparatorId,
+                                    databaseId = tcoDb$databaseId)      
+      
+      authors <- createAuthors()
+      
+      abstract <- createAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
+      
       title <- createTitle(tcoDb)
-      abstract <- div(em("Annals of OHDSI"),
+      
+      abstract <- div(em("LEGEND version 1.0"),
                       h2(title),
+                      h3("Authors"),
+                      p(authors),
                       h3("Abstract"),
-                      p("This is a really cool paper"),
-                      p(paste("We observed a hazard ratio of", hr)))
+                      p(abstract),
+                      p("This is an", strong("automatically"), "generated document.")
+                      )
       return(abstract)
     }
   })

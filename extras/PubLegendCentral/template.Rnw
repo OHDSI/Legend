@@ -19,12 +19,12 @@ params <- list(databaseId = DATABASE_ID_TAG,
                targetId = TARGET_ID_TAG,
                comparatorId = COMPARATOR_ID_TAG,
                outcomeId = OUTCOME_ID_TAG,
+               indication = uncapitalize("INDICATION_ID_TAG"),
                primary = 1,
                ot = 1,
                itt = 2,
                matchOt = 3,
-               matchItt = 4,
-               indication = tolower("major depressive disorder")
+               matchItt = 4
                )
 @
 
@@ -35,8 +35,8 @@ library(Legend)
 library(knitr)
 library(xtable)
 library(ggplot2)
-source("DataPulls.R")
-source("PlotsAndTables.R")
+source("CURRENT_DIRECTORY/DataPulls.R")
+source("CURRENT_DIRECTORY/PlotsAndTables.R")
 options(knitr.kable.NA = '')
 
 extraCriteria <- list(
@@ -129,15 +129,15 @@ if (!useStoredObject) {
                                 analysisId = 2)
 } else {
     load("paperData.rda")
-    targetName <- tolower(targetName)
-    comparatorName <- tolower(comparatorName)
-    outcomeName <- tolower(outcomeName)
+    targetName <- uncapitalize(targetName)
+    comparatorName <- uncapitalize(comparatorName)
+    outcomeName <- uncapitalize(outcomeName)
 }
 
 
-targetName <- tolower(targetName)
-comparatorName <- tolower(comparatorName)
-outcomeName <- tolower(outcomeName)
+targetName <- uncapitalize(targetName)
+comparatorName <- uncapitalize(comparatorName)
+outcomeName <- uncapitalize(outcomeName)
 
 databaseName <- databaseDetails$databaseName
 
@@ -379,7 +379,7 @@ Table \ref{tab:demographics} compares base-line characteristics between patient 
   & \multicolumn{1}{c}{StdDiff} \\
   \hline
 <<features, echo=FALSE, results=tex, cache=TRUE>>==
-table <- prepareTable1(balance)
+table <- prepareTable1(balance, pathToCsv = "CURRENT_DIRECTORY/Table1Specs.csv")
 table <- table[3:nrow(table),]
 
 print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")),
