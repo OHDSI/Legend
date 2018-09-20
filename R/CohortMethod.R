@@ -118,7 +118,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(10, maxCores),
@@ -152,7 +152,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(2, maxCores),
@@ -186,7 +186,7 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                 createStudyPopThreads = min(4, maxCores),
                                 createPsThreads = max(1, round(maxCores/10)),
                                 psCvThreads = min(10, maxCores),
-                                trimMatchStratifyThreads = min(4, maxCores),
+                                trimMatchStratifyThreads = min(10, maxCores),
                                 prefilterCovariatesThreads = min(5, maxCores),
                                 fitOutcomeModelThreads = min(10, maxCores),
                                 outcomeCvThreads = min(2, maxCores),
@@ -372,12 +372,17 @@ createAnalysesDetails <- function(outputFolder) {
     # dummy args, will never be used because data objects have already been created:
     getDbCmDataArgs <- CohortMethod::createGetDbCohortMethodDataArgs(covariateSettings = FeatureExtraction::createCovariateSettings())
 
+    # Note: censoring at new risk window will only affect depression, as hypertension cannot
+    # have subsequent first-time user exposure.
+    # The censoring is to prevent bias towards the null, which occurs when exposure time
+    # of one exposure overlaps with the other.
     createStudyPopArgsOnTreatment <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
                                                                                    removeSubjectsWithPriorOutcome = TRUE,
                                                                                    riskWindowStart = 0,
                                                                                    riskWindowEnd = 0,
                                                                                    addExposureDaysToEnd = TRUE,
-                                                                                   minDaysAtRisk = 1)
+                                                                                   minDaysAtRisk = 1,
+                                                                                   censorAtNewRiskWindow = TRUE)
 
     createStudyPopArgsItt <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
                                                                            removeSubjectsWithPriorOutcome = TRUE,
@@ -672,7 +677,7 @@ createAnalysesDetails <- function(outputFolder) {
                                                    stratifyByPsArgs = stratifyByPsArgs,
                                                    fitOutcomeModel = TRUE,
                                                    fitOutcomeModelArgs = fitOutcomeModelArgsI7998)
-												   
+
 	# Interactions: add black or african american subgroup
 
     fitOutcomeModelArgsI8998 <- CohortMethod::createFitOutcomeModelArgs(stratified = TRUE,

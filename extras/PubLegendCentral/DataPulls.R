@@ -32,6 +32,22 @@ getIndications <- function(connection) {
   return(indications)
 }
 
+getSubgroups <- function(connection) {
+  sql <- "SELECT DISTINCT interaction_covariate_id AS subgroup_id, covariate_name AS subgroup_name 
+    FROM (
+      SELECT DISTINCT interaction_covariate_id
+      FROM cm_interaction_result
+    ) ids
+    INNER JOIN covariate
+    ON interaction_covariate_id = covariate_id"
+  sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
+  subgroups <- querySql(connection, sql)
+  colnames(subgroups) <- SqlRender::snakeCaseToCamelCase(colnames(subgroups))
+  subgroups$subgroupName <- gsub("Subgroup: ", "", subgroups$subgroupName)
+  return(subgroups)
+}
+
+
 getExposures <- function(connection) {
   sql <- "SELECT * FROM (
     SELECT exposure_id, exposure_name, indication_id FROM single_exposure_of_interest
@@ -188,8 +204,19 @@ getSubgroupResults <- function(connection,
                                comparatorIds = c(),
                                outcomeIds = c(),
                                databaseIds = c(),
-                               analysisIds = c()) {
-  sql <- "SELECT target_id,
+                               analysisIds = c(),
+                               subgroupIds = c(),
+                               estimatesOnly = FALSE) {
+  if (estimatesOnly) {
+    sql <- "
+      SELECT ci_95_lb,
+        ci_95_ub,
+        log_rrr,
+        se_log_rrr
+      FROM cm_interaction_result
+    "
+  } else {
+    sql <- "SELECT target_id,
     comparator_id,
     outcome_id,
     cm_interaction_result.analysis_id,
@@ -217,6 +244,7 @@ getSubgroupResults <- function(connection,
   AND cm_interaction_result.database_id = covariate.database_id
   INNER JOIN cohort_method_analysis
   ON cm_interaction_result.analysis_id = cohort_method_analysis.analysis_id"
+  }
   parts <- c()
   if (length(targetIds) != 0) {
     parts <- c(parts, paste0("target_id IN (", paste(targetIds, collapse = ", "), ")"))
@@ -233,8 +261,12 @@ getSubgroupResults <- function(connection,
                              "')"))
   }
   if (length(analysisIds) != 0) {
-    parts <- c(parts, paste0("analysis_id IN ('", paste(analysisIds, collapse = "', '"), "')"))
+    parts <- c(parts, paste0("cm_interaction_result.analysis_id IN (", paste(analysisIds, collapse = ", "), ")"))
   }
+  if (length(subgroupIds) != 0) {
+    parts <- c(parts, paste0("interaction_covariate_id IN (", paste(subgroupIds, collapse = ", "), ")"))
+  }
+  
   if (length(parts) != 0) {
     sql <- paste(sql, "WHERE", paste(parts, collapse = " AND "))
   }
@@ -353,6 +385,8 @@ getCovariateBalance <- function(connection,
                          "afterMatchingMeanTreated",
                          "afterMatchingMeanComparator",
                          "afterMatchingStdDiff")
+  balance$absBeforeMatchingStdDiff <- abs(balance$beforeMatchingStdDiff)
+  balance$absAfterMatchingStdDiff <- abs(balance$afterMatchingStdDiff)
   return(balance)
 }
 

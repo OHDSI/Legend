@@ -199,6 +199,8 @@ assessPropensityModels <- function(connectionDetails,
     if (!file.exists(assessmentExportFolder)) {
         dir.create(assessmentExportFolder, recursive = TRUE)
     }
+    ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "logAssesPropensityModels.txt"))
+
 
     ParallelLogger::logInfo("Sampling cohorts for propensity model feasibility")
     sql <- SqlRender::loadRenderTranslateSql("SampleCohortsForPsFeasibility.sql",
@@ -356,7 +358,7 @@ assessPropensityModels <- function(connectionDetails,
     write.csv(data, file.path(assessmentExportFolder, "aucs.csv"), row.names = FALSE)
 
     zipName <- file.path(assessmentExportFolder,
-                         sprintf("PropensityModelAssessment.zip%s%s.zip", indicationId, databaseId))
+                         sprintf("PropensityModelAssessment%s%s.zip", indicationId, databaseId))
     files <- list.files(assessmentExportFolder, pattern = ".*\\.csv$")
     oldWd <- setwd(assessmentExportFolder)
     on.exit(setwd(oldWd))
