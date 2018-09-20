@@ -85,6 +85,9 @@ deleteExistingData <- function(data, tableName, dropped) {
     if (!is.null(toDrop$database_id)) {
         toDrop$database_id <- as.character(toDrop$database_id)
     }
+    if (!is.null(toDrop$exposure_group)) {
+        toDrop$exposure_group <- as.character(toDrop$exposure_group)
+    }
     if (!is.null(dropped)) {
         dropped$alreadyDropped <- TRUE
         toDrop <- merge(toDrop, dropped, all.x = TRUE)
