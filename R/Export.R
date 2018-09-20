@@ -226,8 +226,17 @@ exportExposures <- function(indicationId, outputFolder, exportFolder, databaseId
 
 
     ParallelLogger::logInfo("- exposure_group table")
+    pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
+    exposuresOfInterest <- read.csv(pathToCsv)
     exposureGroup <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, c("cohortId",
                                                                                              "type")]
+    pathToCsv <- file.path(outputFolder, indicationId, "exposureCombis.csv")
+    if (file.exists(pathToCsv)) {
+        combiExposures <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+        exposureGroup <- rbind(exposureGroup,
+                               data.frame(cohortId = combiExposures$cohortDefinitionId,
+                                          type = combiExposures$exposureType))
+    }
     colnames(exposureGroup) <- c("exposure_id", "exposure_group")
     fileName <- file.path(exportFolder, "exposure_group.csv")
     write.csv(exposureGroup, fileName, row.names = FALSE)
