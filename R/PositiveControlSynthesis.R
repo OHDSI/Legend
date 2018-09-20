@@ -155,6 +155,7 @@ synthesizePositiveControls <- function(connectionDetails,
         stop("Collision between original outcome IDs and synthetic outcome IDs")
     }
 
+    conn <- DatabaseConnector::connect(connectionDetails)
     # Drop dummy table:
     sql <- "TRUNCATE TABLE @cohort_database_schema.@dummy_table; DROP TABLE @cohort_database_schema.@dummy_table;"
     sql <- SqlRender::renderSql(sql,
