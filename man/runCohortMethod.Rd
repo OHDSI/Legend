@@ -4,7 +4,8 @@
 \alias{runCohortMethod}
 \title{Run the cohort method package}
 \usage{
-runCohortMethod(outputFolder, indicationId = "Depression", maxCores = 4)
+runCohortMethod(outputFolder, indicationId = "Depression",
+  maxCores = 4)
 }
 \arguments{
 \item{outputFolder}{Name of local folder to place results; make sure to use forward slashes (/).
