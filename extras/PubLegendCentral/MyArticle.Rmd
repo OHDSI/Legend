@@ -112,6 +112,10 @@ footer_contents: OHDSI version 1.0
 
 # Produce a pinp document
 output: Legend::legend_report
+pnas_type: pnasresearcharticle
+bibliography: pnas-sample.bib
+csl: pnas.csl
+#output: rticles::pnas_article
 
 author_declaration: MJS and PBR are employees and share-holders of Janssen Research.  MAS receives contract support from Janssen Research.
 
@@ -329,15 +333,53 @@ Empirical calibration serves as an important diagnostic tool to evaluate if resi
 
 ## Population characteristics
 
-Figure \ref{fig:attrition} diagrams the inclusion of study subjects from the `r params$databaseId` database under the on-treatment with stratification design.
-```{r, attrition_plot, echo=FALSE, cache=TRUE, fig.align="center", fig.width=6, fig.height=10, out.width = '90%'}
+```{r, attrition_plot, echo=FALSE, cache=TRUE, fig.align="center", fig.width=6, fig.height=10, out.width = '90%', fig.cap=paste("\\textbf{Attrition diagram for selecting new-users of", targetName, "and",  comparatorName, "from the", params$databaseId, "database.\\label{fig:attrition}}")}
 plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
 plot
-suppressMessages(ggsave("attrition.pdf", plot,
-                        width = 6, height = 10, units = "in"))
+# suppressMessages(ggsave("attrition.pdf", plot,
+#                         width = 6, height = 10, units = "in"))
 ```
+
+Figure \ref{fig:attrition} diagrams the inclusion of study subjects from the `r params$databaseId` database under the on-treatment with stratification design.
 We augment these counts with cohort sizes we identify for the remaining designs in Table \ref{tab:power}.
 This table also reports total patient follow-up time, numbers of `r outcomeName` events these patients experience and unadjusted incidence rates.
+\begin{table*}
+\caption{\textbf{Patient cohorts.}
+Target (T) cohort is `r targetName` new-users.  Comparative (C) cohort is `r comparatorName` new-users.
+We report total number of patients, follow-up time (in years), number of `r outcomeName` events, and event incidence rate (IR) per 1,000 patient years (PY) in patient cohorts, as well as the their minimum detectable relative risk (MDRR).
+Note that the IR does not account for any stratification or matching.
+}\label{tab:power}
+\vspace*{-0.5em}
+\centering{
+\begin{tabular}{lrrrrrrrrr}
+\hline
+ &
+\multicolumn{2}{c}{Patients} &
+\multicolumn{2}{c}{PYs} &
+\multicolumn{2}{c}{Events} &
+\multicolumn{2}{c}{IR} &
+\\
+\multicolumn{1}{c}{Design} &
+\multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
+\multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
+\multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
+\multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
+\multicolumn{1}{c}{MDRR} \\
+\hline
+```{r, outcomes, echo=FALSE, results="asis", cache=TRUE}
+table <- preparePowerTable(mainResults, analyses)
+
+print(xtable(table, format = "latex"),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+```
+\hline
+\end{tabular}
+}
+\end{table*}
 
 ## Author Affiliations 
 
@@ -375,12 +417,6 @@ style, please use `biblio-style: style` in the YAML header.
 The PNAS sample included a fixed PNG image here, but this document prefers
 to show the results and embedding of _R_ code. 
 
-```{r figex, fig.width=3, fig.height=3, cache=TRUE, echo=TRUE, fig.cap="Narrow ggplot2 figure"}
-library(ggplot2)
-ggplot(mtcars, aes(wt, mpg)) +
-    geom_point(size=3, aes(colour=factor(cyl))) +
-    theme(legend.position="none")
-```
 
 Here we use a standard knitr bloc with explicit options for
 
@@ -403,36 +439,17 @@ figure. To insert a figure wider than one column, please use the
 One (roundabout) way of doing this is to _not_ actually plot a figure, but to
 save it in a file as the following segment shows:
 
-```{r densityPlot, echo=TRUE}
-library(ggplot2)
-p <- ggplot(data = midwest,
-            mapping = aes(x = area,
-                          fill = state,
-                          color = state)) +
-    geom_density(alpha = 0.3)
-## save to file
-suppressMessages(ggsave("densities.pdf", p))
-```
 
 This file is then included via standard LaTeX commands.
 
-\begin{figure*}
-  \begin{center}
-    \includegraphics[width=0.66\textwidth, height=3.5in]{densities} 
-  \end{center}
-  \caption{Wide ggplot2 figure}\label{fig}
-\end{figure*}
+
 
 
 ## Typeset Code (But Do Not Run It) 
 
 We can also just show code.
 
-```r
-xx <- faithful[,"eruptions"]
-fit <- density(xx)
-plot(fit)
-```
+
 
 This simply used a pandoc bloc started and ended by three backticks,
 with `r` as the language choice.  Similarly, _many_ other languages
