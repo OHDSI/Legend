@@ -5,6 +5,7 @@ params:
     comparatorId: 40226742
     outcomeId: 2
     indicationId: "hypertension"
+    root: "."
     primary: 1
     ot: 1
     itt: 2
@@ -285,7 +286,6 @@ This LEGEND document reports the risk of `r outcomeName` between new users of `r
 ## Data source
 
 We conduct a new-user cohort study comparing new users of `r targetName` with new users of `r comparatorName` in the `r databaseName` (`r params$databaseId`) database encoded in the Observational Medical Outcomes Partnership (OMOP) common data model (CDM) version 5 \citep{hripcsak2015observational,overhage2012validation,ryan2013empirical}.
-[TODO FIX DATABASE DESCRIPTION]
 `r sub(paste0(".*\\(",databaseDetails$databaseId,"\\)"), paste0("The ", databaseDetails$databaseId), databaseDetails$description)`
 The study period spans from `r studyPeriod$minDate` to `r studyPeriod$maxDate`.
 
@@ -333,16 +333,14 @@ Empirical calibration serves as an important diagnostic tool to evaluate if resi
 
 ## Population characteristics
 
-```{r, attrition_plot, echo=FALSE, cache=TRUE, fig.align="center", fig.width=6, fig.height=10, out.width = '90%', fig.cap=paste("\\textbf{Attrition diagram for selecting new-users of", targetName, "and",  comparatorName, "from the", params$databaseId, "database.\\label{fig:attrition}}")}
-plot <- drawAttritionDiagram(attrition, targetName, comparatorName)
-plot
-# suppressMessages(ggsave("attrition.pdf", plot,
-#                         width = 6, height = 10, units = "in"))
+```{r, attrition_plot, echo=FALSE, cache=TRUE, warning=FALSE, fig.align="center", fig.width=6, fig.height=10, out.width = '90%', fig.cap=paste("\\textbf{Attrition diagram for selecting new-users of", targetName, "and",  comparatorName, "from the", params$databaseId, "database.\\label{fig:attrition}}")}
+drawAttritionDiagram(attrition, targetName, comparatorName)
 ```
 
 Figure \ref{fig:attrition} diagrams the inclusion of study subjects from the `r params$databaseId` database under the on-treatment with stratification design.
 We augment these counts with cohort sizes we identify for the remaining designs in Table \ref{tab:power}.
 This table also reports total patient follow-up time, numbers of `r outcomeName` events these patients experience and unadjusted incidence rates.
+Table \ref{tab:demographics} compares base-line characteristics between patient cohorts.
 \begin{table*}
 \caption{\textbf{Patient cohorts.}
 Target (T) cohort is `r targetName` new-users.  Comparative (C) cohort is `r comparatorName` new-users.
@@ -365,134 +363,198 @@ Note that the IR does not account for any stratification or matching.
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{MDRR} \\
-\hline
-```{r, outcomes, echo=FALSE, results="asis", cache=TRUE}
+```{r, outcomes, echo=FALSE, results="asis", cache=TRUE, warning=FALSE}
 table <- preparePowerTable(mainResults, analyses)
 
 print(xtable(table, format = "latex"),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = NULL,
+      hline.after = c(0, nrow(table)),
       only.contents = TRUE,
       sanitize.text.function = identity)
 ```
-\hline
 \end{tabular}
 }
 \end{table*}
 
-## Author Affiliations 
+\begin{table}
+\caption{\textbf{Patient demographics.} We report the standardized difference of population means (StdDiff) before and after stratification for selected base-line patient characteristics.}\label{tab:demographics}
+\vspace*{-0.5em}
+\centerline{
+\resizebox{0.5\textwidth}{!}{
+\begin{tabular}{lrrrrrr}
+\hline
+& \multicolumn{3}{c}{Before stratification}
+& \multicolumn{3}{c}{After stratification} \\
+\multicolumn{1}{c}{Characteristic}
+  & \multicolumn{1}{c}{T (\%)}
+  & \multicolumn{1}{c}{C (\%)}
+  & \multicolumn{1}{c}{StdDiff}
+  & \multicolumn{1}{c}{T (\%)}
+  & \multicolumn{1}{c}{C (\%)}
+  & \multicolumn{1}{c}{StdDiff} \\
+```{r, features, echo=FALSE, results="asis", cache=TRUE, warning=FALSE}
+table <- prepareTable1(balance, pathToCsv = file.path(params$root, "Table1Specs.csv"))
+table <- table[3:nrow(table),]
 
-Per common academic best practice, you can include your department,
-institution, and complete address, with the ZIP/postal code, for each
-author. Use lower case letters to match authors with institutions, as
-shown in the example. Authors with an ORCID ID may supply this
-information at submission.
+print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = c(0, nrow(table)),
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+```
+\end{tabular}
+}
+}
+\end{table}
 
-## Document Options
+## Patient characteristics balance
 
-We support several options via the YAML header
+```{r, make_ps, echo=FALSE, warning=FALSE, fig.align='center', fig.width=5, fig.height=5, out.width='70%', fig.cap=paste("\\textbf{Preference score distribution for", targetName, "and", comparatorName, "new-users.}", "The preference score is a transformation of the propensity score that adjusts for prevalence differences between populations.  A higher overlap indicates that subjects in the two populations are more similar in terms of their predicted probability of receiving one treatment over the other.\\label{fig:ps}")}
+plotPs(ps, targetName, comparatorName)
+```
 
-- Setting a DOI or URL footer, for example for the CRAN package URL,
-  which is placed in the bottom-left footer of the title page and even pages;
-- Setting a footer label, for example _YourPackage Vignette_ stating
-  your package, which is placed in the bottom-right footer on odd
-  pages;
-- Setting a free-form author field used on the inside footer;
-- Optional _Draft_ watermarking;
+Figure \ref{fig:ps} plots the preference score distributions, re-scalings of PS estimates to adjust for differential treatment prevalences, for patients treated with `r targetName` and `r comparatorName`.
+We assess characteristics balance achieved through PS adjustment by comparing all characteristics' standardized difference (StdDiff) between treatment group means before and after PS trimming and stratification (Table \ref{tab:demographics}).
+Figure \ref{fig:balance} plots StdDiff for all `r nrow(balance)` base-line patient features that serve as input for the PS model.
+Before stratification, `r sum(na.omit(balance$beforeMatchingStdDiff) > 0.1)` features have a StdDiff $> 0.1$.  After stratification, the count is `r sum(na.omit(balance$afterMatchingStdDiff) > 0.1)`.
+ (TODO) Add judgement statement about measured confounding control using something like: `r judgePropensityScore(1.1,1.1)` 
 
-
-
-## References 
-
-Here we differ from PNAS and suggest natbib. References will appear in
-author-year form. Use `\citet{}`, `\citep{}`, etc as usual.
-
-We default to the `jss.bst` style. To switch to a different bibliography
-style, please use `biblio-style: style` in the YAML header.
-
-
-## Inline R Code 
-
-The PNAS sample included a fixed PNG image here, but this document prefers
-to show the results and embedding of _R_ code. 
-
-
-Here we use a standard knitr bloc with explicit options for
-
-- figure width and height (`fig.width`, `fig.height`), both set to three inches;
-- whether the code is shown (`echo=TRUE`); and
-- the caption (`fig.cap`) as shown above.
-
-
-## Digital Figures 
-
-Markdown, Pandoc and LaTeX support `.eps` and `.pdf` files.
-
-Figures and Tables should be labelled and referenced in the standard way
-using the `\label{}` and `\ref{}` commands.
-
-The R examples above show how to insert a column-wide
-figure. To insert a figure wider than one column, please use the
-`\begin{figure*}...\end{figure*}` environment. 
-
-One (roundabout) way of doing this is to _not_ actually plot a figure, but to
-save it in a file as the following segment shows:
+```{r, make_balance, echo=FALSE, warning=FALSE, warning=FALSE, fig.align='center', fig.width=5, fig.height=5, out.width='70%', fig.cap="\\textbf{Patient characteristics balance before and after stratification.} As a rule-of-thum, all values $<0.1$ is generall considered well-balance \\citep{add}."}
+CohortMethod::plotCovariateBalanceScatterPlot(balance,
+                                              beforeLabel = "Before stratification",
+                                              afterLabel = "After stratification")
+```
 
 
-This file is then included via standard LaTeX commands.
+## Outcome assessment
+
+\begin{table}
+\caption{Time-at-risk distributions as percentiles in the target and comparator cohorts after stratification.}
+\label{tab:fu}
+\begin{tabular}{crrrrrrr}
+\hline
+&
+\multicolumn{1}{c}{min} &
+\multicolumn{1}{c}{10\%} &
+\multicolumn{1}{c}{25\%} &
+\multicolumn{1}{c}{50\%} &
+\multicolumn{1}{c}{75\%} &
+\multicolumn{1}{c}{90\%} &
+\multicolumn{1}{c}{max} \\
+```{r, fu, echo=FALSE, results='asis', warning=FALSE}
+table <- prepareFollowUpDistTable(followUpDist)
+table$Cohort <- c(targetName, comparatorName)
+
+print(xtable(table, format = "latex"),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = c(0,nrow(table)),
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+```
+\end{tabular}
+\end{table}
+
+Table \ref{tab:fu} details the time to first `r outcomeName` or censoring distributions for patients in the `r targetName` and `r comparatorName` cohorts.
+We report in Table \ref{tab:hr} estimated HRs comparing `r targetName` to `r comparatorName` for the on-treatment and intent-to-treat designs with stratification or matching.
+Figure \ref{fig:km} plots Kaplan-Meier survival curves for patients under the intent-to-treat design.
+To examine possible subgroup differences in treatment-effect, we include Table{tab:subgroups} that reports HR estimates separately for children (age $<$ 18), the elderly (age $\ge$ 65), female patients, pregnant women, patients with hepatic impairment and patients with renal impairment, using PS stratification.
+
+```{r, km, echo=FALSE, results='hide', fig.width=6, fig.height=6, fig.align='center', out.width='80%', fig.cap=paste0("\\textbf{Kaplan Meier plot of ", outcomeName, "-free survival.} This plot is adjusted for the propensity score stratification; the ", targetName, " curve shows the actual observed survival. The ", comparatorName, " curve applies reweighting to approximate the counterfactual of what ", targetName, " survival would look like had the ", targetName, " cohort been exposed to ", comparatorName, " instead. The shaded area denotes the 95\\% CI.")}
+plotKm <- plotKaplanMeier(kaplanMeier, targetName, comparatorName)
+```
+
+\begin{table*}
+\caption{
+Hazard ratio (HR) estimates and their confidence intervals (CIs) and $p$-value to reject the null hypothesis of no difference (HR = 1) under various designs.
+}
+\label{tab:hr}
+\centering{
+\begin{tabular}{lrrrr}
+\hline
+& \multicolumn{2}{c}{Uncalibrated} & \multicolumn{2}{c}{Calibrated} \\
+\multicolumn{1}{c}{Design}
+& \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$}
+& \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$} \\
+```{r, result_table, echo=FALSE, results='asis'}
+table <- mainResults
+table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+table$p <- sprintf("%.2f", table$p)
+table$calHr <- sprintf("%.2f (%.2f - %.2f)", mainResults$calibratedRr, mainResults$calibratedCi95Lb, mainResults$calibratedCi95Ub)
+table$calibratedP <- sprintf("%.2f", table$calibratedP)
+table <- merge(table, analyses)
+table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
+
+print(xtable(table),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = c(0,nrow(table)),
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+```
+\end{tabular}
+}
+\end{table*}
+
+\begin{table*}
+\caption{
+Subgroup analyses. We report HR estimates, their 95\% CIs and uncalibrated and calibrated (cal) $p$-values to reject the null hypothesis of no difference in five pre-specified patient subgroups.
+}
+\label{tab:subgroups}
+\centering{
+\begin{tabular}{lrrrrrrrr}
+\hline
+&
+\multicolumn{2}{c}{Subjects} &
+\multicolumn{3}{c}{On-treatment} &
+\multicolumn{3}{c}{Intent-to-treat} \\
+\multicolumn{1}{c}{Subgroup} &
+\multicolumn{1}{c}{T} &
+\multicolumn{1}{c}{C} &
+\multicolumn{1}{c}{HR (95\% CI)} &
+\multicolumn{1}{c}{$p$} &
+\multicolumn{1}{c}{cal-$p$} &
+\multicolumn{1}{c}{HR (95\% CI)} &
+\multicolumn{1}{c}{$p$} &
+\multicolumn{1}{c}{cal-$p$} \\
+```{r, subgroups, echo=FALSE, results='asis', warning=FALSE}
+table <- prepareSubgroupTable(subgroupResults)
+print(xtable(table),
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = c(0,nrow(table)),
+      only.contents = TRUE,
+      sanitize.text.function = identity)
+```
+\end{tabular}
+}
+\end{table*}
+
+## Residual systematic error
+In the absense of bias, we expect 95\% of negative and positive control estimate 95\% confidence intervals to include their presumed HR.  In the case of negative controls, the presumed HR = 1.  Figure \ref{fig:negatives} describes the negative and positive control estimates under the on-treatment with PS stratification design.
+Before calibration, negative and positive controls demonstrate `r judgeCoverage(coverage[coverage$group == "Uncalibrated", "coverage"])` coverage.  After calibration, controls demonstrate `r judgeCoverage(coverage[coverage$group == "Calibrated", "coverage"])` coverage.
+
+```{r, make_error, echo=FALSE, warning=FALSE}
+plot <- plotScatter(controlResults)
+suppressMessages(ggsave(paste0(opts_chunk$get("fig.path"), "error.pdf"), plot,
+                        width = 14, height = 4, units = "in"))
+```
+\begin{figure*}
+\centerline{
+\includegraphics[width=1.0\textwidth]{`r opts_chunk$get("fig.path")`error}
+}
+\caption{
+\textbf{Evaluation of effect estimation between `r targetName` and `r comparatorName` new-users}. The top plots HRs and their corresponding standard errors before calibration for each negative and synthetic positive control.  The bottom plots the same estimates after calibration.
+}
+\label{fig:negatives}
+\end{figure*}
+
+# Conclusions
+
+We find that `r targetName` has a `r judgeHazardRatio(mainResults[params$primary,"calibratedCi95Lb"], mainResults[params$primary,"calibratedCi95Ub"])` risk of `r outcomeName` as compared to `r comparatorName` within the population that the `r params$databaseId` represents.
 
 
-
-
-## Typeset Code (But Do Not Run It) 
-
-We can also just show code.
-
-
-
-This simply used a pandoc bloc started and ended by three backticks,
-with `r` as the language choice.  Similarly, _many_ other languages
-can be typeset directly simply by relying on pandoc.
-
-
-## Single column equations 
-
-Authors may use 1- or 2-column equations in their article, according to
-their preference.
-
-To allow an equation to span both columns, options are to use the
-`\begin{figure*}...\end{figure*}` environment mentioned above for
-figures, or to use the `\begin{widetext}...\end{widetext}` environment
-as shown in equation \ref{eqn:example} below.
-
-Please note that this option may run into problems with floats and
-footnotes, as mentioned in the [cuted package
-documentation](http://texdoc.net/pkg/cuted). In the case of problems
-with footnotes, it may be possible to correct the situation using
-commands `\footnotemark` and `\footnotetext`.
-
-\begin{equation}
-  \begin{aligned}
-(x+y)^3&=(x+y)(x+y)^2\\
-       &=(x+y)(x^2+2xy+y^2) \\
-       &=x^3+3x^2y+3xy^3+x^3. 
-       \label{eqn:example} 
-  \end{aligned}
-\end{equation}
-
-
-<!-- pandoc writes all tables using longtable, which fails in 2-column mode
-
-  Species                    CBS     CV     G3
-  ----------------------- ------ ------ ------
-  1\. Acetaldehyde           0.0    0.0    0.0
-  2\. Vinyl alcohol          9.1    9.6   13.5
-  3\. Hydroxyethylidene     50.8   51.2   54.0
-
-  : Comparison of the fitted potential energy surfaces and ab initio
-  benchmark electronic energy calculations
-
--->
 
 
