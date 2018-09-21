@@ -4,9 +4,10 @@
 \alias{assessPhenotypes}
 \title{Assess propensity models}
 \usage{
-assessPhenotypes(connectionDetails, cdmDatabaseSchema, cohortDatabaseSchema,
-  tablePrefix = "legend", indicationId = "Depression", oracleTempSchema,
-  outputFolder, sampleSize = 1e+05, minCellCount = 5, databaseId)
+assessPhenotypes(connectionDetails, cdmDatabaseSchema,
+  cohortDatabaseSchema, tablePrefix = "legend",
+  indicationId = "Depression", oracleTempSchema, outputFolder,
+  sampleSize = 1e+05, minCellCount = 5, databaseId)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
