@@ -112,10 +112,12 @@ watermark: true
 footer_contents: OHDSI version 1.0
 
 # Produce a pinp document
-output: Legend::legend_report
+output: 
+  Legend::legend_report:
+    citation_package: natbib
 pnas_type: pnasresearcharticle
-bibliography: pnas-sample.bib
-csl: pnas.csl
+bibliography: ohdsi.bib
+#csl: pnas.csl
 #output: rticles::pnas_article
 
 author_declaration: MJS and PBR are employees and share-holders of Janssen Research.  MAS receives contract support from Janssen Research.
@@ -145,13 +147,22 @@ extraCriteria <- list(
 )
 
 extraCovariates <- list(
-  depression = "Prior number of depression treatments (1, 2, 3, 4, 5 or higher)",
-  hypertnesion = "TODO"
+  depression = "Prior number of depression treatments (1, 2, 3, 4, 5 or higher)"
 )
 
 negativeControls <- list(
   hypertension = 76
 )
+
+totalOutcomes <- list(
+  hypertension = 57
+)
+
+totalExposures <- list(
+  hypertension = "56 different anti-hypertensive medications, representing 15 different drug-class levels and 7 major drug class levels",
+  stuff = "at least 2500 patients in both target and comparator cohors"
+)
+
 ```
 
 ```{r, loadData, echo=FALSE, message=FALSE, comment=FALSE, warning=FALSE, results='hide'}
@@ -262,7 +273,7 @@ coverage <- getCoverage(controlResults)
 
 \dropcap{T}he Large-scale Evidence Generation and Evaluation in a Network of Databases (LEGEND) project aims to generate reliable evidence on the effects of medical interventions using observational healthcare data to support clinical decision making.
 LEGEND follows ten guiding principles (see Supplementary Material); chief among these stand that we generate evidence at large-scale to achieve completeness and faciliate analysis of the overall distribution of effect size estimates across treatments and outcomes.
-We also generate evidence consistently by applying a systematic approach across all research questions and disseminate evidence regardless on the estimates effects to avoid publication bias. These aims help overcome the questionable reliable of observational research [schuemie2018].
+We also generate evidence consistently by applying a systematic approach across all research questions and disseminate evidence regardless on the estimates effects to avoid publication bias. These aims help overcome the questionable reliable of observational research \citep{schuemie2018improving}.
 This LEGEND document reports the risk of `r outcomeName` between new users of `r targetName` and `r comparatorName` treated for `r params$indicationId`.
 
 \begin{itemize}
@@ -292,19 +303,18 @@ This LEGEND document reports the risk of `r outcomeName` between new users of `r
 
 ## Data source
 
-We conduct a new-user cohort study comparing new users of `r targetName` with new users of `r comparatorName` in the `r databaseName` (`r params$databaseId`) database encoded in the Observational Medical Outcomes Partnership (OMOP) common data model (CDM) version 5 \citep{hripcsak2015observational,overhage2012validation,ryan2013empirical}.
+We conduct a new-user cohort study comparing new users of `r targetName` with new users of `r comparatorName` in the `r databaseName` (`r params$databaseId`) database encoded in the Observational Medical Outcomes Partnership (OMOP) common data model (CDM) version 5
+\citep{hripcsak2015observational,overhage2012validation,ryan2013empirical}.
 `r sub(paste0(".*\\(",databaseDetails$databaseId,"\\)"), paste0("The ", databaseDetails$databaseId), databaseDetails$description)`
 The study period spans from `r studyPeriod$minDate` to `r studyPeriod$maxDate`.
 
 ## Study design
 
-This study follows a retrospective, observational, comparative cohort design %\citep{ryan2013empirical}
+This study follows a retrospective, observational, comparative cohort design \citep{ryan2013empirical}
 .
 We include patients who are first time users of `r targetName` or `r comparatorName`, and who have a diagnosis of `r indicationName` on or prior to treatment initation.
 We require that patients have continuous observation in the database for at least 365 days prior to treatment initiation.
-We exclude patients with prior `r outcomeName` events and less than 1 day at risk.
-[TODO ADD EXTRA CRITERIA]
-Full cohort details, include concept codes, are provided in the Supplementary Inforamtion (add link).
+We exclude patients with prior `r outcomeName` events and less than 1 day at risk. `r if (indicationName %in% names(extraCriteria)) { extraCriteria[indicationName] }` Links to full cohort details, include concept codes, are provided in the Supplementary Inforamtion.
 The outcome of interest is `r outcomeName`.
 We begin the outcome risk window 1 day after treatment initation and consider two design choices to define the window end.
 First, we end the outcome time-at-risk window at first cessation of continuous drug exposure, analogous to an on-treatment design and, second,  we end the outcome time-at-risk window when the patient is no longer observable in the database, analogous to an intent-to-treat design.
@@ -312,12 +322,12 @@ Continuous drug exposures are constructed from the available longitudinal data b
 
 ## Statistical analysis
 
-We conduct our cohort study using the open-source OHDSI CohortMethod R package %\citep{schuemie2017cohort}
-, with large-scale analytics achieved through the Cyclops R package %\citep{suchard2013high?}
+We conduct our cohort study using the open-source OHDSI CohortMethod R package \citep{schuemie2018cohortmethod}
+, with large-scale analytics achieved through the Cyclops R package \citep{suchard2013massive}
 .
-We use propensity scores (PSs) -- estimates of treatment exposure probability conditional on pre-treatment baseline features in the one year prior to treatment initiation -- to control for potential measured confoudning and improve balance between the target (`r targetName`) and comparator (`r comparatorName`) cohorts %\citep{rosenbaum1983central}
+We use propensity scores (PSs) -- estimates of treatment exposure probability conditional on pre-treatment baseline features in the one year prior to treatment initiation -- to control for potential measured confoudning and improve balance between the target (`r targetName`) and comparator (`r comparatorName`) cohorts \citep{rosenbaum1983central}
 .
-We use an expansive PS model that includes all available patient demographics, drug, condition and procedure covariates generated through the FeatureExtraction R package %\citep{schuemie2018feature}
+We use an expansive PS model that includes all available patient demographics, drug, condition and procedure covariates generated through the FeatureExtraction R package \citep{schuemie2018featureextration}
  instead of a prespecified set of investigator-selected confounders.
  We perform PS stratification or variable-ratio matching and then estimate comparative `r targetName`-vs-`r comparatorName` hazard ratios (HRs) using a Cox proportional hazards model.
  Detailed covariate and methods informations are provided in the Supplementary Information (TODO ADD LINK).
@@ -325,14 +335,13 @@ We use an expansive PS model that includes all available patient demographics, d
  We additionally estimate HRs for pre-specified subgroups to evaluate interactions with the treatment effect.
 For efficiency reasons, we fit subgroup Cox models using PS stratification only.
 
-Residual study bias from unmeasured and systematic sources can exist in observational studies after controlling for measured confounding %\citep{schuemie2018reliable}
+Residual study bias from unmeasured and systematic sources can exist in observational studies after controlling for measured confounding \citep{schuemie2014interpreting,schuemie2016robust}
 .
 To estimate such residual bias, we conduct negative control outcome experiments with `r length(unique(controlResults$outcomeName))` negative control outcomes %\citep{negative-controls}
-identified through a data-rich algorithm %\citep{voss2017accuracy}
+identified through a data-rich algorithm \citep{voss2017accuracy}.
+We fit the negative control estimates to an empirical null distribution that characterizes the study residual bias and is an important artifact from which to assess the study design \citep{schuemie2018improving}
 .
-We fit the negative control estimates to an empirical null distribution that characterizes the study residual bias and is an important artifact from which to assess the study design %\citep{schuemie2014interpreting,schuemie2018empirical}
-.
-Using the empirical null distribution and synthetic positive controls %\citep{positive-controls}
+Using the empirical null distribution and synthetic positive controls \citep{schuemie2018empirical}
 , we additionally calibrate all HR estimates, their 95\% confidence intervals (CIs) and the $p$-value to reject the null hypothesis of no differential effect (HR = 1).
 Empirical calibration serves as an important diagnostic tool to evaluate if residual systematic error is sufficient to cast doubt on the accuracy of the unknown effect estimate.
 
@@ -428,7 +437,7 @@ Figure \ref{fig:balance} plots StdDiff for all `r nrow(balance)` base-line patie
 Before stratification, `r sum(na.omit(balance$beforeMatchingStdDiff) > 0.1)` features have a StdDiff $> 0.1$.  After stratification, the count is `r sum(na.omit(balance$afterMatchingStdDiff) > 0.1)`.
  (TODO) Add judgement statement about measured confounding control using something like: `r judgePropensityScore(1.1,1.1)`
 
-```{r, make_balance, echo=FALSE, warning=FALSE, warning=FALSE, fig.align='center', fig.width=5, fig.height=5, out.width='70%', fig.cap="\\textbf{Patient characteristics balance before and after stratification.} As a rule-of-thum, all values $<0.1$ is generall considered well-balance \\citep{add}."}
+```{r, make_balance, echo=FALSE, warning=FALSE, warning=FALSE, fig.align='center', fig.width=5, fig.height=5, out.width='70%', fig.cap="\\textbf{Patient characteristics balance before and after stratification.} As a rule-of-thum, all values $<0.1$ is generall considered well-balance \\citep{austin2009balance}."}
 CohortMethod::plotCovariateBalanceScatterPlot(balance,
                                               beforeLabel = "Before stratification",
                                               afterLabel = "After stratification")
@@ -632,7 +641,7 @@ print(xtable(table),
 \item Demographics (age in 5-year bands, gender, index year, index month)
 \item Conditions (condition occurrence in lookback window)
   \begin{itemize}[noitemsep]
-  \item in 365 days prior to index date\
+  \item in 365 days prior to index date
   \item in 30 days prior to index date
   \end{itemize}
 \item Condition aggregation
@@ -650,7 +659,7 @@ print(xtable(table),
   \item ATC class
   \end{itemize}
 \item Risk Scores (Charlson comorbidity index)
-\item [TODO SPECIALIZE]
+`r if (indicationName %in% names(extraCovariates)) { paste("\\item", extraCovariates[indicationName]) }`
 \end{itemize}
 
 We exclude all covariates that occur in fewer than 0.1\% of patients within the target and comparator cohorts prior to model fitting for computational efficiency.

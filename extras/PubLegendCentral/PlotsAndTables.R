@@ -29,7 +29,31 @@ createAuthors <- function() {
   )
 }
 
-createAbstract <- function(outcomeName,
+
+
+
+createAbstract <- function(tcoDb) {
+  
+  targetName <- uncapitalize(exposures$exposureName[match(tcoDb$targetId, exposures$exposureId)])
+  comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
+  outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])
+  indicationId <- uncapitalize(exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)])
+  
+  results <- getMainResults(connection,
+                            targetIds = tcoDb$targetId,
+                            comparatorIds = tcoDb$comparatorId,
+                            outcomeIds = tcoDb$outcomeId,
+                            databaseIds = tcoDb$databaseId)
+  
+  studyPeriod <- getStudyPeriod(connection = connection,
+                                targetId = tcoDb$targetId,
+                                comparatorId = tcoDb$comparatorId,
+                                databaseId = tcoDb$databaseId)  
+  
+  writeAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
+}
+
+writeAbstract <- function(outcomeName,
                            targetName,
                            comparatorName,
                            databaseId,
