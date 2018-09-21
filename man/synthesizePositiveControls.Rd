@@ -5,9 +5,8 @@
 \title{Inject outcomes on top of negative controls}
 \usage{
 synthesizePositiveControls(connectionDetails, cdmDatabaseSchema,
-  cohortDatabaseSchema, tablePrefix = "legend",
-  indicationId = "Depression", oracleTempSchema, outputFolder,
-  sampleSize = 1e+05, maxCores = 4)
+  cohortDatabaseSchema, tablePrefix = "legend", indicationId = "Depression",
+  oracleTempSchema, outputFolder, sampleSize = 1e+05, maxCores = 4)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the

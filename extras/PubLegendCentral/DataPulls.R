@@ -91,6 +91,8 @@ getDatabaseDetails <- function(connection, databaseId) {
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   databaseDetails <- querySql(connection, sql)
   colnames(databaseDetails) <- SqlRender::snakeCaseToCamelCase(colnames(databaseDetails))
+  databaseDetails$description <- sub("\\n", " ", databaseDetails$description)
+  databaseDetails$description <- sub("JDMC", "JMDC", databaseDetails$description) # TODO Fix in schema
   return(databaseDetails)
 }
 

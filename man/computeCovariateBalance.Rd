@@ -4,8 +4,7 @@
 \alias{computeCovariateBalance}
 \title{Compute covariate balance for each comparison}
 \usage{
-computeCovariateBalance(indicationId = "Depression", outputFolder,
-  maxCores)
+computeCovariateBalance(indicationId = "Depression", outputFolder, maxCores)
 }
 \arguments{
 \item{indicationId}{A string denoting the indicationId for which the covariate balance should be

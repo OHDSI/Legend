@@ -857,3 +857,84 @@ capitalize <- function(x) {
   substr(x, 1, 1) <- toupper(substr(x, 1, 1))
   x
 }
+
+createDocument <- function(targetId,
+                           comparatorId,
+                           outcomeId,
+                           databaseId,
+                           indicationId,
+                           outputFile,
+                           template = "template.Rnw",
+                           workingDirectory = "temp",
+                           emptyWorkingDirectory = TRUE) {
+  
+  if (missing(outputFile)) {
+    stop("Must provide an output file name")
+  }
+  
+  currentDirectory <- getwd()
+  on.exit(setwd(currentDirectory))
+  
+  input <- file(template, "r")
+  
+  name <- paste0("paper_", targetId, "_", comparatorId, "_", outcomeId, "_", databaseId)
+  
+  if (!dir.exists(workingDirectory)) {
+    dir.create(workingDirectory)
+  }
+  
+  workingDirectory <- file.path(workingDirectory, name)
+  
+  if (!dir.exists(workingDirectory)) {
+    dir.create(workingDirectory)
+  }
+  
+  if (is.null(setwd(workingDirectory))) {
+    stop(paste0("Unable to change directory into: ", workingDirectory))
+  }
+  
+  system(paste0("cp ", file.path(currentDirectory, "pnas-new.cls"), " ."))
+  system(paste0("cp ", file.path(currentDirectory, "widetext.sty"), " ."))
+  system(paste0("cp ", file.path(currentDirectory, "pnasresearcharticle.sty"), " ."))
+  system(paste0("cp ", file.path(currentDirectory, "Sweave.sty"), " ."))
+  
+  texName <- paste0(name, ".Rnw")
+  output <- file(texName, "w")
+  
+  while (TRUE) {
+    line <- readLines(input, n = 1)
+    if (length(line) == 0) {
+      break
+    }
+    line <- sub("DATABASE_ID_TAG", paste0("\"", databaseId, "\""), line)
+    line <- sub("TARGET_ID_TAG", targetId, line)
+    line <- sub("COMPARATOR_ID_TAG", comparatorId, line)
+    line <- sub("OUTCOME_ID_TAG", outcomeId, line)
+    line <- sub("INDICATION_ID_TAG", indicationId, line)
+    line <- sub("CURRENT_DIRECTORY", currentDirectory, line)
+    writeLines(line, output)
+  }
+  close(input)
+  close(output)
+  
+  Sweave(texName)
+  system(paste0("pdflatex ", name))
+  system(paste0("pdflatex ", name))
+  
+  # Save result
+  workingName <- file.path(workingDirectory, name)
+  workingName <- paste0(workingName, ".pdf")
+  
+  setwd(currentDirectory)
+  
+  system(paste0("cp ", workingName, " ", outputFile))
+  
+  if (emptyWorkingDirectory) {
+    # deleteName = file.path(workingDirectory, "*")
+    # system(paste0("rm ", deleteName))
+    unlink(workingDirectory, recursive = TRUE)
+  }
+  
+  invisible(outputFile)
+}
+

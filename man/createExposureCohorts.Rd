@@ -5,8 +5,8 @@
 \title{Create the exposure cohorts}
 \usage{
 createExposureCohorts(connectionDetails, cdmDatabaseSchema,
-  cohortDatabaseSchema, tablePrefix = "legend",
-  indicationId = "Depression", oracleTempSchema, outputFolder)
+  cohortDatabaseSchema, tablePrefix = "legend", indicationId = "Depression",
+  oracleTempSchema, outputFolder)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the

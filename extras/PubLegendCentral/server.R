@@ -132,7 +132,7 @@ shinyServer(function(input, output, session) {
                       p(authors),
                       h3("Abstract"),
                       p(abstract),
-                      p("This is an", strong("automatically"), "generated document.")
+                      p("NB: This is an", strong("automatically"), "generated abstract.")
                       )
       return(abstract)
     }
@@ -142,17 +142,25 @@ shinyServer(function(input, output, session) {
     return("Paper.pdf")
   }, content = function(con) {
     tcoDb <- selectedTcoDb()
+    tcoDb$indicationId <- exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)]
     title <- createTitle(tcoDb)
     tempFileName <- paste0(paste(sample(letters, 8), collapse = ""), ".pdf")
     withProgress(message = "Generating PDF", value = 0, {
-      rmarkdown::render("dbPaper.rmd",
-                        output_file = tempFileName,
-                        params = list(setTitle = title,
-                                      targetId = tcoDb$targetId,
-                                      comparatorId = tcoDb$comparatorId,
-                                      outcomeId = tcoDb$outcomeId,
-                                      databaseId = tcoDb$databaseId),
-                        rmarkdown::pdf_document(latex_engine = "pdflatex"))
+      # rmarkdown::render("dbPaper.rmd",
+      #                   output_file = tempFileName,
+      #                   params = list(setTitle = title,
+      #                                 targetId = tcoDb$targetId,
+      #                                 comparatorId = tcoDb$comparatorId,
+      #                                 outcomeId = tcoDb$outcomeId,
+      #                                 databaseId = tcoDb$databaseId),
+      #                   rmarkdown::pdf_document(latex_engine = "pdflatex"))
+      createDocument(targetId = tcoDb$targetId,
+                     comparatorId = tcoDb$comparatorId, 
+                     outcomeId = tcoDb$outcomeId, 
+                     databaseId = tcoDb$databaseId,
+                     indicationId = tcoDb$indicationId,
+                     outputFile = tempFileName,
+                     workingDirectory = paste(sample(letters, 8), collapse = ""))
     })
     file.rename(tempFileName, con)
   })
