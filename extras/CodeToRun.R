@@ -15,9 +15,9 @@
 # limitations under the License.
 
 library(Legend)
-options(fftempdir = "r:/fftemp")
-maxCores <- 30
-studyFolder <- "r:/Legend"
+options(fftempdir = "c:/fftemp")
+maxCores <- 3
+studyFolder <- "c:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -29,8 +29,6 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
-Sys.setenv(USE_MPP_BULK_LOAD = "TRUE")
-
 indicationId <- "Depression"
 
 indicationId <- "Hypertension"
@@ -139,42 +137,27 @@ assessPropensityModels(connectionDetails = connectionDetails,
                        maxCores = maxCores)
 
 # Run main study -----------------------------------------------------------------
-mailSettings <- list(from = Sys.getenv("mailAddress"),
-                     to = c(Sys.getenv("mailAddress")),
-                     smtp = list(host.name = "smtp.gmail.com",
-                                 port = 465,
-                                 user.name = Sys.getenv("mailAddress"),
-                                 passwd = Sys.getenv("mailPassword"),
-                                 ssl = TRUE),
-                     authenticate = TRUE,
-                     send = TRUE)
+execute(connectionDetails = connectionDetails,
+        cdmDatabaseSchema = cdmDatabaseSchema,
+        oracleTempSchema = oracleTempSchema,
+        cohortDatabaseSchema = cohortDatabaseSchema,
+        outputFolder = outputFolder,
+        indicationId = indicationId,
+        databaseId = databaseId,
+        databaseName = databaseName,
+        databaseDescription = databaseDescription,
+        tablePrefix = tablePrefix,
+        createExposureCohorts = TRUE,
+        createOutcomeCohorts = TRUE,
+        fetchAllDataFromServer = TRUE,
+        synthesizePositiveControls = TRUE,
+        generateAllCohortMethodDataObjects = TRUE,
+        runCohortMethod = TRUE,
+        computeIncidence = TRUE,
+        fetchChronographData = TRUE,
+        computeCovariateBalance = TRUE,
+        exportToCsv = TRUE,
+        maxCores = maxCores)
 
-sinkFile <- file(file.path(outputFolder, indicationId, "console.txt"), open = "wt")
-sink(sinkFile, split = TRUE)
-
-OhdsiRTools::runAndNotify({
-    execute(connectionDetails = connectionDetails,
-            cdmDatabaseSchema = cdmDatabaseSchema,
-            oracleTempSchema = oracleTempSchema,
-            cohortDatabaseSchema = cohortDatabaseSchema,
-            outputFolder = outputFolder,
-            indicationId = indicationId,
-            databaseId = databaseId,
-            databaseName = databaseName,
-            databaseDescription = databaseDescription,
-            tablePrefix = tablePrefix,
-            createExposureCohorts = FALSE,
-            createOutcomeCohorts = FALSE,
-            fetchAllDataFromServer = FALSE,
-            synthesizePositiveControls = FALSE,
-            generateAllCohortMethodDataObjects = TRUE,
-            runCohortMethod = TRUE,
-            computeIncidence = TRUE,
-            fetchChronographData = TRUE,
-            computeCovariateBalance = TRUE,
-            maxCores = maxCores)
-}, mailSettings = mailSettings, label = "Legend")
-
-sink()
 
 
