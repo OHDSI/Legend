@@ -104,25 +104,26 @@ shinyServer(function(input, output, session) {
       return(NULL)
     } else {
       
-      targetName <- uncapitalize(exposures$exposureName[match(tcoDb$targetId, exposures$exposureId)])
-      comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
-      outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])
-      indicationId <- uncapitalize(exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)])
-      
-      results <- getMainResults(connection,
-                                targetIds = tcoDb$targetId,
-                                comparatorIds = tcoDb$comparatorId,
-                                outcomeIds = tcoDb$outcomeId,
-                                databaseIds = tcoDb$databaseId)
-      
-      studyPeriod <- getStudyPeriod(connection = connection,
-                                    targetId = tcoDb$targetId,
-                                    comparatorId = tcoDb$comparatorId,
-                                    databaseId = tcoDb$databaseId)      
+      # targetName <- uncapitalize(exposures$exposureName[match(tcoDb$targetId, exposures$exposureId)])
+      # comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
+      # outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])
+      # indicationId <- uncapitalize(exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)])
+      # 
+      # results <- getMainResults(connection,
+      #                           targetIds = tcoDb$targetId,
+      #                           comparatorIds = tcoDb$comparatorId,
+      #                           outcomeIds = tcoDb$outcomeId,
+      #                           databaseIds = tcoDb$databaseId)
+      # 
+      # studyPeriod <- getStudyPeriod(connection = connection,
+      #                               targetId = tcoDb$targetId,
+      #                               comparatorId = tcoDb$comparatorId,
+      #                               databaseId = tcoDb$databaseId)      
       
       authors <- createAuthors()
       
-      abstract <- createAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
+      # abstract <- createAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
+      abstract <- createAbstract(tcoDb)
       
       title <- createTitle(tcoDb)
       
@@ -144,23 +145,29 @@ shinyServer(function(input, output, session) {
     tcoDb <- selectedTcoDb()
     tcoDb$indicationId <- exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)]
     title <- createTitle(tcoDb)
+    abstract <- createAbstract(tcoDb)
     tempFileName <- paste0(paste(sample(letters, 8), collapse = ""), ".pdf")
     withProgress(message = "Generating PDF", value = 0, {
-      # rmarkdown::render("dbPaper.rmd",
-      #                   output_file = tempFileName,
-      #                   params = list(setTitle = title,
-      #                                 targetId = tcoDb$targetId,
-      #                                 comparatorId = tcoDb$comparatorId,
-      #                                 outcomeId = tcoDb$outcomeId,
-      #                                 databaseId = tcoDb$databaseId),
-      #                   rmarkdown::pdf_document(latex_engine = "pdflatex"))
-      createDocument(targetId = tcoDb$targetId,
-                     comparatorId = tcoDb$comparatorId, 
-                     outcomeId = tcoDb$outcomeId, 
-                     databaseId = tcoDb$databaseId,
-                     indicationId = tcoDb$indicationId,
-                     outputFile = tempFileName,
-                     workingDirectory = paste(sample(letters, 8), collapse = ""))
+      rmarkdown::render("MyArticle.Rmd",
+                        output_file = tempFileName,
+                        params = list(setTitle = title,
+                                      targetId = tcoDb$targetId,
+                                      comparatorId = tcoDb$comparatorId,
+                                      outcomeId = tcoDb$outcomeId,
+                                      databaseId = tcoDb$databaseId,
+                                      indicationId = tcoDb$indicationId,
+                                      title = title,
+                                      abstract = abstract,
+                                      save = NULL,
+                                      load = NULL),
+                        rmarkdown::pdf_document(latex_engine = "pdflatex"))
+      # createDocument(targetId = tcoDb$targetId,
+      #                comparatorId = tcoDb$comparatorId, 
+      #                outcomeId = tcoDb$outcomeId, 
+      #                databaseId = tcoDb$databaseId,
+      #                indicationId = tcoDb$indicationId,
+      #                outputFile = tempFileName,
+      #                workingDirectory = paste(sample(letters, 8), collapse = ""))
     })
     file.rename(tempFileName, con)
   })
