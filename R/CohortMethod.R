@@ -92,15 +92,18 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
                                       sprintf("cmAnalysisListAsym%s.json", indicationId),
                                       package = "Legend")
     cmAnalysisListAsym <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
-    if ((databaseId == "CCAE" || databaseId == "Optum") && indicationId == "Hypertension") {
-        ParallelLogger::logInfo("*** Skipping matching for CCAE and Optum (Hypertension) ***")
-        cmAnalysisListAsym <- list()
-    }
 
     cmAnalysisListFile <- system.file("settings",
                                       sprintf("cmAnalysisListInteractions%s.json", indicationId),
                                       package = "Legend")
     cmAnalysisListInteractions <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+
+    if ((databaseId == "CCAE" || databaseId == "Optum") && indicationId == "Hypertension") {
+        ParallelLogger::logInfo("*** Skipping matching and interactions for CCAE and Optum (Hypertension) ***")
+        cmAnalysisListAsym <- list()
+        cmAnalysisListInteractions <- list()
+    }
+
 
     # First run: Forward pairs only, no positive controls ---------------------------------
 
