@@ -27,8 +27,9 @@
 #'
 #' @export
 doMetaAnalysis <- function(exportFolders, maExportFolder, maxCores) {
-    if (!file.exists(maExportFolder))
+    if (!file.exists(maExportFolder)) {
         dir.create(maExportFolder, recursive = TRUE)
+    }
     ParallelLogger::logInfo("Performing meta-analysis for main effects")
     doMaEffectType(exportFolders = exportFolders,
                    maExportFolder = maExportFolder,
@@ -44,7 +45,7 @@ doMetaAnalysis <- function(exportFolders, maExportFolder, maxCores) {
                            database_name = "Random effects meta-analysis",
                            description = "Random effects meta-analysis using the DerSimonian-Laird estimator.",
                            is_meta_analysis = 1)
-    fileName <- file.path(exportFolder, "database.csv")
+    fileName <- file.path(maExportFolder, "database.csv")
     write.csv(database, fileName, row.names = FALSE)
 
 }
@@ -56,13 +57,16 @@ doMaEffectType <- function(exportFolders,
 
     loadMainResults <- function(exportFolder) {
         ParallelLogger::logInfo("Loading main results from ", exportFolder, " for meta-analysis")
-        zipFile <- list.files(exportFolder, "^Results.*.zip$")[1]
+        zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
         utils::unzip(zipfile = zipFile,
                      files = c("cohort_method_result.csv",
                                "negative_control_outcome.csv",
-                               "positive_control_outcome.csv"))
+                               "positive_control_outcome.csv"),
+                     exdir = exportFolder)
         results <- read.csv(file.path(exportFolder, "cohort_method_result.csv"))
         colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
+        colnames(results)[colnames(results) == "ci95lb"] <- "ci95Lb"
+        colnames(results)[colnames(results) == "ci95ub"] <- "ci95Ub"
         ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
         colnames(ncs) <- SqlRender::snakeCaseToCamelCase(colnames(ncs))
         pcs <- read.csv(file.path(exportFolder, "positive_control_outcome.csv"))
@@ -77,10 +81,11 @@ doMaEffectType <- function(exportFolders,
     }
     loadInteractionResults <- function(exportFolder) {
         ParallelLogger::logInfo("Loading interaction results from ", exportFolder, " for meta-analysis")
-        zipFile <- list.files(exportFolder, "^Results.*.zip$")[1]
+        zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
         utils::unzip(zipfile = zipFile,
                      files = c("cm_interaction_result.csv",
-                               "negative_control_outcome.csv"))
+                               "negative_control_outcome.csv"),
+                     exdir = exportFolder)
         results <- read.csv(file.path(exportFolder, "cm_interaction_result.csv"))
         colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
         ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
@@ -100,9 +105,11 @@ doMaEffectType <- function(exportFolders,
     }
     allResults <- do.call(rbind, allResults)
     groups <- split(allResults, paste(allResults$targetId, allResults$comparatorId, allResults$analysisId))
+    rm(allResults)
     cluster <- ParallelLogger::makeCluster(min(maxCores, 10))
-    results <- ParallelLogger::clusterApply(cluster, groups, computeGroupMetaAnalysis, interactions = interactions)
+    results <- ParallelLogger::clusterApply(cluster, groups, Legend:::computeGroupMetaAnalysis, interactions = interactions)
     ParallelLogger::stopCluster(cluster)
+    # results <- plyr::compact(results)
     results <- do.call(rbind, results)
     results$trueEffectSize <- NULL
     if (interactions) {
@@ -112,9 +119,11 @@ doMaEffectType <- function(exportFolders,
         results$rr <- NULL
         results$logRr <- NULL
         results$seLogRr <- NULL
+        colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
         fileName <-  file.path(maExportFolder, paste0("cm_interaction_result.csv"))
         write.csv(results, fileName, row.names = FALSE)
     } else {
+        colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
         fileName <-  file.path(maExportFolder, paste0("cohort_method_result.csv"))
         write.csv(results, fileName, row.names = FALSE)
     }
@@ -122,6 +131,9 @@ doMaEffectType <- function(exportFolders,
 
 computeGroupMetaAnalysis <- function(group, interactions) {
     # group <- groups[[2]]
+    if (nrow(group) == 0) {
+        return(NULL)
+    }
     analysisId <- group$analysisId[1]
     targetId <- group$targetId[1]
     comparatorId <- group$comparatorId[1]
@@ -138,13 +150,13 @@ computeGroupMetaAnalysis <- function(group, interactions) {
                                                         seLogRr = groupResults$seLogRr)
         groupResults$calibratedP <- calibratedP$p
     } else {
-        groupResults$calP <- NA
+        groupResults$calibratedP <- NA
     }
     if (!interactions) {
         pcs <- groupResults[!is.na(groupResults$trueEffectSize) &
                                 groupResults$trueEffectSize != 1, ]
         validPcs <- sum(!is.na(pcs$seLogRr))
-        if (nrow(validPcs) > 5) {
+        if (validPcs > 5) {
             model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(ncs$logRr, pcs$logRr),
                                                                    seLogRr = c(ncs$seLogRr,
                                                                                pcs$seLogRr),
@@ -190,8 +202,8 @@ computeSingleMetaAnalysis <- function(outcomeGroup) {
         maRow$targetOutcomes <- 0
         maRow$comparatorOutcomes <- 0
         maRow$rr <- NA
-        maRow$ci95lb <- NA
-        maRow$ci95ub <- NA
+        maRow$ci95Lb <- NA
+        maRow$ci95Ub <- NA
         maRow$p <- NA
         maRow$logRr <- NA
         maRow$seLogRr <- NA
@@ -214,8 +226,8 @@ computeSingleMetaAnalysis <- function(outcomeGroup) {
         maRow$i2 <- s$I2$TE
         rnd <- s$random
         maRow$rr <- exp(rnd$TE)
-        maRow$ci95lb <- exp(rnd$lower)
-        maRow$ci95ub <- exp(rnd$upper)
+        maRow$ci95Lb <- exp(rnd$lower)
+        maRow$ci95Ub <- exp(rnd$upper)
         maRow$p <- rnd$p
         maRow$logRr <- rnd$TE
         maRow$seLogRr <- rnd$seTE

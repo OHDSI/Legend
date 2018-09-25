@@ -67,9 +67,11 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
     outcomeModelReference1 <- readRDS(pathToRds)
     outcomeModelReference1 <- outcomeModelReference1[outcomeModelReference1$analysisId %in% 1:4, ]
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference4.rds")
-    outcomeModelReference4 <- readRDS(pathToRds)
-    outcomeModelReference4 <- outcomeModelReference4[outcomeModelReference4$analysisId %in% 1:4, ]
-    outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference4)
+    if (file.exists(pathToRds)) {
+        outcomeModelReference4 <- readRDS(pathToRds)
+        outcomeModelReference4 <- outcomeModelReference4[outcomeModelReference4$analysisId %in% 1:4, ]
+        outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference4)
+    }
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
     outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]

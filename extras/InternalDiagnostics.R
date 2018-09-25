@@ -1,3 +1,40 @@
+# Study size -----------------------------------------------------------------------------------------------
+indicationFolder <- file.path(outputFolder, indicationId)
+diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")
+if (!file.exists(diagnosticsFolder)) {
+    dir.create(diagnosticsFolder)
+}
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+exposureSummary$totalPairedPersons <- exposureSummary$targetPairedPersons + exposureSummary$comparatorPairedPersons
+exposureSummary <- exposureSummary[order(-exposureSummary$totalPairedPersons), ]
+exposureSummary$order <- seq(nrow(exposureSummary))
+d <- rbind(data.frame(order = exposureSummary$order,
+                      subjects = exposureSummary$targetPairedPersons,
+                      cohort = "target"),
+           data.frame(order = exposureSummary$order,
+                      subjects = exposureSummary$comparatorPairedPersons,
+                      cohort = "comparator"))
+
+library(ggplot2)
+plot <- ggplot(d, aes(x = order, y = subjects, color = cohort, fill = cohort)) +
+    geom_bar(stat = "identity", width = 1) +
+    scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    scale_x_continuous("Comparisons") +
+    scale_y_continuous("Number of subjects")
+ggsave(filename = file.path(diagnosticsFolder, "comparisonSizes.png"), plot = plot, width = 12, height = 5, dpi = 300)
+
+tCohorts <- aggregate(targetPersons ~ targetId + targetName, exposureSummary, max)
+cCohorts <- aggregate(comparatorPersons ~ comparatorId + comparatorName, exposureSummary, max)
+colnames(tCohorts) <- c("exposureId", "exposureName", "exposureSubjects")
+colnames(cCohorts) <- c("exposureId", "exposureName", "exposureSubjects")
+cohorts <- rbind(tCohorts, cCohorts)
+cohorts <- unique(cohorts)
+cohorts <- cohorts[order(cohorts$exposureId), ]
+
+tcos <- readRDS("s:/temp/tcos.rds")
+x <- sapply(tcos, function(x) length(x$outcomeIds))
+sum(x)
 # Overview of PS plots --------------------------------------------------------------------------------------
 indicationFolder <- file.path(outputFolder, indicationId)
 diagnosticsFolder <- file.path(indicationFolder, "internalDiagnostics")

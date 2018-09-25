@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This code is used to run LEGEND on various databases.
+
 library(Legend)
-options(fftempdir = "c:/fftemp")
-maxCores <- 3
-studyFolder <- "c:/Legend"
+options(fftempdir = "r:/fftemp")
+maxCores <- parallel::detectCores()
+studyFolder <- "r:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -29,6 +31,9 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
+
+# Choose one:
+
 indicationId <- "Depression"
 
 indicationId <- "Hypertension"
@@ -147,17 +152,14 @@ execute(connectionDetails = connectionDetails,
         databaseName = databaseName,
         databaseDescription = databaseDescription,
         tablePrefix = tablePrefix,
-        createExposureCohorts = TRUE,
-        createOutcomeCohorts = TRUE,
-        fetchAllDataFromServer = TRUE,
-        synthesizePositiveControls = TRUE,
-        generateAllCohortMethodDataObjects = TRUE,
+        createExposureCohorts = FALSE,
+        createOutcomeCohorts = FALSE,
+        fetchAllDataFromServer = FALSE,
+        synthesizePositiveControls = FALSE,
+        generateAllCohortMethodDataObjects = FALSE,
         runCohortMethod = TRUE,
         computeIncidence = TRUE,
         fetchChronographData = TRUE,
         computeCovariateBalance = TRUE,
         exportToCsv = TRUE,
         maxCores = maxCores)
-
-
-
