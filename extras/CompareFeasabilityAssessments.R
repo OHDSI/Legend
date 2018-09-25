@@ -1,4 +1,4 @@
-mainFolder <- "C:/Legend/phenotypeAssessment"
+mainFolder <- "C:/Legend/phenotypeAssessmentHypertension"
 
 zipFiles <- list.files(mainFolder, "^PhenotypeAssessment.*\\.zip$")
 
@@ -25,7 +25,7 @@ plotCounts <- function(subset, fileName) {
         coord_flip() +
         facet_grid(~databaseId, scales = "free") +
         theme(axis.title.y = element_blank())
-    ggsave(fileName, plot, dpi = 300, width = 9, height = 5)
+    ggsave(fileName, plot, dpi = 300, width = 9, height = 8)
 }
 
 allOutcomes$name <- allOutcomes$cohortName
@@ -36,13 +36,15 @@ allSubgroups$count <- allSubgroups$fraction
 allOutcomes$count <- as.numeric(allOutcomes$count)
 allExposures$count <- as.numeric(allExposures$count)
 allSubgroups$count <- as.numeric(allSubgroups$count)
+# allSubgroups <- allSubgroups[allSubgroups$name != "Subgroup: Black or African American", ]
+# allSubgroups <- allSubgroups[allSubgroups$name != "Subgroup: Type 2 Diabetes Mellitus", ]
 
 hois <- allOutcomes[allOutcomes$cohortDefinitionId %in% outcomesOfInterest$cohortId, ]
+# hois$name[hois$name == "Gastrointestinal hemhorrage"] <- "Gastrointestinal bleeding"
 drugs <- allExposures[allExposures$type == "Drug" | allExposures$type == "Procedure", ]
 drugClasses <- allExposures[allExposures$type == "Drug class", ]
 for (indicationId in unique(outcomes$indicationId)) {
-    plotCounts(subset = hois[hois$indicationId == indicationId,
-                             ],
+    plotCounts(subset = hois[hois$indicationId == indicationId, ],
                fileName = file.path(mainFolder, sprintf("Hois%s.png", indicationId)))
     plotCounts(subset = drugs[drugs$indicationId == indicationId,
                               ],

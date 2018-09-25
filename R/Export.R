@@ -681,6 +681,9 @@ exportMainResults <- function(indicationId,
 
     # Add TC -> CT swap
     interactionsCt <- Legend:::swapColumnContents(interactions, "targetId", "comparatorId")
+    interactionsCt <- Legend:::swapColumnContents(interactions, "targetSubjects", "comparatorSubject")
+    interactionsCt <- Legend:::swapColumnContents(interactions, "targetDays", "comparatorDays")
+    interactionsCt <- Legend:::swapColumnContents(interactions, "targetOutcomes", "comparatorOutcomes")
     interactionsCt$rrr <- 1/interactionsCt$rrr
     interactionsCt$logRrr <- -interactionsCt$logRrr
     temp <- 1/interactionsCt$ci95Lb
@@ -770,6 +773,9 @@ calibrate <- function(subset, negativeControls, positiveControls) {
         subsetTc <- subset[!(subset$outcomeId %in% comparatorPcs$outcomeId), ]
         subsetCt <- subset[!(subset$outcomeId %in% targetPcs$outcomeId), ]
         subsetCt <- swapColumnContents(subsetCt, "targetId", "comparatorId")
+        subsetCt <- swapColumnContents(subsetCt, "targetSubjects", "comparatorSubjects")
+        subsetCt <- swapColumnContents(subsetCt, "targetDays", "comparatorDays")
+        subsetCt <- swapColumnContents(subsetCt, "targetOutcomes", "comparatorOutcomes")
         subsetCt$rr <- 1/subsetCt$rr
         temp <- 1/subsetCt$ci95lb
         subsetCt$ci95lb <- 1/subsetCt$ci95ub
