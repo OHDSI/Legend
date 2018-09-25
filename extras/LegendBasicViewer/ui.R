@@ -20,7 +20,7 @@ shinyUI(
                                  }
                                  ")),
             conditionalPanel(condition = "$('html').hasClass('shiny-busy')",
-                             tags$div("Procesing...",id = "loadmessage")),
+                             tags$div("Processing...",id = "loadmessage")),
             tabsetPanel(id = "mainTabsetPanel",
                         tabPanel("About",
                                  HTML("</BR><P>This app is under development. All results are preliminary and may change without notice.</P>"),
@@ -75,11 +75,11 @@ shinyUI(
                                                                                 uiOutput("kaplanMeierPlotPlotCaption")),
                                                                        tabPanel("Subgroups",
                                                                                 uiOutput("subgroupTableCaption"),
-                                                                                dataTableOutput("subgroupTable")) 
+                                                                                dataTableOutput("subgroupTable"))
                                                            )
                                           )
                                    )
-                                   
+
                                  )
                         ),
                         tabPanel("Overview",
@@ -128,7 +128,7 @@ shinyUI(
                                                                plotOutput("psPlot")
                                                         )
                                                       )
-                                                      
+
                                              )
                                  )
                         )
