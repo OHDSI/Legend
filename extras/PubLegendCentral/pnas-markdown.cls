@@ -59,7 +59,7 @@
     \pdfpagewidth=\paperwidth
     \pdfpageheight=\paperheight
 \fi\fi
-\RequirePackage{xcolor}
+\RequirePackage[table]{xcolor}
 \RequirePackage{tikz}
 \RequirePackage[framemethod=tikz]{mdframed}
 
@@ -199,7 +199,7 @@
 \RequirePackage{textcomp} % For copyright symbol styling
 
 %% Graphics, tables and other formatting
-\RequirePackage{graphicx,xcolor}
+\RequirePackage{graphicx}
 \RequirePackage{colortbl}
 \RequirePackage{booktabs}
 \RequirePackage{algorithm}

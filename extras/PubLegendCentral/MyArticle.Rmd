@@ -138,6 +138,7 @@ library(Legend)
 library(knitr)
 library(xtable)
 library(ggplot2)
+library(kableExtra)
 source("DataPulls.R")
 source("PlotsAndTables.R")
 options(knitr.kable.NA = '')
@@ -365,28 +366,34 @@ Note that the IR does not account for any stratification or matching.
 }\label{tab:power}
 \vspace*{-0.5em}
 \centering{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{lrrrrrrrrr}
-\hline
+\hiderowcolors
+\toprule
  &
 \multicolumn{2}{c}{Patients} &
 \multicolumn{2}{c}{PYs} &
 \multicolumn{2}{c}{Events} &
 \multicolumn{2}{c}{IR} &
 \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-9}
 \multicolumn{1}{c}{Design} &
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{T} & \multicolumn{1}{c}{C} &
 \multicolumn{1}{c}{MDRR} \\
+\midrule 
+\showrowcolors
 ```{r, outcomes, echo=FALSE, results="asis", cache=TRUE, warning=FALSE}
 table <- preparePowerTable(mainResults, analyses)
 
 print(xtable(table, format = "latex"),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = c(0, nrow(table)),
+      hline.after = NULL,
       only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
       sanitize.text.function = identity)
 ```
 \end{tabular}
@@ -398,8 +405,10 @@ print(xtable(table, format = "latex"),
 \vspace*{-0.5em}
 \centerline{
 \resizebox{0.5\textwidth}{!}{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{lrrrrrr}
-\hline
+\hiderowcolors
+\toprule
 & \multicolumn{3}{c}{Before stratification}
 & \multicolumn{3}{c}{After stratification} \\
 \multicolumn{1}{c}{Characteristic}
@@ -409,6 +418,8 @@ print(xtable(table, format = "latex"),
   & \multicolumn{1}{c}{T (\%)}
   & \multicolumn{1}{c}{C (\%)}
   & \multicolumn{1}{c}{StdDiff} \\
+\midrule
+\showrowcolors
 ```{r, features, echo=FALSE, results="asis", cache=TRUE, warning=FALSE}
 table <- prepareTable1(balance, pathToCsv = file.path(params$root, "Table1Specs.csv"))
 table <- table[3:nrow(table),]
@@ -416,8 +427,9 @@ table <- table[3:nrow(table),]
 print(xtable(table, format = "latex", align = c("l","l","r","r","r","r","r","r")),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = c(0, nrow(table)),
+      hline.after = NULL,
       only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
       sanitize.text.function = identity)
 ```
 \end{tabular}
@@ -448,8 +460,11 @@ CohortMethod::plotCovariateBalanceScatterPlot(balance,
 \begin{table}
 \caption{Time-at-risk distributions as percentiles in the target and comparator cohorts after stratification.}
 \label{tab:fu}
+\centering{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{crrrrrrr}
-\hline
+\hiderowcolors
+\toprule
 &
 \multicolumn{1}{c}{min} &
 \multicolumn{1}{c}{10\%} &
@@ -458,6 +473,8 @@ CohortMethod::plotCovariateBalanceScatterPlot(balance,
 \multicolumn{1}{c}{75\%} &
 \multicolumn{1}{c}{90\%} &
 \multicolumn{1}{c}{max} \\
+\midrule
+\showrowcolors
 ```{r, fu, echo=FALSE, results='asis', warning=FALSE}
 table <- prepareFollowUpDistTable(followUpDist)
 table$Cohort <- c(targetName, comparatorName)
@@ -465,11 +482,13 @@ table$Cohort <- c(targetName, comparatorName)
 print(xtable(table, format = "latex"),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = c(0,nrow(table)),
+      hline.after = NULL,
       only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
       sanitize.text.function = identity)
 ```
 \end{tabular}
+}
 \end{table}
 
 Table \ref{tab:fu} details the time to first `r outcomeName` or censoring distributions for patients in the `r targetName` and `r comparatorName` cohorts.
@@ -487,12 +506,17 @@ Hazard ratio (HR) estimates and their confidence intervals (CIs) and $p$-value t
 }
 \label{tab:hr}
 \centering{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{lrrrr}
-\hline
+\hiderowcolors
+\toprule
 & \multicolumn{2}{c}{Uncalibrated} & \multicolumn{2}{c}{Calibrated} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
 \multicolumn{1}{c}{Design}
 & \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$}
 & \multicolumn{1}{c}{HR (95\% CI)} & \multicolumn{1}{c}{$p$} \\
+\midrule
+\showrowcolors
 ```{r, result_table, echo=FALSE, results='asis'}
 table <- mainResults
 table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
@@ -505,8 +529,9 @@ table <- table[, c("description", "hr", "p", "calHr", "calibratedP")]
 print(xtable(table),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = c(0,nrow(table)),
+      hline.after = NULL,
       only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
       sanitize.text.function = identity)
 ```
 \end{tabular}
@@ -519,12 +544,15 @@ Subgroup analyses. We report HR estimates, their 95\% CIs and uncalibrated and c
 }
 \label{tab:subgroups}
 \centering{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{lrrrrrrrr}
-\hline
+\hiderowcolors
+\toprule
 &
 \multicolumn{2}{c}{Subjects} &
 \multicolumn{3}{c}{On-treatment} &
 \multicolumn{3}{c}{Intent-to-treat} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(lr){7-9}
 \multicolumn{1}{c}{Subgroup} &
 \multicolumn{1}{c}{T} &
 \multicolumn{1}{c}{C} &
@@ -534,13 +562,16 @@ Subgroup analyses. We report HR estimates, their 95\% CIs and uncalibrated and c
 \multicolumn{1}{c}{HR (95\% CI)} &
 \multicolumn{1}{c}{$p$} &
 \multicolumn{1}{c}{cal-$p$} \\
+\midrule
+\showrowcolors
 ```{r, subgroups, echo=FALSE, results='asis', warning=FALSE}
 table <- prepareSubgroupTable(subgroupResults)
 print(xtable(table),
       include.rownames = FALSE,
       include.colnames = FALSE,
-      hline.after = c(0,nrow(table)),
+      hline.after = NULL,
       only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
       sanitize.text.function = identity)
 ```
 \end{tabular}
@@ -621,18 +652,26 @@ In the comparison of `r targetName` and `r comparatorName` in the `r params$data
 \begin{table}
 \caption{Negative controls employed in the comparison of `r targetName` and `r comparatorName` in the `r params$databaseId` database.}
 \label{tab:negatives}
-\vspace*{-1em}
+\centering{
+\rowcolors{2}{gray!6}{white}
 \begin{tabular}{l}
+\hiderowcolors
+\toprule
+\multicolumn{1}{c}{Condition} \\
+\midrule
+\showrowcolors
 ```{r, echo=FALSE, results='asis'}
 table <- data.frame(outcomeName = sort(negatives[,"outcomeName"]))
 print(xtable(table),
-       include.rownames = FALSE,
-       include.colnames = FALSE,
-       hline.after = c(0,nrow(table)),
-       only.contents = TRUE,
-       sanitize.text.function = identity)
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      hline.after = NULL,
+      only.contents = TRUE,
+      add.to.row = list(pos = list(nrow(table)), command = c("\\bottomrule")),
+      sanitize.text.function = identity)
 ```
 \end{tabular}
+}
 \end{table}
 
 ## Covariate sets
