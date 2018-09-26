@@ -352,6 +352,7 @@ plotPs <- function(ps, targetName, comparatorName) {
   ps <- rbind(data.frame(x = ps$preferenceScore, y = ps$targetDensity, group = targetName),
               data.frame(x = ps$preferenceScore, y = ps$comparatorDensity, group = comparatorName))
   ps$group <- factor(ps$group, levels = c(as.character(targetName), as.character(comparatorName)))
+  levels(ps$group) <- paste0(" " , levels(ps$group), " ") # Add space between legend labels
   theme <- ggplot2::element_text(colour = "#000000", size = 12)
   plot <- ggplot2::ggplot(ps,
                           ggplot2::aes(x = x, y = y, color = group, group = group, fill = group)) +
