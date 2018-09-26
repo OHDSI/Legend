@@ -31,7 +31,6 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
-
 # Choose one:
 
 indicationId <- "Depression"
@@ -158,8 +157,8 @@ execute(connectionDetails = connectionDetails,
         synthesizePositiveControls = FALSE,
         generateAllCohortMethodDataObjects = FALSE,
         runCohortMethod = TRUE,
-        computeIncidence = TRUE,
-        fetchChronographData = TRUE,
+        computeIncidence = FALSE,
+        fetchChronographData = FALSE,
         computeCovariateBalance = TRUE,
         exportToCsv = TRUE,
         maxCores = maxCores)
