@@ -232,36 +232,26 @@ updateCohortMethodDataOutcomes <- function() {
         }
         if (!useSample) {
             # Add injected outcomes (no signal injection when doing sampling)
-            injectedOutcomes <- data.frame()
+            injectionSummary <- read.csv(file.path(indicationFolder, "signalInjectionSummary.csv"),
+                                         stringsAsFactors = FALSE)
+            injectionSummary <- injectionSummary[injectionSummary$exposureId == targetId |
+                                                     injectionSummary$exposureId == comparatorId, ]
+            injectionSummary <- injectionSummary[injectionSummary$outcomesToInjectFile != "", ]
 
-            fileName <- file.path(indicationFolder,
-                                  "injectedOutcomes",
-                                  paste0("outcomes_e", targetId, ".rds"))
-            if (file.exists(fileName)) {
-                injectedOutcomesTarget <- readRDS(fileName)
-                injectedOutcomesTarget <- injectedOutcomesTarget[injectedOutcomesTarget$subjectId %in%
-                                                                     cohorts$subjectId, ]
-                injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesTarget)
-            }
-            fileName <- file.path(indicationFolder,
-                                  "injectedOutcomes",
-                                  paste0("outcomes_e", comparatorId, ".rds"))
-            if (file.exists(fileName)) {
-                injectedOutcomesComparator <- readRDS(fileName)
-                injectedOutcomesComparator <- injectedOutcomesComparator[injectedOutcomesComparator$subjectId %in%
-                                                                             cohorts$subjectId, ]
-                injectedOutcomes <- rbind(injectedOutcomes, injectedOutcomesComparator)
-            }
+            if (nrow(injectionSummary) > 0) {
+                # Add original (background) negative control outcomes
+                bgOutcomes <- merge(outcomes, injectionSummary[, c("outcomeId", "newOutcomeId")])
+                bgOutcomes$outcomeId <- bgOutcomes$newOutcomeId
+                outcomes <- rbind(outcomes, bgOutcomes[, colnames(outcomes)])
 
-            if (nrow(injectedOutcomes) != 0) {
-                colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortStartDate"] <- "eventDate"
-                colnames(injectedOutcomes)[colnames(injectedOutcomes) == "cohortDefinitionId"] <- "outcomeId"
-                injectedOutcomes <- merge(cohorts[,
-                                                  c("rowId", "subjectId", "cohortStartDate")],
-                                          injectedOutcomes[,
-                                                           c("subjectId", "outcomeId", "eventDate")])
-                injectedOutcomes$daysToEvent <- injectedOutcomes$eventDate - injectedOutcomes$cohortStartDate
-                outcomes <- rbind(outcomes, injectedOutcomes[, c("rowId", "outcomeId", "daysToEvent")])
+                # Add additional outcomes
+                synthOutcomes <- lapply(injectionSummary$outcomesToInjectFile, readRDS)
+                synthOutcomes <- do.call("rbind", synthOutcomes)
+                colnames(synthOutcomes)[colnames(synthOutcomes) == "cohortStartDate"] <- "eventDate"
+                colnames(synthOutcomes)[colnames(synthOutcomes) == "cohortDefinitionId"] <- "outcomeId"
+                synthOutcomes <- merge(synthOutcomes, cohorts[, c("rowId", "subjectId", "cohortStartDate")])
+                synthOutcomes$daysToEvent <- synthOutcomes$eventDate - synthOutcomes$cohortStartDate
+                outcomes <- rbind(outcomes, synthOutcomes[, colnames(outcomes)])
             }
         }
         metaData <- data.frame(outcomeIds = unique(outcomes$outcomeId))
@@ -413,6 +403,7 @@ ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logH
 outcomeIds <- c(35, 37, 39, 42, 72)
 rerunOutcomesOnServer()
 fetchOutcomesToAllOutcomes(outcomeIds)
+updateCohortMethodDataOutcomes()
 deleteCohortMethodObjectsForOutcomes(outcomeIds)
 deleteBalanceObjectsForOutcomes(outcomeIds)
 unlink(file.path(outputFolder, "export"), recursive = TRUE)
