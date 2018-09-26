@@ -397,7 +397,7 @@ createAnalysesDetails <- function(outputFolder) {
     # of one exposure overlaps with the other.
     createStudyPopArgsOnTreatment <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
                                                                                    removeSubjectsWithPriorOutcome = TRUE,
-                                                                                   riskWindowStart = 0,
+                                                                                   riskWindowStart = 1,
                                                                                    riskWindowEnd = 0,
                                                                                    addExposureDaysToEnd = TRUE,
                                                                                    minDaysAtRisk = 1,
@@ -405,7 +405,7 @@ createAnalysesDetails <- function(outputFolder) {
 
     createStudyPopArgsItt <- CohortMethod::createCreateStudyPopulationArgs(removeDuplicateSubjects = "keep first",
                                                                            removeSubjectsWithPriorOutcome = TRUE,
-                                                                           riskWindowStart = 0,
+                                                                           riskWindowStart = 1,
                                                                            riskWindowEnd = 9999,
                                                                            addExposureDaysToEnd = FALSE,
                                                                            minDaysAtRisk = 1)
