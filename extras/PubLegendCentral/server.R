@@ -34,7 +34,8 @@ shinyServer(function(input, output, session) {
       tcoDb <- getTcoDbs(connection,
                          targetIds = query$targetId,
                          comparatorIds = query$comparatorId,
-                         outcomeIds = query$outcomeId)
+                         outcomeIds = query$outcomeId,
+                         databaseIds = query$databaseId)
       return(tcoDb)
     }
   })
@@ -77,6 +78,8 @@ shinyServer(function(input, output, session) {
                        tcoDbs$comparatorId,
                        "&outcomeId=",
                        tcoDbs$outcomeId,
+                       "&databaseId=",
+                       tcoDbs$databaseId,
                        "&term=",
                        URLencode(input$query),
                        "'>",
@@ -150,8 +153,7 @@ shinyServer(function(input, output, session) {
     withProgress(message = "Generating PDF", value = 0, {
       rmarkdown::render("MyArticle.Rmd",
                         output_file = tempFileName,
-                        params = list(setTitle = title,
-                                      targetId = tcoDb$targetId,
+                        params = list(targetId = tcoDb$targetId,
                                       comparatorId = tcoDb$comparatorId,
                                       outcomeId = tcoDb$outcomeId,
                                       databaseId = tcoDb$databaseId,
@@ -160,7 +162,7 @@ shinyServer(function(input, output, session) {
                                       abstract = abstract,
                                       save = NULL,
                                       load = NULL),
-                        rmarkdown::pdf_document(latex_engine = "pdflatex"))
+                        legend_report(latex_engine = "pdflatex"))
       # createDocument(targetId = tcoDb$targetId,
       #                comparatorId = tcoDb$comparatorId, 
       #                outcomeId = tcoDb$outcomeId, 
