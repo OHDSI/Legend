@@ -33,6 +33,9 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores 
     # CohortMethod runs. We must be careful not to have intermediary files in the different runs with the
     # same name but different content.
 
+    # Tell CohortMethod to minimize files sizes by dropping unneeded columns:
+    options("minimizeFileSizes" = TRUE)
+
     indicationFolder <- file.path(outputFolder, indicationId)
     cmFolder <- file.path(indicationFolder, "cmOutput")
     exposureSummary <- read.csv(file.path(indicationFolder,

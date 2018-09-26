@@ -31,8 +31,6 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
-options("minimizeFileSizes" = TRUE)
-
 # Choose one:
 
 indicationId <- "Depression"
