@@ -33,6 +33,14 @@ outcomes <- getOutcomes(connection)
 databases <- getDatabases(connection)
 analyses <- getAnalyses(connection)
 subgroups <- getSubgroups(connection)
+# Sort for display:
+indications <- indications[order(indications$indicationId), ]
+exposures <- exposures[order(exposures$exposureName), ]
+outcomes <- outcomes[order(outcomes$outcomeName), ]
+databases <- databases[order(databases$databaseId), ]
+analyses <- analyses[order(analyses$analysisId), ]
+subgroups <- subgroups[order(subgroups$subgroupId), ]
+
 
 writeLines("Closing connection")
 disconnect(connection)
