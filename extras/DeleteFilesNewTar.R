@@ -9,21 +9,21 @@ tail(files)
 unlink(files, recursive = TRUE)
 
 # Strata files
-files <- list.files(cmFolder, "^Strata_.*\\.rds$", full.names = TRUE)
+files <- list.files(cmFolder, "^Strat.*\\.rds$", full.names = TRUE)
 head(files)
 tail(files)
 
 unlink(files)
 
 # Outcome specific PS files
-files <- list.files(cmFolder, "^Ps_.*_o[0-9+\\.rds$", full.names = TRUE)
+files <- list.files(cmFolder, "^Ps_.*_o[0-9]+\\.rds$", full.names = TRUE)
 head(files)
 tail(files)
 
 unlink(files)
 
 # Study population files
-files <- list.files(cmFolder, "^StudyPop\\.rds$", full.names = TRUE)
+files <- list.files(cmFolder, "StudyPop.*.rds", full.names = TRUE)
 head(files)
 tail(files)
 
@@ -33,10 +33,10 @@ unlink(files)
 file <- file.path(indicationFolder, "balance")
 file
 
-unlink(file)
+unlink(file, recursive = TRUE)
 
 # Export folder
 file <- file.path(indicationFolder, "export")
 file
 
-unlink(file)
+unlink(file, recursive = TRUE)
