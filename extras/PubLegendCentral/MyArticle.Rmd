@@ -112,7 +112,7 @@ watermark: true
 footer_contents: OHDSI version 1.0
 
 # Produce a pinp document
-output: 
+output:
   Legend::legend_report:
     citation_package: natbib
 pnas_type: pnasresearcharticle
@@ -337,7 +337,7 @@ For efficiency reasons, we fit subgroup Cox models using PS stratification only.
 
 Residual study bias from unmeasured and systematic sources can exist in observational studies after controlling for measured confounding \citep{schuemie2014interpreting,schuemie2016robust}
 .
-To estimate such residual bias, we conduct negative control outcome experiments with `r length(unique(controlResults$outcomeName))` negative control outcomes %\citep{negative-controls}
+To estimate such residual bias, we conduct negative control outcome experiments with `r length(unique(controlResults$outcomeName))` negative control outcomes
 identified through a data-rich algorithm \citep{voss2017accuracy}.
 We fit the negative control estimates to an empirical null distribution that characterizes the study residual bias and is an important artifact from which to assess the study design \citep{schuemie2018improving}
 .
