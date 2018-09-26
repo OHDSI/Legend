@@ -6,9 +6,9 @@ createTitle <- function(tcoDbs) {
 
   titles <- paste(tcoDbs$outcomeName,
                   "risk in new-users of",
-                  uncapitalize(tcoDbs$targetName),
+                  tcoDbs$targetName,
                   "versus",
-                  uncapitalize(tcoDbs$comparatorName),
+                  tcoDbs$comparatorName,
                   "for",
                   uncapitalize(tcoDbs$indicationId),
                   "in the",
@@ -872,10 +872,19 @@ judgePropensityScore <- function(ps, bias) {
 }
 
 uncapitalize <- function(x) {
-  if (is.character(x)) {
-    substr(x, 1, 1) <- tolower(substr(x, 1, 1))
+  if (length(x) > 1) {
+    x <- x[1]
   }
-  x
+  terms <- strsplit(x, split = " & ")
+  terms <- sapply(terms, FUN = function(y) {
+    substr(y, 1, 1) <- tolower(substr(y, 1, 1))
+    y <- gsub("aCE", "ACE", y)
+    y <- gsub("CCB)", "CCBs)", y)
+    y
+  })
+  result <- paste(terms, collapse = " and ")
+  names(result) <- NULL
+  result
 }
 
 capitalize <- function(x) {

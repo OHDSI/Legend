@@ -458,7 +458,7 @@ CohortMethod::plotCovariateBalanceScatterPlot(balance,
 
 ## Outcome assessment
 
-\begin{table}
+\begin{table*}
 \caption{Time-at-risk distributions as percentiles in the target and comparator cohorts after stratification.}
 \label{tab:fu}
 \centering{
@@ -490,7 +490,7 @@ print(xtable(table, format = "latex"),
 ```
 \end{tabular}
 }
-\end{table}
+\end{table*}
 
 Table \ref{tab:fu} details the time to first `r outcomeName` or censoring distributions for patients in the `r targetName` and `r comparatorName` cohorts.
 We report in Table \ref{tab:hr} estimated HRs comparing `r targetName` to `r comparatorName` for the on-treatment and intent-to-treat designs with stratification or matching.

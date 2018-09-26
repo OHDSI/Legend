@@ -15,4 +15,6 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 connection <- connect(connectionDetails)
 
 exposures <- getExposures(connection)
+exposures$exposureName <- sapply(exposures$exposureName, uncapitalize)
+
 outcomes <- getOutcomes(connection)
