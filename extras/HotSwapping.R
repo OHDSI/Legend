@@ -409,6 +409,7 @@ regenerateAllCohortMethodData <- function() {
 
 
 # Add and modify several HOIs ------------------------------------------------------------
+ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logHotSwapHois.txt"))
 outcomeIds <- c(35, 37, 39, 42, 72)
 rerunOutcomesOnServer()
 fetchOutcomesToAllOutcomes(outcomeIds)
