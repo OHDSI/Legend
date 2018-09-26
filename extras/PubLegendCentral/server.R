@@ -161,8 +161,7 @@ shinyServer(function(input, output, session) {
                                       title = title,
                                       abstract = abstract,
                                       save = NULL,
-                                      load = NULL),
-                        legend_report(latex_engine = "pdflatex"))
+                                      load = NULL))
       # createDocument(targetId = tcoDb$targetId,
       #                comparatorId = tcoDb$comparatorId, 
       #                outcomeId = tcoDb$outcomeId, 
