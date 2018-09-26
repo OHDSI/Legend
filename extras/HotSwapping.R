@@ -383,63 +383,75 @@ regenerateAllCohortMethodData <- function() {
 
 
 # Adding race subgroup to existing run ---------------------------------------------------
-subgroupIds <- c(8998)
-ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logHotSwap.txt"))
-fetchSubgroupCovarsToAllCovariates(subgroupIds)
-deleteAllCohortMethodData()
-regenerateAllCohortMethodData()
+# subgroupIds <- c(8998)
+# ParallelLogger::addDefaultFileLogger(file.path(outputFolder, indicationId, "logHotSwap.txt"))
+# fetchSubgroupCovarsToAllCovariates(subgroupIds)
+# deleteAllCohortMethodData()
+# regenerateAllCohortMethodData()
+
+
+# Add and modify several HOIs ------------------------------------------------------------
+outcomeIds <- c(35, 37, 39, 42, 72)
+rerunOutcomesOnServer()
+fetchOutcomesToAllOutcomes(outcomeIds)
+deleteCohortMethodObjectsForOutcomes(outcomeIds)
+unlink(file.path(outputFolder, "balance"), recursive = TRUE)
+unlink(file.path(outputFolder, "export"), recursive = TRUE)
+unlink(file.path(outputFolder, "chronographData.csv"))
+unlink(file.path(outputFolder, "incidence.csv"))
 
 
 # Code to run ------------------------------------------------------------------------------
 # This assumes the inst/settings/OutcomesOfInterest.csv, R/SubgroupCovariateBuilder.R,
 # inst/cohorts, and inst/sql have already been updated
-outcomeIds <- c(18)  # Outcome IDs that are new (both completely new or those that replace older definitions)
-subgroupIds <- c()  # Subgroup IDs that are new (both completely new or those that replace older definitions)
-negativeControlsChanged <- FALSE
-
-
-
-
-if (length(outcomeIds) > 0) {
-
-    rerunOutcomesOnServer()
-
-    fetchOutcomesToAllOutcomes(outcomeIds)
-
-    deleteCohortMethodObjectsForOutcomes(outcomeIds)
-}
-
-if (length(subgroupIds) > 0) {
-
-    fetchSubgroupCovarsToAllCovariates(subgroupIds)
-
-
-    deleteCohortMethodObjectsForSubgroups(subgroupIds)
-}
-
-if (negativeControlsChanged) {
-
-    deleteSignalInjectionFiles()
-
-    rerunSignalInjection()
-
-}
-
-if (length(subgroupIds) == 0) {
-
-    updateCohortMethodDataOutcomes()
-
-} else {
-
-    deleteAllCohortMethodData()
-
-    regenerateAllCohortMethodData()
-
-}
-
-# Remember to drop covariate balance data, incidence data, chronograph data, and exported CSV files
-# Then rerun from cohortMethod = TRUE
-
+# outcomeIds <- c(18)  # Outcome IDs that are new (both completely new or those that replace older definitions)
+# subgroupIds <- c()  # Subgroup IDs that are new (both completely new or those that replace older definitions)
+# negativeControlsChanged <- FALSE
+# updateCohortMethodDataOutcomes()
+#
+#
+#
+#
+# if (length(outcomeIds) > 0) {
+#
+#     rerunOutcomesOnServer()
+#
+#     fetchOutcomesToAllOutcomes(outcomeIds)
+#
+#     deleteCohortMethodObjectsForOutcomes(outcomeIds)
+# }
+#
+# if (length(subgroupIds) > 0) {
+#
+#     fetchSubgroupCovarsToAllCovariates(subgroupIds)
+#
+#
+#     deleteCohortMethodObjectsForSubgroups(subgroupIds)
+# }
+#
+# if (negativeControlsChanged) {
+#
+#     deleteSignalInjectionFiles()
+#
+#     rerunSignalInjection()
+#
+# }
+#
+# if (length(subgroupIds) == 0) {
+#
+#     updateCohortMethodDataOutcomes()
+#
+# } else {
+#
+#     deleteAllCohortMethodData()
+#
+#     regenerateAllCohortMethodData()
+#
+# }
+#
+# # Remember to drop covariate balance data, incidence data, chronograph data, and exported CSV files
+# # Then rerun from cohortMethod = TRUE
+#
 
 
 
