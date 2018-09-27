@@ -412,6 +412,7 @@ print(xtable(table, format = "latex"),
 \toprule
 & \multicolumn{3}{c}{Before stratification}
 & \multicolumn{3}{c}{After stratification} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
 \multicolumn{1}{c}{Characteristic}
   & \multicolumn{1}{c}{T (\%)}
   & \multicolumn{1}{c}{C (\%)}
@@ -520,7 +521,7 @@ Hazard ratio (HR) estimates and their confidence intervals (CIs) and $p$-value t
 \showrowcolors
 ```{r, result_table, echo=FALSE, results='asis'}
 table <- mainResults
-table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95Lb, mainResults$ci95Ub)
 table$p <- sprintf("%.2f", table$p)
 table$calHr <- sprintf("%.2f (%.2f - %.2f)", mainResults$calibratedRr, mainResults$calibratedCi95Lb, mainResults$calibratedCi95Ub)
 table$calibratedP <- sprintf("%.2f", table$calibratedP)
