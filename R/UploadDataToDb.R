@@ -124,7 +124,7 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
         return(dropped)
     }
 
-    for (i in 19:length(files)) {
+    for (i in 1:length(files)) {
         file <- files[i]
         tableName <- gsub(".csv$", "", file)
         ParallelLogger::logInfo("Uploading table ", tableName)
