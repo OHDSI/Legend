@@ -108,7 +108,7 @@ prepareFollowUpDistTable <- function(followUpDist) {
 
 prepareMainResultsTable <- function(mainResults, analyses) {
   table <- mainResults
-  table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95lb, mainResults$ci95ub)
+  table$hr <- sprintf("%.2f (%.2f - %.2f)", mainResults$rr, mainResults$ci95Lb, mainResults$ci95Ub)
   table$p <- sprintf("%.2f", table$p)
   table$calHr <- sprintf("%.2f (%.2f - %.2f)",
                          mainResults$calibratedRr,
@@ -507,24 +507,24 @@ getCoverage <- function(controlResults) {
   d <- rbind(data.frame(yGroup = "Uncalibrated",
                         logRr = controlResults$logRr,
                         seLogRr = controlResults$seLogRr,
-                        ci95lb = controlResults$ci95lb,
-                        ci95ub = controlResults$ci95ub,
+                        ci95Lb = controlResults$ci95Lb,
+                        ci95Ub = controlResults$ci95Ub,
                         trueRr = controlResults$effectSize),
              data.frame(yGroup = "Calibrated",
                         logRr = controlResults$calibratedLogRr,
                         seLogRr = controlResults$calibratedSeLogRr,
-                        ci95lb = controlResults$calibratedCi95Lb,
-                        ci95ub = controlResults$calibratedCi95Ub,
+                        ci95Lb = controlResults$calibratedCi95Lb,
+                        ci95Ub = controlResults$calibratedCi95Ub,
                         trueRr = controlResults$effectSize))
   d <- d[!is.na(d$logRr), ]
-  d <- d[!is.na(d$ci95lb), ]
-  d <- d[!is.na(d$ci95ub), ]
+  d <- d[!is.na(d$ci95Lb), ]
+  d <- d[!is.na(d$ci95Ub), ]
   if (nrow(d) == 0) {
     return(NULL)
   }
 
   d$Group <- as.factor(d$trueRr)
-  d$Significant <- d$ci95lb > d$trueRr | d$ci95ub < d$trueRr
+  d$Significant <- d$ci95Lb > d$trueRr | d$ci95Ub < d$trueRr
 
   temp2 <- aggregate(Significant ~ Group + yGroup, data = d, mean)
   temp2$coverage <- (1 - temp2$Significant)
@@ -538,23 +538,23 @@ plotScatter <- function(controlResults) {
   d <- rbind(data.frame(yGroup = "Uncalibrated",
                         logRr = controlResults$logRr,
                         seLogRr = controlResults$seLogRr,
-                        ci95lb = controlResults$ci95lb,
-                        ci95ub = controlResults$ci95ub,
+                        ci95Lb = controlResults$ci95Lb,
+                        ci95Ub = controlResults$ci95Ub,
                         trueRr = controlResults$effectSize),
              data.frame(yGroup = "Calibrated",
                         logRr = controlResults$calibratedLogRr,
                         seLogRr = controlResults$calibratedSeLogRr,
-                        ci95lb = controlResults$calibratedCi95Lb,
-                        ci95ub = controlResults$calibratedCi95Ub,
+                        ci95Lb = controlResults$calibratedCi95Lb,
+                        ci95Ub = controlResults$calibratedCi95Ub,
                         trueRr = controlResults$effectSize))
   d <- d[!is.na(d$logRr), ]
-  d <- d[!is.na(d$ci95lb), ]
-  d <- d[!is.na(d$ci95ub), ]
+  d <- d[!is.na(d$ci95Lb), ]
+  d <- d[!is.na(d$ci95Ub), ]
   if (nrow(d) == 0) {
     return(NULL)
   }
   d$Group <- as.factor(d$trueRr)
-  d$Significant <- d$ci95lb > d$trueRr | d$ci95ub < d$trueRr
+  d$Significant <- d$ci95Lb > d$trueRr | d$ci95Ub < d$trueRr
   temp1 <- aggregate(Significant ~ Group + yGroup, data = d, length)
   temp2 <- aggregate(Significant ~ Group + yGroup, data = d, mean)
   temp1$nLabel <- paste0(formatC(temp1$Significant, big.mark = ","), " estimates")
@@ -631,7 +631,7 @@ plotScatter <- function(controlResults) {
 }
 
 plotLargeScatter <- function(d, xLabel) {
-  d$Significant <- d$ci95lb > 1 | d$ci95ub < 1
+  d$Significant <- d$ci95Lb > 1 | d$ci95Ub < 1
   
   oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
                        meanLabel = paste0(formatC(100 *
