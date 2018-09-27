@@ -113,7 +113,8 @@ footer_contents: OHDSI version 1.0
 
 # Produce a pinp document
 output:
-  Legend::legend_report:
+  pdf_document:
+    template: blank_template.tex
     citation_package: natbib
 pnas_type: pnasresearcharticle
 bibliography: ohdsi.bib
