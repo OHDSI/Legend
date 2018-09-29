@@ -85,7 +85,7 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
     }
 
-    cluster <- ParallelLogger::makeCluster(numberOfThreads = 1)#min(5, maxCores))
+    cluster <- ParallelLogger::makeCluster(numberOfThreads = min(3, maxCores))
     exposureSummary$comparison <- paste(exposureSummary$targetId,
                                         exposureSummary$comparatorId,
                                         sep = "-")
@@ -129,6 +129,7 @@ computeBalance <- function(exposureSummaryRow,
                                 "cmOutput",
                                 referenceSubsetCt$cohortMethodDataFolder[1])
     if (is.na(referenceSubsetCt$cohortMethodDataFolder[1])) {
+        ParallelLogger::logDebug("Not computng balance for matching")
         # Matching was probably turned off
         cmDataCt <- NULL
         doMatching <- FALSE
@@ -169,6 +170,7 @@ computeBalance <- function(exposureSummaryRow,
                                                 exposureSummaryRow$comparatorId,
                                                 "_a2.rds"))
     if (!file.exists(fileName)) {
+        ParallelLogger::logTrace("Creating stratified balance file " , fileName)
         balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
                                                          cohortMethodData = cmData)
         saveRDS(balance, fileName)
@@ -182,11 +184,14 @@ computeBalance <- function(exposureSummaryRow,
                                                     exposureSummaryRow$comparatorId,
                                                     "_a4.rds"))
         if (!file.exists(fileName)) {
+            ParallelLogger::logTrace("Creating matched balance file " , fileName)
             matchedPop <- CohortMethod::matchOnPs(population = studyPop,
                                                   caliper = matchOnPsArgs$caliper,
                                                   caliperScale = matchOnPsArgs$caliperScale,
                                                   maxRatio = matchOnPsArgs$maxRatio)
-            if (nrow(matchedPop) != 0) {
+            if (nrow(matchedPop) == 0) {
+                ParallelLogger::logDebug("No subjects left after matching")
+            } else {
                 balance <- CohortMethod::computeCovariateBalance(population = matchedPop,
                                                                  cohortMethodData = cmData)
                 saveRDS(balance, fileName)
@@ -200,13 +205,16 @@ computeBalance <- function(exposureSummaryRow,
                                                     exposureSummaryRow$targetId,
                                                     "_a4.rds"))
         if (!file.exists(fileName)) {
+            ParallelLogger::logTrace("Creating matched balance file " , fileName)
             studyPopCt <- studyPop
             studyPopCt$treatment <- 1 - studyPopCt$treatment
             matchedPopCt <- CohortMethod::matchOnPs(population = studyPopCt,
                                                     caliper = matchOnPsArgs$caliper,
                                                     caliperScale = matchOnPsArgs$caliperScale,
                                                     maxRatio = matchOnPsArgs$maxRatio)
-            if (nrow(matchedPopCt) != 0) {
+            if (nrow(matchedPopCt) == 0) {
+                ParallelLogger::logDebug("No subjects left after matching")
+            } else {
                 balance <- CohortMethod::computeCovariateBalance(population = matchedPopCt,
                                                                  cohortMethodData = cmDataCt)
                 saveRDS(balance, fileName)
@@ -225,6 +233,7 @@ computeBalance <- function(exposureSummaryRow,
         if (!file.exists(fileName)) {
             subgroupSize <- ffbase::sum.ff(cmData$covariates$covariateId == subgroupCovariateId)
             if (subgroupSize > 1000) {
+                ParallelLogger::logTrace("Creating subgroup balance file ", fileName)
                 balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
                                                                  cohortMethodData = cmData,
                                                                  subgroupCovariateId = subgroupCovariateId)
@@ -258,10 +267,13 @@ computeBalance <- function(exposureSummaryRow,
                                                         analysisId,
                                                         ".rds"))
             if (!file.exists(fileName)) {
+                ParallelLogger::logTrace("Creating outcome-specific balance file ", fileName)
                 strataPopFile <- referenceSubset$strataFile[referenceSubset$outcomeId == outcomeId &
                                                                 referenceSubset$analysisId == analysisId]
                 strataPop <- readRDS(file.path(indicationFolder, "cmOutput", strataPopFile))
-                if (nrow(strataPop) != 0) {
+                if (nrow(strataPop) == 0) {
+                    ParallelLogger::logDebug("Stratified population file ", strataPopFile, " has 0 rows")
+                } else {
                     balance <- CohortMethod::computeCovariateBalance(population = strataPop,
                                                                      cohortMethodData = cmDataSubset)
 
@@ -283,8 +295,11 @@ computeBalance <- function(exposureSummaryRow,
                                                             analysisId,
                                                             ".rds"))
                 if (!file.exists(fileName)) {
+                    ParallelLogger::logTrace("Creating outcome-specific balance file ", fileName)
                     strataPop <- readRDS(file.path(indicationFolder, "cmOutput", strataPopFile))
-                    if (nrow(strataPop) != 0) {
+                    if (nrow(strataPop) == 0) {
+                        ParallelLogger::logDebug("Stratified population file ", strataPopFile, " has 0 rows")
+                    } else {
                         balance <- CohortMethod::computeCovariateBalance(population = strataPop,
                                                                          cohortMethodData = cmDataCtSubset)
 
