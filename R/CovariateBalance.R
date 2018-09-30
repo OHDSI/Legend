@@ -71,26 +71,36 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
         outcomeModelReference4 <- readRDS(pathToRds)
         outcomeModelReference4 <- outcomeModelReference4[outcomeModelReference4$analysisId %in% 1:4, ]
         outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference4)
+        rm(outcomeModelReference4)
     } else {
         outcomeModelReference <- outcomeModelReference1
     }
+    rm(outcomeModelReference1)
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
     outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
     outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
-
+    d <- merge(exposureSummary[, c("targetId", "comparatorId")],
+               outcomeModelReference)
+    d <- merge(d,
+               data.frame(targetId = outcomeModelReference$comparatorId,
+                          comparatorId = outcomeModelReference$targetId,
+                          cmDataFolderCt = outcomeModelReference$cohortMethodDataFolder,
+                          strataFileCt = outcomeModelReference$strataFile,
+                          stringsAsFactors = FALSE),
+               all.x = TRUE)
+    rm(exposureSummary)
+    rm(outcomeModelReference)
     if (indicationId == "Depression") {
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998)
     } else if (indicationId == "Hypertension") {
         subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
     }
 
-    cluster <- ParallelLogger::makeCluster(numberOfThreads = min(3, maxCores))
-    exposureSummary$comparison <- paste(exposureSummary$targetId,
-                                        exposureSummary$comparatorId,
-                                        sep = "-")
+    cluster <- ParallelLogger::makeCluster(numberOfThreads = min(6, maxCores))
+    d <- split(d, paste(d$targetId, d$comparatorId))
     ParallelLogger::clusterApply(cluster = cluster,
-                                 x = split(exposureSummary, exposureSummary$comparison),
+                                 x = d,
                                  fun = Legend:::computeBalance,
                                  studyPopArgs = studyPopArgs,
                                  stratifyByPsArgs = stratifyByPsArgs,
@@ -98,52 +108,43 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
                                  indicationFolder = indicationFolder,
                                  balanceFolder = balanceFolder,
                                  covarSubsetIds = covarSubsetIds,
-                                 outcomeModelReference = outcomeModelReference,
                                  subgroupCovariateIds = subgroupCovariateIds)
     ParallelLogger::stopCluster(cluster)
 }
 
-computeBalance <- function(exposureSummaryRow,
+computeBalance <- function(subset,
                            studyPopArgs,
                            stratifyByPsArgs,
                            matchOnPsArgs,
                            indicationFolder,
                            balanceFolder,
                            covarSubsetIds,
-                           outcomeModelReference,
                            subgroupCovariateIds) {
-    # exposureSummaryRow <- x[[2]]
+    # subset <- d[[1]]
     ParallelLogger::logTrace("Computing balance for target ",
-                             exposureSummaryRow$targetId,
+                             subset$targetId[1],
                              " and comparator ",
-                             exposureSummaryRow$comparatorId)
-    referenceSubset <- outcomeModelReference[outcomeModelReference$targetId == exposureSummaryRow$targetId &
-                                                 outcomeModelReference$comparatorId == exposureSummaryRow$comparatorId, ]
+                             subset$comparatorId[1])
     cmDataFolder <- file.path(indicationFolder,
                               "cmOutput",
-                              referenceSubset$cohortMethodDataFolder[1])
+                              subset$cohortMethodDataFolder[1])
     cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-    referenceSubsetCt <- outcomeModelReference[outcomeModelReference$targetId == exposureSummaryRow$comparatorId &
-                                                   outcomeModelReference$comparatorId == exposureSummaryRow$targetId, ]
-    cmDataCtFolder <- file.path(indicationFolder,
-                                "cmOutput",
-                                referenceSubsetCt$cohortMethodDataFolder[1])
-    if (is.na(referenceSubsetCt$cohortMethodDataFolder[1])) {
-        ParallelLogger::logDebug("Not computng balance for matching")
+    if (is.na(subset$cmDataFolderCt[1])) {
+        ParallelLogger::logDebug("Not computing balance for matching")
         # Matching was probably turned off
         cmDataCt <- NULL
         doMatching <- FALSE
     } else {
         cmDataCtFolder <- file.path(indicationFolder,
                                     "cmOutput",
-                                    referenceSubsetCt$cohortMethodDataFolder[1])
+                                    subset$cmDataFolderCt[1])
         cmDataCt <- CohortMethod::loadCohortMethodData(cmDataCtFolder)
         # Reverse cohortMethodData objects have no covariate data. Add back in:
         cmDataCt$covariates <- cmData$covariates
         cmDataCt$covariateRef <- cmData$covariateRef
         doMatching <- TRUE
     }
-    psFile <- file.path(indicationFolder, "cmOutput", referenceSubset$sharedPsFile[1])
+    psFile <- file.path(indicationFolder, "cmOutput", subset$sharedPsFile[1])
     ps <- readRDS(psFile)
     # Compute balance when stratifying. Not specific to one outcome, so create hypothetical study
     # population --------
@@ -165,9 +166,9 @@ computeBalance <- function(exposureSummaryRow,
                                                 numberOfStrata = stratifyByPsArgs$numberOfStrata,
                                                 baseSelection = stratifyByPsArgs$baseSelection)
     fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                exposureSummaryRow$targetId,
+                                                subset$targetId[1],
                                                 "_c",
-                                                exposureSummaryRow$comparatorId,
+                                                subset$comparatorId[1],
                                                 "_a2.rds"))
     if (!file.exists(fileName)) {
         ParallelLogger::logTrace("Creating stratified balance file " , fileName)
@@ -179,9 +180,9 @@ computeBalance <- function(exposureSummaryRow,
     if (doMatching) {
         # Compute balance when matching. Not specific to one outcome, so use hypothetical study population ----
         fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                    exposureSummaryRow$targetId,
+                                                    subset$targetId[1],
                                                     "_c",
-                                                    exposureSummaryRow$comparatorId,
+                                                    subset$comparatorId[1],
                                                     "_a4.rds"))
         if (!file.exists(fileName)) {
             ParallelLogger::logTrace("Creating matched balance file " , fileName)
@@ -200,9 +201,9 @@ computeBalance <- function(exposureSummaryRow,
 
         # Matching is asymmetrical, so flip. Not specific to one outcome, so use hypothetical study population ----
         fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                    exposureSummaryRow$comparatorId,
+                                                    subset$comparatorId[1],
                                                     "_c",
-                                                    exposureSummaryRow$targetId,
+                                                    subset$targetId[1],
                                                     "_a4.rds"))
         if (!file.exists(fileName)) {
             ParallelLogger::logTrace("Creating matched balance file " , fileName)
@@ -224,9 +225,9 @@ computeBalance <- function(exposureSummaryRow,
     # Compute balance within subgroups for stratification. Not specific to one outcome ----
     for (subgroupCovariateId in subgroupCovariateIds) {
         fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                    exposureSummaryRow$targetId,
+                                                    subset$targetId[1],
                                                     "_c",
-                                                    exposureSummaryRow$comparatorId,
+                                                    subset$comparatorId[1],
                                                     "_s",
                                                     subgroupCovariateId,
                                                     "_a2.rds"))
@@ -260,13 +261,13 @@ computeBalance <- function(exposureSummaryRow,
         cmDataCtSubset <- cmDataCt
         cmDataCtSubset$covariates <- cmDataSubset$covariates
     }
-    outcomeIds <- unique(referenceSubset$outcomeId)
+    outcomeIds <- unique(subset$outcomeId)
     for (outcomeId in outcomeIds) {
-        for (analysisId in unique(outcomeModelReference$analysisId)) {
+        for (analysisId in unique(subset$analysisId)) {
             fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                        exposureSummaryRow$targetId,
+                                                        subset$targetId[1],
                                                         "_c",
-                                                        exposureSummaryRow$comparatorId,
+                                                        subset$comparatorId[1],
                                                         "_o",
                                                         outcomeId,
                                                         "_a",
@@ -274,8 +275,8 @@ computeBalance <- function(exposureSummaryRow,
                                                         ".rds"))
             if (!file.exists(fileName)) {
                 ParallelLogger::logTrace("Creating outcome-specific balance file ", fileName)
-                strataPopFile <- referenceSubset$strataFile[referenceSubset$outcomeId == outcomeId &
-                                                                referenceSubset$analysisId == analysisId]
+                strataPopFile <- subset$strataFile[subset$outcomeId == outcomeId &
+                                                       subset$analysisId == analysisId]
                 strataPop <- readRDS(file.path(indicationFolder, "cmOutput", strataPopFile))
                 if (nrow(strataPop) == 0) {
                     ParallelLogger::logDebug("Stratified population file ", strataPopFile, " has 0 rows")
@@ -288,13 +289,13 @@ computeBalance <- function(exposureSummaryRow,
                 }
             }
             # See if reverse strata pop also exists (= matching)
-            strataPopFile <- referenceSubsetCt$strataFile[referenceSubsetCt$outcomeId == outcomeId &
-                                                              referenceSubsetCt$analysisId == analysisId]
+            strataPopFile <- subset$strataFileCt[subset$outcomeId == outcomeId &
+                                                     subset$analysisId == analysisId]
             if (length(strataPopFile) == 1) {
                 fileName <- file.path(balanceFolder, paste0("Bal_t",
-                                                            exposureSummaryRow$comparatorId,
+                                                            subset$comparatorId[1],
                                                             "_c",
-                                                            exposureSummaryRow$targetId,
+                                                            subset$targetId[1],
                                                             "_o",
                                                             outcomeId,
                                                             "_a",
