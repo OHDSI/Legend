@@ -291,7 +291,7 @@ computeBalance <- function(subset,
             # See if reverse strata pop also exists (= matching)
             strataPopFile <- subset$strataFileCt[subset$outcomeId == outcomeId &
                                                      subset$analysisId == analysisId]
-            if (length(strataPopFile) == 1) {
+            if (!is.na(strataPopFile)) {
                 fileName <- file.path(balanceFolder, paste0("Bal_t",
                                                             subset$comparatorId[1],
                                                             "_c",
