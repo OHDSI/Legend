@@ -233,13 +233,19 @@ computeBalance <- function(exposureSummaryRow,
         if (!file.exists(fileName)) {
             subgroupSize <- ffbase::sum.ff(cmData$covariates$covariateId == subgroupCovariateId)
             if (subgroupSize > 1000) {
-                ParallelLogger::logTrace("Creating subgroup balance file ", fileName)
-                balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
-                                                                 cohortMethodData = cmData,
-                                                                 subgroupCovariateId = subgroupCovariateId)
+                # Check if completely separable:
+                rowIds <- cmData$covariates$rowId[cmData$covariates$covariateId == subgroupCovariateId]
+                strataSubPop <- stratifiedPop[stratifiedPop$rowId %in% ff::as.ram(rowIds), ]
+                if (sum(strataSubPop$treatment == 1) != 0 &&
+                    sum(strataSubPop$treatment == 0) != 0) {
+                    ParallelLogger::logTrace("Creating subgroup balance file ", fileName)
+                    balance <- CohortMethod::computeCovariateBalance(population = stratifiedPop,
+                                                                     cohortMethodData = cmData,
+                                                                     subgroupCovariateId = subgroupCovariateId)
 
 
-                saveRDS(balance, fileName)
+                    saveRDS(balance, fileName)
+                }
             }
         }
     }
