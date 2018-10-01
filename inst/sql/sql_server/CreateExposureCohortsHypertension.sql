@@ -67,7 +67,8 @@ FROM (
 	INNER JOIN  @drug_ancestor_table drug_ancestor
 		ON concept_ancestor.ancestor_concept_id = drug_ancestor.descendant_concept_id
 
-) all_exposures;
+) all_exposures
+WHERE exposure_end_date >= exposure_start_date;
 
 -- Create eras of continuous exposure. Store them in #exposure_era
 IF OBJECT_ID('tempdb..#exposure_era', 'U') IS NOT NULL

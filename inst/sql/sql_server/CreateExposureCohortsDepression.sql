@@ -128,7 +128,8 @@ FROM (
 	INNER JOIN  @custom_ancestor_table custom_ancestor
 		ON concept_ancestor.ancestor_concept_id = custom_ancestor.descendant_concept_id
 	WHERE custom_ancestor.ancestor_concept_id IN (@drug_class_cohort_ids)
-) all_exposures;
+) all_exposures
+WHERE exposure_end_date >= exposure_start_date;
 
 -- Create eras of continuous exposure. Store them in @cohort_database_schema.@exposure_era_table
 IF OBJECT_ID('@cohort_database_schema.@exposure_era_table', 'U') IS NOT NULL
