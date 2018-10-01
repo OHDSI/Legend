@@ -27,5 +27,19 @@ cluster <- ParallelLogger::makeCluster(8)
 ParallelLogger::clusterApply(cluster, files, Legend:::replaceWithZeroFile)
 ParallelLogger::stopCluster(cluster)
 
-# 76.8GB free before
-# 419GB free after
+# Fix outcome model file -------------------------------------------------
+# Accidentally dropped attrition property. Bring it back
+files <- list.files(cmOutputFolder, "StudyPop.*.rds", full.names = TRUE)
+unlink(files)
+# Manually run through runCohortMethod to recreate all studyPops
+pathToRds <- file.path(cmOutputFolder, "outcomeModelReference1.rds")
+outcomeModelReference <- readRDS(pathToRds)
+outcomeModelReference <- outcomeModelReference[outcomeModelReference$studyPopFile != "", ]
+copyMetaData <- function(i) {
+  studyPop <- readRDS(file.path(cmOutputFolder, outcomeModelReference$studyPopFile[i]))
+  metaData <- attr(studyPop, "metaData")
+  om <- readRDS(file.path(cmOutputFolder, outcomeModelReference$outcomeModelFile[i]))
+  om$attrition <- metaData$attrition
+  saveRDS(om, file.path(cmOutputFolder, outcomeModelReference$outcomeModelFile[i]))
+}
+plyr::l_ply(1:nrow(outcomeModelReference), copyMetaData, .progress = "text")
