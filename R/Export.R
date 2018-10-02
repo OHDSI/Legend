@@ -585,12 +585,19 @@ exportMainResults <- function(indicationId,
     analysesSum1 <- read.csv(summaryFile1)
     analysesSum2 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary2.csv"))
     analysesSum3 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary3.csv"))
-    analysesSum4 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary4.csv"))
-    analysesSum <- rbind(analysesSum1[,
-                                      colnames(analysesSum2)],
-                         analysesSum2,
-                         analysesSum3,
-                         analysesSum4)
+    if (file.exists(file.path(outputFolder, indicationId, "analysisSummary4.csv"))) {
+        analysesSum4 <- read.csv(file.path(outputFolder, indicationId, "analysisSummary4.csv"))
+        analysesSum <- rbind(analysesSum1[,
+                                          colnames(analysesSum2)],
+                             analysesSum2,
+                             analysesSum3,
+                             analysesSum4)
+    } else {
+        analysesSum <- rbind(analysesSum1[,
+                                          colnames(analysesSum2)],
+                             analysesSum2,
+                             analysesSum3)
+    }
     analysesSum$symmetrical <- TRUE
     analysesSum$symmetrical[analysesSum$analysisId %in% c(3, 4)] <- FALSE
 
@@ -621,86 +628,88 @@ exportMainResults <- function(indicationId,
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
     outcomeModelReference <- readRDS(pathToRds)
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$analysisId > 4, ]
-    loadInteractionsFromOutcomeModel <- function(i) {
-        outcomeModel <- readRDS(file.path(outputFolder,
-                                          indicationId,
-                                          "cmOutput",
-                                          outcomeModelReference$outcomeModelFile[i]))
-        if (!is.null(outcomeModel$subgroupCounts)) {
-            rows <- data.frame(targetId = outcomeModelReference$targetId[i],
-                               comparatorId = outcomeModelReference$comparatorId[i],
-                               outcomeId = outcomeModelReference$outcomeId[i],
-                               analysisId = outcomeModelReference$analysisId[i],
-                               interactionCovariateId = outcomeModel$subgroupCounts$subgroupCovariateId,
-                               rrr = NA,
-                               ci95Lb = NA,
-                               ci95Ub = NA,
-                               p = NA,
-                               i2 = NA,
-                               logRrr = NA,
-                               seLogRrr = NA,
-                               targetSubjects = outcomeModel$subgroupCounts$targetPersons,
-                               comparatorSubjects = outcomeModel$subgroupCounts$comparatorPersons,
-                               targetDays = outcomeModel$subgroupCounts$targetDays,
-                               comparatorDays = outcomeModel$subgroupCounts$comparatorDays,
-                               targetOutcomes = outcomeModel$subgroupCounts$targetOutcomes,
-                               comparatorOutcomes = outcomeModel$subgroupCounts$comparatorOutcomes)
-            if (!is.null(outcomeModel$outcomeModelInteractionEstimates)) {
-                idx <- match(outcomeModel$outcomeModelInteractionEstimates$covariateId,
-                             rows$interactionCovariateId)
-                rows$rrr[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logRr)
-                rows$ci95Lb[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logLb95)
-                rows$ci95Ub[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logUb95)
-                rows$logRrr[idx] <- outcomeModel$outcomeModelInteractionEstimates$logRr
-                rows$seLogRrr[idx] <- outcomeModel$outcomeModelInteractionEstimates$seLogRr
-                z <- rows$logRrr[idx]/rows$seLogRrr[idx]
-                rows$p[idx] <- 2 * pmin(pnorm(z), 1 - pnorm(z))
+    if (nrow(outcomeModelReference) > 0) {
+        loadInteractionsFromOutcomeModel <- function(i) {
+            outcomeModel <- readRDS(file.path(outputFolder,
+                                              indicationId,
+                                              "cmOutput",
+                                              outcomeModelReference$outcomeModelFile[i]))
+            if (!is.null(outcomeModel$subgroupCounts)) {
+                rows <- data.frame(targetId = outcomeModelReference$targetId[i],
+                                   comparatorId = outcomeModelReference$comparatorId[i],
+                                   outcomeId = outcomeModelReference$outcomeId[i],
+                                   analysisId = outcomeModelReference$analysisId[i],
+                                   interactionCovariateId = outcomeModel$subgroupCounts$subgroupCovariateId,
+                                   rrr = NA,
+                                   ci95Lb = NA,
+                                   ci95Ub = NA,
+                                   p = NA,
+                                   i2 = NA,
+                                   logRrr = NA,
+                                   seLogRrr = NA,
+                                   targetSubjects = outcomeModel$subgroupCounts$targetPersons,
+                                   comparatorSubjects = outcomeModel$subgroupCounts$comparatorPersons,
+                                   targetDays = outcomeModel$subgroupCounts$targetDays,
+                                   comparatorDays = outcomeModel$subgroupCounts$comparatorDays,
+                                   targetOutcomes = outcomeModel$subgroupCounts$targetOutcomes,
+                                   comparatorOutcomes = outcomeModel$subgroupCounts$comparatorOutcomes)
+                if (!is.null(outcomeModel$outcomeModelInteractionEstimates)) {
+                    idx <- match(outcomeModel$outcomeModelInteractionEstimates$covariateId,
+                                 rows$interactionCovariateId)
+                    rows$rrr[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logRr)
+                    rows$ci95Lb[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logLb95)
+                    rows$ci95Ub[idx] <- exp(outcomeModel$outcomeModelInteractionEstimates$logUb95)
+                    rows$logRrr[idx] <- outcomeModel$outcomeModelInteractionEstimates$logRr
+                    rows$seLogRrr[idx] <- outcomeModel$outcomeModelInteractionEstimates$seLogRr
+                    z <- rows$logRrr[idx]/rows$seLogRrr[idx]
+                    rows$p[idx] <- 2 * pmin(pnorm(z), 1 - pnorm(z))
+                }
+                return(rows)
+            } else {
+                return(NULL)
             }
-            return(rows)
-        } else {
-            return(NULL)
+
         }
+        interactions <- plyr::llply(1:nrow(outcomeModelReference),
+                                    loadInteractionsFromOutcomeModel,
+                                    .progress = "text")
+        interactions <- do.call("rbind", interactions)
 
+        ParallelLogger::logInfo("  Performing empirical calibration on interaction effects")
+        cluster <- ParallelLogger::makeCluster(min(6, maxCores))
+        subsets <- split(interactions,
+                         paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
+        interactions <- ParallelLogger::clusterApply(cluster,
+                                                     subsets,
+                                                     Legend:::calibrateInteractions,
+                                                     negativeControls = negativeControls)
+        ParallelLogger::stopCluster(cluster)
+        rm(subsets)  # Free up memory
+        interactions <- do.call("rbind", interactions)
+
+        # Add TC -> CT swap
+        interactionsCt <- interactions
+        interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetId", "comparatorId")
+        interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetSubjects", "comparatorSubjects")
+        interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetDays", "comparatorDays")
+        interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetOutcomes", "comparatorOutcomes")
+        interactionsCt$rrr <- 1/interactionsCt$rrr
+        interactionsCt$logRrr <- -interactionsCt$logRrr
+        temp <- 1/interactionsCt$ci95Lb
+        interactionsCt$ci95Lb <- 1/interactionsCt$ci95Ub
+        interactionsCt$ci95Ub <- temp
+        interactions <- rbind(interactions, interactionsCt)
+        interactions$databaseId <- databaseId
+
+        interactions <- enforceMinCellValue(interactions, "targetSubjects", minCellCount)
+        interactions <- enforceMinCellValue(interactions, "comparatorSubjects", minCellCount)
+        interactions <- enforceMinCellValue(interactions, "targetOutcomes", minCellCount)
+        interactions <- enforceMinCellValue(interactions, "comparatorOutcomes", minCellCount)
+        colnames(interactions) <- SqlRender::camelCaseToSnakeCase(colnames(interactions))
+        fileName <- file.path(exportFolder, "cm_interaction_result.csv")
+        write.csv(interactions, fileName, row.names = FALSE)
+        rm(interactions)  # Free up memory
     }
-    interactions <- plyr::llply(1:nrow(outcomeModelReference),
-                                loadInteractionsFromOutcomeModel,
-                                .progress = "text")
-    interactions <- do.call("rbind", interactions)
-
-    ParallelLogger::logInfo("  Performing empirical calibration on interaction effects")
-    cluster <- ParallelLogger::makeCluster(min(6, maxCores))
-    subsets <- split(interactions,
-                     paste(interactions$targetId, interactions$comparatorId, interactions$analysisId))
-    interactions <- ParallelLogger::clusterApply(cluster,
-                                                 subsets,
-                                                 Legend:::calibrateInteractions,
-                                                 negativeControls = negativeControls)
-    ParallelLogger::stopCluster(cluster)
-    rm(subsets)  # Free up memory
-    interactions <- do.call("rbind", interactions)
-
-    # Add TC -> CT swap
-    interactionsCt <- interactions
-    interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetId", "comparatorId")
-    interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetSubjects", "comparatorSubjects")
-    interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetDays", "comparatorDays")
-    interactionsCt <- Legend:::swapColumnContents(interactionsCt, "targetOutcomes", "comparatorOutcomes")
-    interactionsCt$rrr <- 1/interactionsCt$rrr
-    interactionsCt$logRrr <- -interactionsCt$logRrr
-    temp <- 1/interactionsCt$ci95Lb
-    interactionsCt$ci95Lb <- 1/interactionsCt$ci95Ub
-    interactionsCt$ci95Ub <- temp
-    interactions <- rbind(interactions, interactionsCt)
-    interactions$databaseId <- databaseId
-
-    interactions <- enforceMinCellValue(interactions, "targetSubjects", minCellCount)
-    interactions <- enforceMinCellValue(interactions, "comparatorSubjects", minCellCount)
-    interactions <- enforceMinCellValue(interactions, "targetOutcomes", minCellCount)
-    interactions <- enforceMinCellValue(interactions, "comparatorOutcomes", minCellCount)
-    colnames(interactions) <- SqlRender::camelCaseToSnakeCase(colnames(interactions))
-    fileName <- file.path(exportFolder, "cm_interaction_result.csv")
-    write.csv(interactions, fileName, row.names = FALSE)
-    rm(interactions)  # Free up memory
 
     ParallelLogger::logInfo("- incidence table")
     pathToCsv <- file.path(outputFolder, indicationId, "incidence.csv")
@@ -1131,11 +1140,17 @@ exportDiagnostics <- function(indicationId,
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
     outcomeModelReference3 <- readRDS(pathToRds)
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference4.rds")
-    outcomeModelReference4 <- readRDS(pathToRds)
-    outcomeModelReference <- rbind(outcomeModelReference1,
-                                   outcomeModelReference2,
-                                   outcomeModelReference3,
-                                   outcomeModelReference3)
+    if (file.exists(pathToRds)) {
+        outcomeModelReference4 <- readRDS(pathToRds)
+        outcomeModelReference <- rbind(outcomeModelReference1,
+                                       outcomeModelReference2,
+                                       outcomeModelReference3,
+                                       outcomeModelReference4)
+    } else {
+        outcomeModelReference <- rbind(outcomeModelReference1,
+                                       outcomeModelReference2,
+                                       outcomeModelReference3)
+    }
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ]  # HOIs only
     outcomeModelReference <- outcomeModelReference[, c("strataFile",
                                                        "targetId",
