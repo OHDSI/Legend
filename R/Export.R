@@ -152,14 +152,18 @@ exportAnalyses <- function(indicationId, outputFolder, exportFolder, databaseId)
     write.csv(cohortMethodAnalysis, fileName, row.names = FALSE)
 
     ParallelLogger::logInfo("- covariate_analysis table")
-    indicationFolder <- file.path(outputFolder, indicationId[1])
-    covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder,
-                                                                    "allCovariates"))
-    covariateAnalysis <- ff::as.ram(covariateData$analysisRef)
-    covariateAnalysis <- covariateAnalysis[, c("analysisId", "analysisName")]
-    colnames(covariateAnalysis) <- c("covariate_analysis_id", "covariate_analysis_name")
-    fileName <- file.path(exportFolder, "covariate_analysis.csv")
-    write.csv(covariateAnalysis, fileName, row.names = FALSE)
+    indicationFolder <- file.path(outputFolder, indicationId)
+    if (!file.exists(file.path(indicationFolder, "allCovariates"))) {
+        warning("Can't find allCovariates, skipping covariate_analysis table")
+    } else {
+        covariateData <- FeatureExtraction::loadCovariateData(file.path(indicationFolder,
+                                                                        "allCovariates"))
+        covariateAnalysis <- ff::as.ram(covariateData$analysisRef)
+        covariateAnalysis <- covariateAnalysis[, c("analysisId", "analysisName")]
+        colnames(covariateAnalysis) <- c("covariate_analysis_id", "covariate_analysis_name")
+        fileName <- file.path(exportFolder, "covariate_analysis.csv")
+        write.csv(covariateAnalysis, fileName, row.names = FALSE)
+    }
 
     ParallelLogger::logInfo("- incidence_analysis table")
     incidenceAnalysis <- data.frame(incidence_analysis_id = c("On-treatment", "Intent-to-treat"),
@@ -322,7 +326,13 @@ exportMetadata <- function(indicationId,
 
     ParallelLogger::logInfo("- exposure_summary table")
     pathToCsv <- file.path(outputFolder, indicationId, "pairedExposureSummary.csv")
-    exposurePairs <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    if (file.exists(pathToCsv)) {
+        exposurePairs <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    } else {
+        warning("Can't find pairedExposureSummary.csv, so using pairedExposureSummaryFilteredBySize")
+        pathToCsv <- file.path(outputFolder, indicationId, "pairedExposureSummaryFilteredBySize.csv")
+        exposurePairs <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    }
     exposurePairs$databaseId <- databaseId
     exposureSummary1 <- exposurePairs[, c("databaseId", "targetId", "targetMinDate", "targetMaxDate")]
     colnames(exposureSummary1) <- c("databaseId", "exposureId", "minDate", "maxDate")
@@ -429,48 +439,55 @@ exportMetadata <- function(indicationId,
     close(pb)
 
     pathToCsv <- file.path(outputFolder, indicationId, "attrition.csv")
-    attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
-    attritionFromDb$targetId[attritionFromDb$targetId == -1] <- NA
-    attritionFromDb$comparatorId[attritionFromDb$comparatorId == -1] <- NA
-    attritionFromDbTc <- attritionFromDb[!is.na(attritionFromDb$targetId), ]
-    attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc,
-                                                                          "targetId",
-                                                                          "comparatorId"))
-    attritionFromDb$analysisId <- NA
-    attritionFromDb$outcomeId <- NA
-    attritionFromDb$databaseId <- databaseId
-    attritionFromDb <- attritionFromDb[, c("databaseId",
-                                           "exposureId",
-                                           "targetId",
-                                           "comparatorId",
-                                           "outcomeId",
-                                           "analysisId",
-                                           "sequenceNumber",
-                                           "description",
-                                           "subjects")]
-    colnames(attritionFromDb) <- SqlRender::camelCaseToSnakeCase(colnames(attritionFromDb))
-    write.table(x = attritionFromDb,
-                file = fileName,
-                row.names = FALSE,
-                col.names = first,
-                sep = ",",
-                dec = ".",
-                qmethod = "double",
-                append = !first)
-
+    if (!file.exists(pathToCsv)) {
+        warning("Cannot find attrition.csv (attrition from DB), not adding to attrition table")
+    } else {
+        attritionFromDb <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+        attritionFromDb$targetId[attritionFromDb$targetId == -1] <- NA
+        attritionFromDb$comparatorId[attritionFromDb$comparatorId == -1] <- NA
+        attritionFromDbTc <- attritionFromDb[!is.na(attritionFromDb$targetId), ]
+        attritionFromDb <- rbind(attritionFromDb, Legend:::swapColumnContents(attritionFromDbTc,
+                                                                              "targetId",
+                                                                              "comparatorId"))
+        attritionFromDb$analysisId <- NA
+        attritionFromDb$outcomeId <- NA
+        attritionFromDb$databaseId <- databaseId
+        attritionFromDb <- attritionFromDb[, c("databaseId",
+                                               "exposureId",
+                                               "targetId",
+                                               "comparatorId",
+                                               "outcomeId",
+                                               "analysisId",
+                                               "sequenceNumber",
+                                               "description",
+                                               "subjects")]
+        colnames(attritionFromDb) <- SqlRender::camelCaseToSnakeCase(colnames(attritionFromDb))
+        write.table(x = attritionFromDb,
+                    file = fileName,
+                    row.names = FALSE,
+                    col.names = first,
+                    sep = ",",
+                    dec = ".",
+                    qmethod = "double",
+                    append = !first)
+    }
 
     ParallelLogger::logInfo("- covariate table")
     covariateFolder <- file.path(outputFolder, indicationId, "allCovariates")
-    covariateData <- FeatureExtraction::loadCovariateData(covariateFolder)
-    covariateNames <- ff::as.ram(covariateData$covariateRef[,
-                                                            c("covariateId", "covariateName", "analysisId")])
-    covariateNames <- unique(covariateNames)
-    covariateNames$databaseId <- databaseId
-    colnames(covariateNames)[colnames(covariateNames) == "analysisId"] <- "covariateAnalysisId"
-    colnames(covariateNames) <- SqlRender::camelCaseToSnakeCase(colnames(covariateNames))
-    fileName <- file.path(exportFolder, "covariate.csv")
-    write.csv(covariateNames, fileName, row.names = FALSE)
-    rm(covariateNames)  # Free up memory
+    if (!file.exists(pathToCsv)) {
+        warning("Cannot find allCovariates folder, skipping covariate table")
+    } else {
+        covariateData <- FeatureExtraction::loadCovariateData(covariateFolder)
+        covariateNames <- ff::as.ram(covariateData$covariateRef[,
+                                                                c("covariateId", "covariateName", "analysisId")])
+        covariateNames <- unique(covariateNames)
+        covariateNames$databaseId <- databaseId
+        colnames(covariateNames)[colnames(covariateNames) == "analysisId"] <- "covariateAnalysisId"
+        colnames(covariateNames) <- SqlRender::camelCaseToSnakeCase(colnames(covariateNames))
+        fileName <- file.path(exportFolder, "covariate.csv")
+        write.csv(covariateNames, fileName, row.names = FALSE)
+        rm(covariateNames)  # Free up memory
+    }
 
     ParallelLogger::logInfo("- cm_follow_up_dist table")
     pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
@@ -713,52 +730,60 @@ exportMainResults <- function(indicationId,
 
     ParallelLogger::logInfo("- incidence table")
     pathToCsv <- file.path(outputFolder, indicationId, "incidence.csv")
-    incidence <- read.csv(pathToCsv)
-    incidence$databaseId <- databaseId
-    incidence <- enforceMinCellValue(incidence, "subjects", minCellCount)
-    incidence <- enforceMinCellValue(incidence, "outcomes", minCellCount)
-    colnames(incidence) <- SqlRender::camelCaseToSnakeCase(colnames(incidence))
-    fileName <- file.path(exportFolder, "incidence.csv")
-    write.csv(incidence, fileName, row.names = FALSE)
+    if (!file.exists(pathToCsv)) {
+        warning("Can't find incidence.csv, skipping incidence table")
+    } else {
+        incidence <- read.csv(pathToCsv)
+        incidence$databaseId <- databaseId
+        incidence <- enforceMinCellValue(incidence, "subjects", minCellCount)
+        incidence <- enforceMinCellValue(incidence, "outcomes", minCellCount)
+        colnames(incidence) <- SqlRender::camelCaseToSnakeCase(colnames(incidence))
+        fileName <- file.path(exportFolder, "incidence.csv")
+        write.csv(incidence, fileName, row.names = FALSE)
+    }
 
     ParallelLogger::logInfo("- chronograph table")
     pathToCsv <- file.path(outputFolder, indicationId, "chronographData.csv")
-    chronograph <- read.csv(pathToCsv)
-    chronograph$databaseId <- databaseId
-    chronograph <- chronograph[, c("databaseId",
+    if (!file.exists(pathToCsv)) {
+        warning("Can't find chronographData.csv, skipping chronograph table")
+    } else {
+        chronograph <- read.csv(pathToCsv)
+        chronograph$databaseId <- databaseId
+        chronograph <- chronograph[, c("databaseId",
+                                       "exposureId",
+                                       "outcomeId",
+                                       "periodId",
+                                       "outcomeCount",
+                                       "expectedCount",
+                                       "ic",
+                                       "icLow",
+                                       "icHigh")]
+        colnames(chronograph) <- c("databaseId",
                                    "exposureId",
                                    "outcomeId",
-                                   "periodId",
-                                   "outcomeCount",
-                                   "expectedCount",
+                                   "time",
+                                   "outcomes",
+                                   "expectedOutcomes",
                                    "ic",
-                                   "icLow",
-                                   "icHigh")]
-    colnames(chronograph) <- c("databaseId",
-                               "exposureId",
-                               "outcomeId",
-                               "time",
-                               "outcomes",
-                               "expectedOutcomes",
-                               "ic",
-                               "icLb",
-                               "icUb")
-    # IC metric depends on number of observed outcomes, so consider together for minCellCount:
-    toCensor <- chronograph$outcomes < minCellCount & chronograph$outcomes != 0
-    percent <- round(100 * sum(toCensor)/nrow(chronograph), 1)
-    chronograph$outcomes[toCensor] <- minCellCount
-    chronograph$ic[toCensor] <- NA
-    chronograph$icLb[toCensor] <- NA
-    chronograph$icUb[toCensor] <- NA
-    ParallelLogger::logInfo("   censoring ",
-                            sum(toCensor),
-                            " values (",
-                            percent,
-                            "%) from outcomes, ic, icLb, icUb because value below minimum")
+                                   "icLb",
+                                   "icUb")
+        # IC metric depends on number of observed outcomes, so consider together for minCellCount:
+        toCensor <- chronograph$outcomes < minCellCount & chronograph$outcomes != 0
+        percent <- round(100 * sum(toCensor)/nrow(chronograph), 1)
+        chronograph$outcomes[toCensor] <- minCellCount
+        chronograph$ic[toCensor] <- NA
+        chronograph$icLb[toCensor] <- NA
+        chronograph$icUb[toCensor] <- NA
+        ParallelLogger::logInfo("   censoring ",
+                                sum(toCensor),
+                                " values (",
+                                percent,
+                                "%) from outcomes, ic, icLb, icUb because value below minimum")
 
-    colnames(chronograph) <- SqlRender::camelCaseToSnakeCase(colnames(chronograph))
-    fileName <- file.path(exportFolder, "chronograph.csv")
-    write.csv(chronograph, fileName, row.names = FALSE)
+        colnames(chronograph) <- SqlRender::camelCaseToSnakeCase(colnames(chronograph))
+        fileName <- file.path(exportFolder, "chronograph.csv")
+        write.csv(chronograph, fileName, row.names = FALSE)
+    }
 }
 
 calibrate <- function(subset, negativeControls, positiveControls) {
