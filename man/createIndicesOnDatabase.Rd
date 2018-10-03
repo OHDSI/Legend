@@ -4,7 +4,7 @@
 \alias{createIndicesOnDatabase}
 \title{Create indices in the LEGEND result database}
 \usage{
-createIndicesOnDatabase(connectionDetails)
+createIndicesOnDatabase(connectionDetails, staging = FALSE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created

@@ -29,9 +29,14 @@
 #'                                             drive since this greatly impacts performance.
 #' @param createTables                         Create the tables on the server? This will drop the tables
 #'                                             if they already exist prior to creating them.
+#' @param staging                              If TRUE, the table names on the server will have the postfix "_staging" to
+#'                                             allow new tables to be created while old ones are in use.
 #'
 #' @export
-uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTables = FALSE) {
+uploadResultsToDatabase <- function(connectionDetails,
+                                    exportFolder,
+                                    createTables = FALSE,
+                                    staging = FALSE) {
     conn <- connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
     batchSize <- 1e+07
@@ -91,7 +96,7 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
                  kaplan_meier_dist = c("database_id", "target_id"),
                  propensity_model = c("database_id", "target_id"))
 
-    deleteExistingData <- function(data, tableName, dropped) {
+    deleteExistingData <- function(data, tableName, sqlTableName, dropped) {
         key <- keys[[tableName]]
         toDrop <- unique(data[, key, drop = FALSE])
         if (!is.null(toDrop$database_id)) {
@@ -110,7 +115,7 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
         if (nrow(toDrop) > 0) {
             createSqlStatement <- function(i) {
                 sql <- paste0("DELETE FROM ",
-                              tableName,
+                              sqlTableName,
                               " WHERE ",
                               paste(paste0(key, " = '", toDrop[i, ], "'"), collapse = " AND "),
                               ";")
@@ -127,7 +132,12 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
     for (i in 1:length(files)) {
         file <- files[i]
         tableName <- gsub(".csv$", "", file)
-        ParallelLogger::logInfo("Uploading table ", tableName)
+        if (staging) {
+            sqlTableName <- paste0(tableName, "_staging")
+        } else {
+            sqlTableName <- tableName
+        }
+        ParallelLogger::logInfo("Uploading ", file, " to ", sqlTableName)
         start <- Sys.time()
         fileCon <- file(file.path(exportFolder, file), "r")
         data <- read.csv(fileCon, nrows = batchSize)
@@ -139,11 +149,14 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
         while (nrow(data) != 0) {
             if (!createTables) {
                 ParallelLogger::logInfo("- Deleting existing data with same keys")
-                dropped <- deleteExistingData(data, tableName, dropped)
+                dropped <- deleteExistingData(data = data,
+                                              tableName = tableName,
+                                              sqlTableName = sqlTableName,
+                                              dropped = dropped)
             }
             ParallelLogger::logInfo("- Inserting data")
             DatabaseConnector::insertTable(connection = conn,
-                                           tableName = tableName,
+                                           tableName = sqlTableName,
                                            data = data,
                                            dropTableIfExists = first,
                                            createTable = first,
@@ -170,35 +183,66 @@ uploadResultsToDatabase <- function(connectionDetails, exportFolder, createTable
 #'                                             using the
 #'                                             \code{\link[DatabaseConnector]{createConnectionDetails}}
 #'                                             function in the DatabaseConnector package.
+#' @param staging                              If TRUE, the table names on the server will have the postfix "_staging" to
+#'                                             allow new tables to be created while old ones are in use.
+#'
 #' @export
-createIndicesOnDatabase <- function(connectionDetails) {
+createIndicesOnDatabase <- function(connectionDetails,
+                                    staging = FALSE) {
     conn <- connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
 
     sql <- "CREATE INDEX idx_attrition ON attrition (database_id, exposure_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_covariate ON covariate (database_id, covariate_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_cm_follow_up_dist ON cm_follow_up_dist (database_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_cohort_method_result ON cohort_method_result (database_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_cm_interaction_result ON cm_interaction_result (database_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_covariate_balance ON covariate_balance (database_id, target_id, comparator_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_preference_score_dist ON preference_score_dist (database_id, target_id, comparator_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_kaplan_meier_dist ON kaplan_meier_dist (database_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
     sql <- "CREATE INDEX idx_propensity_model ON propensity_model (database_id, target_id, comparator_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 }

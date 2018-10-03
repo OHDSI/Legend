@@ -5,7 +5,7 @@
 \title{Upload results to the database server}
 \usage{
 uploadResultsToDatabase(connectionDetails, exportFolder,
-  createTables = FALSE)
+  createTables = FALSE, staging = FALSE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created
@@ -19,6 +19,9 @@ drive since this greatly impacts performance.}
 
 \item{createTables}{Create the tables on the server? This will drop the tables
 if they already exist prior to creating them.}
+
+\item{staging}{If TRUE, the table names on the server will have the postfix "_staging" to
+allow new tables to be created while old ones are in use.}
 }
 \description{
 Upload the exported results of a database-indication run into the database. Assumes the data conforms to

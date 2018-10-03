@@ -29,11 +29,12 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 maxCores <- parallel::detectCores()
 
 # Upload data from a database for an indication -----------------------------------
-exportFolder <- "R:/Legend/exports/Hypertension/Mdcr"
+exportFolder <- "R:/Legend/exports/Hypertension/Mdcd"
 
 uploadResultsToDatabase(connectionDetails = connectionDetails,
                         exportFolder = exportFolder,
-                        createTables = FALSE)
+                        createTables = FALSE,
+                        staging = TRUE)
 
 
 
@@ -57,5 +58,6 @@ querySql(conn, "REINDEX INDEX idx_kaplan_meier_dist;")
 # executeSql(conn, "DROP TABLE cm_interaction_result;")
 executeSql(conn, "DELETE FROM kaplan_meier_dist WHERE database_id = 'MDCR';")
 # executeSql(conn, "ALTER TABLE cohort_method_analysis ALTER COLUMN definition TYPE text;")
-# executeSql(conn, "ALTER TABLE covariate ALTER COLUMN covariate_name TYPE text;")
+executeSql(conn, "ALTER TABLE covariate_staging ALTER COLUMN covariate_name TYPE text;")
 
+executeSql(conn, "CREATE SCHEMA legend_staging;")
