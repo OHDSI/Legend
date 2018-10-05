@@ -11,6 +11,9 @@ createIndicesOnDatabase(connectionDetails, staging = FALSE)
 using the
 \code{\link[DatabaseConnector]{createConnectionDetails}}
 function in the DatabaseConnector package.}
+
+\item{staging}{If TRUE, the table names on the server will have the postfix "_staging" to
+allow new tables to be created while old ones are in use.}
 }
 \description{
 Create indices on the large tables in the LEGEND evidence model for faster searching.

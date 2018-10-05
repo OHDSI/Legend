@@ -5,7 +5,7 @@
 \title{Upload results to the database server}
 \usage{
 uploadResultsToDatabase(connectionDetails, exportFolder,
-  createTables = FALSE, staging = FALSE)
+  createTables = FALSE, staging = FALSE, deletePriorData = TRUE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created
