@@ -1,6 +1,6 @@
 library(DatabaseConnector)
-source("../PubLegendCentral/DataPulls.R")
-source("../PubLegendCentral/PlotsAndTables.R")
+source("DataPulls.R")
+source("PlotsAndTables.R")
 
 # connectionDetails <- createConnectionDetails(dbms = 'postgresql', server = 'localhost/ohdsi', user
 # = 'postgres', password = Sys.getenv('pwPostgres'), schema = 'legend')
@@ -31,13 +31,14 @@ exposures$exposureGroup[exposures$exposureGroup == "Drug" | exposures$exposureGr
 exposureGroups <- unique(exposures[, c("indicationId", "exposureGroup")])
 outcomes <- getOutcomes(connection)
 databases <- getDatabases(connection)
+metaAnalysisDbIds <- databases$databaseId[databases$isMetaAnalysis == 1]
 analyses <- getAnalyses(connection)
 subgroups <- getSubgroups(connection)
 # Sort for display:
 indications <- indications[order(indications$indicationId), ]
 exposures <- exposures[order(exposures$exposureName), ]
 outcomes <- outcomes[order(outcomes$outcomeName), ]
-databases <- databases[order(databases$databaseId), ]
+databases <- databases[order(databases$isMetaAnalysis, databases$databaseId), ]
 analyses <- analyses[order(analyses$analysisId), ]
 subgroups <- subgroups[order(subgroups$subgroupId), ]
 
