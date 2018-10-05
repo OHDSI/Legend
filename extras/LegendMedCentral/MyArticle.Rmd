@@ -106,7 +106,7 @@ skip_final_break: true
 # bibliography: pinp
 
 # Optional: Enable a 'Draft' watermark on the document
-watermark: true
+watermark: false
 
 # Customize footer, eg by referencing the vignette
 footer_contents: OHDSI version 1.0
@@ -247,11 +247,69 @@ if (is.null(params$load)) {
                                 analysisId = 2)
 
   DatabaseConnector::disconnect(connection)
+  
+  abbr <- read.table(header = TRUE, sep = ",", stringsAsFactors = FALSE, text = "
+name,shortName
+ACE inhibitors,ACEIs
+Aldosterone antagonist diuretics,AADs
+Alpha-1 blockers,A1Bs
+Angiotensin receptor blockers (ARBs),ARBs
+Beta blockers - cardioselective,cBBs
+Beta blockers - cardioselective and vasodilatory,cvBBs
+Beta blockers - combined alpha and beta receptor,aBBs
+Beta blockers - intrinsic sympathomimetic activity,sBBs
+Beta blockers - noncardioselective,nBBs
+Dihydropyridine calcium channel blockers (dCCB),dCCBs
+Direct vasodilators,DVs
+Loop diuretics,LDs
+Nodihydropyridine calcium channel blockers (ndCCB),nCCBs
+Potassium sparing diurectics,KSDs
+Thiazide or thiazide-like diuretics,TZs")
+  
+  abbreviations <- abbr$shortName
+  names(abbreviations) <- abbr$name
+  
+  originalTargetName <- targetName
+  originalComparatorName <- comparatorName
+  
+  if (params$targetId < 5000) {
+    names <- unlist(strsplit(targetName, " & "))
+    newName <- paste(
+    sapply(names, function(name) {
+      if (name %in% names(abbreviations)) {
+        name <- abbreviations[name]
+      }
+      name
+    }), collapse = " & ")
+    
+    targetName <- newName
+  }    
+  
+  if (params$comparatorId < 5000) {
+    names <- unlist(strsplit(comparatorName, " & "))
+    newName <- paste(
+    sapply(names, function(name) {
+      if (name %in% names(abbreviations)) {
+        name <- abbreviations[name]
+      }
+      name
+    }), collapse = " & ")
+    
+    comparatorName <- newName    
+  }
+    
+  if (!is.null(params$save)) {
+    save(targetName, comparatorName, outcomeName, analyses, databaseDetails,
+         studyPeriod, mainResults, subgroupResults, controlResults,
+         attrition, followUpDist, balance, popCharacteristics, ps, kaplanMeier,
+         file = params$save)
+  }  
 
   if (!is.null(params$save)) {
     save(targetName, comparatorName, outcomeName, analyses, databaseDetails,
          studyPeriod, mainResults, subgroupResults, controlResults,
          attrition, followUpDist, balance, popCharacteristics, ps, kaplanMeier,
+         originalTargetName, originalComparatorName,
          file = params$save)
   }
 } else {
