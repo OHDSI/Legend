@@ -887,7 +887,7 @@ uncapitalize <- function(x) {
     y <- gsub("tZs", "TZs", y)
     y
   })
-  result <- paste(terms, collapse = " \\& ")
+  result <- paste(terms, collapse = " and ")
   names(result) <- NULL
   result
 }
