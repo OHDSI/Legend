@@ -163,6 +163,26 @@ totalExposures <- list(
   stuff = "at least 2500 patients in both target and comparator cohors"
 )
 
+  abbr <- read.table(header = TRUE, sep = ",", stringsAsFactors = FALSE, text = "
+name,shortName
+ACE inhibitors,ACEIs
+Aldosterone antagonist diuretics,AADs
+Alpha-1 blockers,A1Bs
+Angiotensin receptor blockers (ARBs),ARBs
+Beta blockers - cardioselective,cBBs
+Beta blockers - cardioselective and vasodilatory,cvBBs
+Beta blockers - combined alpha and beta receptor,aBBs
+Beta blockers - intrinsic sympathomimetic activity,sBBs
+Beta blockers - noncardioselective,nBBs
+Dihydropyridine calcium channel blockers (dCCB),dCCBs
+Direct vasodilators,DVs
+Loop diuretics,LDs
+Nodihydropyridine calcium channel blockers (ndCCB),nCCBs
+Potassium sparing diurectics,KSDs
+Thiazide or thiazide-like diuretics,TZs")
+  
+  abbreviations <- abbr$shortName
+  names(abbreviations) <- abbr$name
 ```
 
 ```{r, loadData, echo=FALSE, message=FALSE, comment=FALSE, warning=FALSE, results='hide'}
@@ -247,27 +267,6 @@ if (is.null(params$load)) {
                                 analysisId = 2)
 
   DatabaseConnector::disconnect(connection)
-  
-  abbr <- read.table(header = TRUE, sep = ",", stringsAsFactors = FALSE, text = "
-name,shortName
-ACE inhibitors,ACEIs
-Aldosterone antagonist diuretics,AADs
-Alpha-1 blockers,A1Bs
-Angiotensin receptor blockers (ARBs),ARBs
-Beta blockers - cardioselective,cBBs
-Beta blockers - cardioselective and vasodilatory,cvBBs
-Beta blockers - combined alpha and beta receptor,aBBs
-Beta blockers - intrinsic sympathomimetic activity,sBBs
-Beta blockers - noncardioselective,nBBs
-Dihydropyridine calcium channel blockers (dCCB),dCCBs
-Direct vasodilators,DVs
-Loop diuretics,LDs
-Nodihydropyridine calcium channel blockers (ndCCB),nCCBs
-Potassium sparing diurectics,KSDs
-Thiazide or thiazide-like diuretics,TZs")
-  
-  abbreviations <- abbr$shortName
-  names(abbreviations) <- abbr$name
   
   originalTargetName <- targetName
   originalComparatorName <- comparatorName

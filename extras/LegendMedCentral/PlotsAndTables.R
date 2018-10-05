@@ -879,9 +879,15 @@ uncapitalize <- function(x) {
     substr(y, 1, 1) <- tolower(substr(y, 1, 1))
     y <- gsub("aCE", "ACE", y)
     y <- gsub("CCB)", "CCBs)", y)
+    y <- gsub("aAD", "AAD", y)
+    y <- gsub("a1B", "A1B", y)
+    y <- gsub("aRB", "ARB", y)
+    y <- gsub("dVs", "DVs", y)
+    y <- gsub("lDs", "LDs", y)
+    y <- gsub("tZs", "TZs", y)
     y
   })
-  result <- paste(terms, collapse = " and ")
+  result <- paste(terms, collapse = " \\& ")
   names(result) <- NULL
   result
 }
