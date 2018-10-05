@@ -3,6 +3,13 @@ library(ggplot2)
 library(DT)
 
 shinyServer(function(input, output, session) {
+  
+  connection <- DatabaseConnector::connect(connectionDetails)
+  
+  session$onSessionEnded(function() {
+    writeLines("Closing connection")
+    DatabaseConnector::disconnect(connection)
+  })
 
   searchResults <- reactive({
     query <- parseQueryString(session$clientData$url_search)
@@ -12,16 +19,34 @@ shinyServer(function(input, output, session) {
       parts <- strsplit(query$term, " ")[[1]]
       outcomeIds <- c()
       exposureIds <- c()
+      databaseIds <- c()
       for (part in parts) {
         outcomeDist <- adist(part, outcomes$outcomeName)
         exposureDist <- adist(part, exposures$exposureName)
+        databaseDist <- adist(part, databases$databaseId)
         if (min(outcomeDist) < min(exposureDist)) {
-          outcomeIds <- c(outcomeIds, outcomes$outcomeId[outcomeDist == min(outcomeDist)])
+          if (min(databaseDist) < min(outcomeDist)) {
+            match <- databases$databaseId[databaseDist == min(databaseDist)]
+            writeLines(paste("Matched", part, "to database ID", match))
+            databaseIds <- c(databaseIds, match)
+          } else {
+            match <- outcomes$outcomeId[outcomeDist == min(outcomeDist)]
+            writeLines(paste("Matched", part, "to outcome ID", match))
+            outcomeIds <- c(outcomeIds, match)
+          }
         } else {
-          exposureIds <- c(exposureIds, exposures$exposureId[exposureDist == min(exposureDist)])
+          if (min(databaseDist) < min(exposureDist)) {
+            match <- databases$databaseId[databaseDist == min(databaseDist)]
+            writeLines(paste("Matched", part, "to database ID", match))
+            databaseIds <- c(databaseIds, match)
+          } else {
+            match <- exposures$exposureId[exposureDist == min(exposureDist)]
+            writeLines(paste("Matched", part, "to exposure ID", match))
+            exposureIds <- c(exposureIds, match)
+          }
         }
       }
-      tcoDbs <- getTcoDbsStrict(connection, exposureIds = exposureIds, outcomeIds = outcomeIds)
+      tcoDbs <- getTcoDbsStrict(connection, exposureIds = exposureIds, outcomeIds = outcomeIds, databaseIds = databaseIds)
       return(tcoDbs)
     }
   })
@@ -126,7 +151,7 @@ shinyServer(function(input, output, session) {
       authors <- createAuthors()
       
       # abstract <- createAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
-      abstract <- createAbstract(tcoDb)
+      abstract <- createAbstract(connection, tcoDb)
       
       title <- createTitle(tcoDb)
       
@@ -148,7 +173,7 @@ shinyServer(function(input, output, session) {
     tcoDb <- selectedTcoDb()
     tcoDb$indicationId <- exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)]
     title <- createTitle(tcoDb)
-    abstract <- createAbstract(tcoDb)
+    abstract <- createAbstract(connection, tcoDb)
     tempFileName <- paste0(paste(sample(letters, 8), collapse = ""), ".pdf")
     withProgress(message = "Generating PDF", value = 0, {
       rmarkdown::render("MyArticle.Rmd",

@@ -32,8 +32,7 @@ createAuthors <- function() {
 
 
 
-createAbstract <- function(tcoDb) {
-  
+createAbstract <- function(connection, tcoDb) {
   targetName <- uncapitalize(exposures$exposureName[match(tcoDb$targetId, exposures$exposureId)])
   comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
   outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])

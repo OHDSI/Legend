@@ -18,3 +18,8 @@ exposures <- getExposures(connection)
 exposures$exposureName <- sapply(exposures$exposureName, uncapitalize)
 
 outcomes <- getOutcomes(connection)
+databases <- getDatabases(connection)
+
+writeLines("Closing connection")
+disconnect(connection)
+
