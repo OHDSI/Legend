@@ -13,9 +13,14 @@ shinyServer(function(input, output, session) {
 
   searchResults <- reactive({
     query <- parseQueryString(session$clientData$url_search)
-    if (is.null(query$term)) {
-      return(NULL)
-    } else {
+    if (!is.null(query$structured)) {
+      targetIds <- exposures$exposureId[exposures$exposureName == query$target]
+      comparatorIds <- exposures$exposureId[exposures$exposureName == query$comparator]
+      outcomeIds <- outcomes$outcomeId[outcomes$outcomeName == query$outcome]
+      databaseIds <- databases$databaseId[databases$databaseId == query$database]
+      tcoDbs <- getTcoDbs(connection, targetIds = targetIds, comparatorIds = comparatorIds, outcomeIds = outcomeIds, databaseIds = databaseIds, limit = 100)
+      return(tcoDbs)
+    } else if (!is.null(query$term)) {
       parts <- strsplit(query$term, " ")[[1]]
       outcomeIds <- c()
       exposureIds <- c()
@@ -31,7 +36,7 @@ shinyServer(function(input, output, session) {
             databaseIds <- c(databaseIds, match)
           } else {
             match <- outcomes$outcomeId[outcomeDist == min(outcomeDist)]
-            writeLines(paste("Matched", part, "to outcome ID", match))
+            writeLines(paste("Matched", part, "to outcome", outcomes$outcomeName[outcomes$outcomeId == match]))
             outcomeIds <- c(outcomeIds, match)
           }
         } else {
@@ -41,14 +46,16 @@ shinyServer(function(input, output, session) {
             databaseIds <- c(databaseIds, match)
           } else {
             match <- exposures$exposureId[exposureDist == min(exposureDist)]
-            writeLines(paste("Matched", part, "to exposure ID", match))
+            writeLines(paste("Matched", part, "to exposure", exposures$exposureName[exposures$exposureId == match]))
             exposureIds <- c(exposureIds, match)
           }
         }
       }
       tcoDbs <- getTcoDbsStrict(connection, exposureIds = exposureIds, outcomeIds = outcomeIds, databaseIds = databaseIds)
       return(tcoDbs)
-    }
+    } else {
+    return(NULL)
+    } 
   })
 
   selectedTcoDb <- reactive({
@@ -65,22 +72,15 @@ shinyServer(function(input, output, session) {
     }
   })
 
-  # Maintain contents of search box:
-  observe({
-    query <- parseQueryString(session$clientData$url_search)
-    if (!is.null(query$term))
-      updateTextInput(session, "query", value = query$term)
-  })
-
   output$isSearchPage <- reactive({
     query <- parseQueryString(session$clientData$url_search)
-    return(is.null(query$targetId) && is.null(query$term))
+    return(is.null(query$targetId) && is.null(query$term) && is.null(query$structured))
   })
   outputOptions(output, "isSearchPage", suspendWhenHidden = FALSE)
 
   output$isSearchResultPage <- reactive({
     query <- parseQueryString(session$clientData$url_search)
-    return(is.null(query$targetId) && !is.null(query$term))
+    return(is.null(query$targetId) && (!is.null(query$term) || !is.null(query$structured)))
   })
   outputOptions(output, "isSearchResultPage", suspendWhenHidden = FALSE)
 
@@ -90,6 +90,74 @@ shinyServer(function(input, output, session) {
   })
   outputOptions(output, "isAbstractPage", suspendWhenHidden = FALSE)
 
+  observe({
+    indicationId <- input$indication
+    if (indicationId == "All") {
+      updateSelectInput(session = session,
+                        inputId = "exposureGroup",
+                        choices = c("All", unique(exposureGroups$exposureGroup)))
+    } else {
+      updateSelectInput(session = session,
+                        inputId = "exposureGroup",
+                        choices = c("All", unique(exposureGroups$exposureGroup[exposureGroups$indicationId == indicationId])))
+    }
+  })
+
+  observe({
+    indicationId <- input$indication
+    exposureGroup <- input$exposureGroup
+    if (indicationId == "All") {
+      filteredExposures <- exposures
+      filteredOutcomes <- outcomes
+    } else {
+      filteredExposures <- exposures[exposures$indicationId == indicationId, ]
+      filteredOutcomes <- outcomes[outcomes$indicationId == indicationId, ]
+    }
+    if (exposureGroup == "All") {
+      filteredExposures <- filteredExposures
+    } else {
+      filteredExposures <- filteredExposures[filteredExposures$exposureGroup == exposureGroup, ]
+    }
+    updateSelectInput(session = session,
+                      inputId = "target",
+                      choices = c("All", unique(filteredExposures$exposureName)))
+    updateSelectInput(session = session,
+                      inputId = "comparator",
+                      choices = c("All", unique(filteredExposures$exposureName)))
+    updateSelectInput(session = session,
+                      inputId = "outcome",
+                      choices = c("All", unique(filteredOutcomes$outcomeName)))
+  })
+  
+  # Maintain contents of search box:
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    if (!is.null(query$structured)) {
+      isolate({
+        updateRadioButtons(session = session,
+                           inputId = "queryType",
+                           selected = "Structured")
+        updateSelectInput(session = session,
+                          inputId = "indication",
+                          selected = query$indication)
+        updateSelectInput(session = session,
+                          inputId = "target",
+                          selected = query$target)
+        updateSelectInput(session = session,
+                          inputId = "comparator",
+                          selected = query$comparator)
+        updateSelectInput(session = session,
+                          inputId = "outcome",
+                          selected = query$outcome)
+        updateSelectInput(session = session,
+                          inputId = "database",
+                          selected = query$database)
+      })
+    } else {
+      if (!is.null(query$term))
+        updateTextInput(session, "query", value = query$term)
+    }
+  })
 
   output$searchResults <- renderDataTable({
     tcoDbs <- searchResults()

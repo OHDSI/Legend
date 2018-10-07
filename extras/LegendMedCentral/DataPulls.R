@@ -118,8 +118,12 @@ getTcoDbs <- function(connection,
                       comparatorIds = c(),
                       outcomeIds = c(),
                       databaseIds = c(),
-                      operator = "AND") {
+                      operator = "AND",
+                      limit = 0) {
   sql <- "SELECT target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1"
+  if (limit != 0) {
+    sql <- gsub("SELECT target_id", sprintf("SELECT TOP %s target_id", limit), sql)
+  }
   parts <- c()
   if (length(targetIds) != 0) {
     parts <- c(parts, paste0("target_id IN (", paste(targetIds, collapse = ", "), ")"))
@@ -140,6 +144,7 @@ getTcoDbs <- function(connection,
       sql <- paste(sql, "AND", paste(parts, collapse = " OR "))
     }
   }
+  sql <- paste0(sql, ";")
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   tcoDbs <- querySql(connection, sql)
   colnames(tcoDbs) <- SqlRender::snakeCaseToCamelCase(colnames(tcoDbs))
@@ -164,6 +169,7 @@ getTcoDbsStrict <- function(connection, exposureIds = c(), outcomeIds = c(), dat
   if (length(parts) != 0) {
     sql <- paste(sql, "AND", paste(parts, collapse = " AND "))
   }
+  sql <- paste0(sql, ";")
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   tcoDbs <- querySql(connection, sql)
   colnames(tcoDbs) <- SqlRender::snakeCaseToCamelCase(colnames(tcoDbs))
