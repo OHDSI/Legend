@@ -169,15 +169,25 @@ shinyServer(function(input, output, session) {
 
   output$pdf <- downloadHandler(filename = function() {
     return("Paper.pdf")
-  }, content = function(con) {
+  }, content = function(fileName) {
     tcoDb <- selectedTcoDb()
     tcoDb$indicationId <- exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)]
     title <- createTitle(tcoDb)
     abstract <- createAbstract(connection, tcoDb)
-    tempFileName <- paste0(paste(sample(letters, 8), collapse = ""), ".pdf")
+    tempFolder <- tempdir()
+    file.copy(c("MyArticle.Rmd",
+                "DataPulls.R",
+                "PlotsAndTables.R",
+                "Table1Specs.csv",
+                "blank_template.tex", 
+                "pnasresearcharticle.sty", 
+                "pnas-markdown.cls",
+                "jss.bst",
+                "ohdsi.bib"), tempFolder)
+    tempOutput <- file.path(tempFolder, "output.pdf")
     withProgress(message = "Generating PDF", value = 0, {
-      rmarkdown::render("MyArticle.Rmd",
-                        output_file = tempFileName,
+      rmarkdown::render(file.path(tempFolder, "MyArticle.Rmd"),
+                        output_file = tempOutput,
                         params = list(targetId = tcoDb$targetId,
                                       comparatorId = tcoDb$comparatorId,
                                       outcomeId = tcoDb$outcomeId,
@@ -187,14 +197,8 @@ shinyServer(function(input, output, session) {
                                       abstract = abstract,
                                       save = NULL,
                                       load = NULL))
-      # createDocument(targetId = tcoDb$targetId,
-      #                comparatorId = tcoDb$comparatorId, 
-      #                outcomeId = tcoDb$outcomeId, 
-      #                databaseId = tcoDb$databaseId,
-      #                indicationId = tcoDb$indicationId,
-      #                outputFile = tempFileName,
-      #                workingDirectory = paste(sample(letters, 8), collapse = ""))
     })
-    file.rename(tempFileName, con)
+    file.copy(tempOutput, fileName)
+    # unlink(tempFolder, recursive = TRUE)
   })
 })
