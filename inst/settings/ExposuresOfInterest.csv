@@ -82,21 +82,21 @@ Hypertension,Drug,Trandolapril,1342439,1342439,,,
 Hypertension,Drug,Triamterene,904542,904542,,,
 Hypertension,Drug,Valsartan,1308842,1308842,,,
 Hypertension,Drug,Verapamil,1307863,1307863,,,
-Hypertension,Drug class,ACE inhibitors,1,,ACEIs,1,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
-Hypertension,Drug class,Aldosterone antagonist diuretics,2,,AADs,6,1309799;970250
-Hypertension,Drug class,Alpha-1 blockers,3,,A1Bs,7,1363053;1350489;1341238
-Hypertension,Drug class,Angiotensin receptor blockers (ARBs),4,,ARBs,2,40235485;1351557;1346686;1347384;1367500;40226742;1317640;1308842
-Hypertension,Drug class,Beta blockers - cardioselective,5,,cBBs,3,1314002;1322081;1338005;1307046
-Hypertension,Drug class,Beta blockers - cardioselective and vasodilatory,6,,cvBBs,8,1314577
-Hypertension,Drug class,Beta blockers - combined alpha and beta receptor,7,,aBBs,8,1346823;1386957
-Hypertension,Drug class,Beta blockers - intrinsic sympathomimetic activity,8,,sBBs,8,1319998;1327978;1345858
-Hypertension,Drug class,Beta blockers - noncardioselective,9,,nBBs,8,1313200;1353766
+Hypertension,Drug class,ACE inhibitors,1,,ACEIs,2,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
+Hypertension,Drug class,Aldosterone antagonist diuretics,2,,AADs,8,1309799;970250
+Hypertension,Drug class,Alpha-1 blockers,3,,A1Bs,15,1363053;1350489;1341238
+Hypertension,Drug class,Angiotensin receptor blockers (ARBs),4,,ARBs,3,40235485;1351557;1346686;1347384;1367500;40226742;1317640;1308842
+Hypertension,Drug class,Beta blockers - cardioselective,5,,cBBs,9,1314002;1322081;1338005;1307046
+Hypertension,Drug class,Beta blockers - cardioselective and vasodilatory,6,,cvBBs,10,1314577
+Hypertension,Drug class,Beta blockers - combined alpha and beta receptor,7,,aBBs,13,1346823;1386957
+Hypertension,Drug class,Beta blockers - intrinsic sympathomimetic activity,8,,sBBs,12,1319998;1327978;1345858
+Hypertension,Drug class,Beta blockers - noncardioselective,9,,nBBs,11,1313200;1353766
 Hypertension,Drug class,Dihydropyridine calcium channel blockers (dCCB),10,,dCCBs,4,1332418;1353776;1326012;1318137;1318853;1319880
-Hypertension,Drug class,Direct vasodilators,11,,DVs,9,1373928;1309068
-Hypertension,Drug class,Loop diuretics,12,,LDs,10,932745;956874;942350
-Hypertension,Drug class,Nodihydropyridine calcium channel blockers (ndCCB),13,,nCCBs,11,1328165;1307863
-Hypertension,Drug class,Potassium sparing diurectics,14,,KSDs,12,991382;904542
-Hypertension,Drug class,Thiazide or thiazide-like diuretics,15,,TZs,5,1395058;974166;978555;907013
+Hypertension,Drug class,Direct vasodilators,11,,DVs,14,1373928;1309068
+Hypertension,Drug class,Loop diuretics,12,,LDs,6,932745;956874;942350
+Hypertension,Drug class,Nodihydropyridine calcium channel blockers (ndCCB),13,,nCCBs,5,1328165;1307863
+Hypertension,Drug class,Potassium sparing diurectics,14,,KSDs,7,991382;904542
+Hypertension,Drug class,Thiazide or thiazide-like diuretics,15,,TDs,1,1395058;974166;978555;907013
 Hypertension,Drug major class,ACE inhibitors,1,,,,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
 Hypertension,Drug major class,Diuretics,16,,,,991382;932745;1309799;956874;970250;942350;904542
 Hypertension,Drug major class,Alpha-1 blockers,3,,,,1363053;1350489;1341238
