@@ -131,7 +131,6 @@ computeBalance <- function(subset,
                               "cmOutput",
                               subset$cohortMethodDataFolder[1])
     cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-    cmD
     if (!any(!is.na(subset$cmDataFolderCt))) {
         ParallelLogger::logDebug("Not computing balance for matching")
         # Matching was probably turned off
