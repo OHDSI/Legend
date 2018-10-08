@@ -85,6 +85,8 @@ computeCovariateBalance <- function(indicationId = "Depression", outputFolder, m
     d <- merge(d,
                data.frame(targetId = outcomeModelReference$comparatorId,
                           comparatorId = outcomeModelReference$targetId,
+                          outcomeId = outcomeModelReference$outcomeId,
+                          analysisId = outcomeModelReference$analysisId,
                           cmDataFolderCt = outcomeModelReference$cohortMethodDataFolder,
                           strataFileCt = outcomeModelReference$strataFile,
                           stringsAsFactors = FALSE),
