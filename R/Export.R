@@ -1084,11 +1084,11 @@ exportDiagnostics <- function(indicationId,
                                      preferenceScore = d1$x,
                                      targetDensity = d1$y,
                                      comparatorDensity = d0$y)
-                result <- rbind(result,
-                                swapColumnContents(swapColumnContents(result, "targetId", "comparatorId"),
-                                                   "targetDensity",
-                                                   "comparatorDensity"))
-
+                reversed <- swapColumnContents(swapColumnContents(result, "targetId", "comparatorId"),
+                                               "targetDensity",
+                                               "comparatorDensity")
+                reversed$preferenceScore <- 1 - reversed$preferenceScore
+                result <- rbind(result, reversed)
                 return(result)
             }
         }

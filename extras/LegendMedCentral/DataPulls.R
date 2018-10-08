@@ -33,7 +33,7 @@ getIndications <- function(connection) {
 }
 
 getSubgroups <- function(connection) {
-  sql <- "SELECT DISTINCT interaction_covariate_id AS subgroup_id, covariate_name AS subgroup_name 
+  sql <- "SELECT DISTINCT interaction_covariate_id AS subgroup_id, covariate_name AS subgroup_name
     FROM (
       SELECT DISTINCT interaction_covariate_id
       FROM cm_interaction_result
@@ -56,11 +56,8 @@ getExposures <- function(connection, filterByCmResults = TRUE) {
   INNER JOIN exposure_group
   ON exposure.exposure_id = exposure_group.exposure_id
   {@filter_by_cm_results} ? {
-    WHERE exposure.exposure_id IN (
-      SELECT DISTINCT target_id AS exposure_id FROM cohort_method_result
-      UNION ALL
-      SELECT DISTINCT comparator_id AS exposure_id FROM cohort_method_result
-    )
+    INNER JOIN exposure_ids
+    ON exposure_ids.exposure_id = exposure.exposure_id
   }
   ;"
   sql <- SqlRender::renderSql(sql, filter_by_cm_results = filterByCmResults)$sql
@@ -107,13 +104,13 @@ getDatabaseDetails <- function(connection, databaseId) {
 
 getIndicationForExposure <- function(connection,
                                      exposureIds = c()) {
-  sql <- "SELECT exposure_id, indication_id FROM single_exposure_of_interest WHERE"  
+  sql <- "SELECT exposure_id, indication_id FROM single_exposure_of_interest WHERE"
   sql <- paste(sql, paste0("exposure_id IN (", paste(exposureIds, collapse = ", "), ")"))
-  
+
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   indications <- querySql(connection, sql)
   colnames(indications) <- SqlRender::snakeCaseToCamelCase(colnames(indications))
-  return(indications)  
+  return(indications)
 }
 
 getTcoDbs <- function(connection,
@@ -150,7 +147,7 @@ getTcoDbs <- function(connection,
 }
 
 getTcoDbsStrict <- function(connection, exposureIds = c(), outcomeIds = c(), databaseIds = c()) {
-  sql <- "SELECT target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1"
+  sql <- "SELECT TOP 100 target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1"
   parts <- c()
   if (length(exposureIds) != 0) {
     for (exposureId in exposureIds) {
@@ -167,6 +164,7 @@ getTcoDbsStrict <- function(connection, exposureIds = c(), outcomeIds = c(), dat
   if (length(parts) != 0) {
     sql <- paste(sql, "AND", paste(parts, collapse = " AND "))
   }
+  sql <- paste0(sql, ";")
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   tcoDbs <- querySql(connection, sql)
   colnames(tcoDbs) <- SqlRender::snakeCaseToCamelCase(colnames(tcoDbs))
@@ -277,7 +275,7 @@ getSubgroupResults <- function(connection,
   if (length(subgroupIds) != 0) {
     parts <- c(parts, paste0("interaction_covariate_id IN (", paste(subgroupIds, collapse = ", "), ")"))
   }
-  
+
   if (length(parts) != 0) {
     sql <- paste(sql, "WHERE", paste(parts, collapse = " AND "))
   }

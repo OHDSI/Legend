@@ -3,6 +3,13 @@ library(ggplot2)
 library(DT)
 
 shinyServer(function(input, output, session) {
+  
+  connection <- DatabaseConnector::connect(connectionDetails)
+  
+  session$onSessionEnded(function() {
+    writeLines("Closing connection")
+    DatabaseConnector::disconnect(connection)
+  })
 
   searchResults <- reactive({
     query <- parseQueryString(session$clientData$url_search)
@@ -12,16 +19,34 @@ shinyServer(function(input, output, session) {
       parts <- strsplit(query$term, " ")[[1]]
       outcomeIds <- c()
       exposureIds <- c()
+      databaseIds <- c()
       for (part in parts) {
         outcomeDist <- adist(part, outcomes$outcomeName)
         exposureDist <- adist(part, exposures$exposureName)
+        databaseDist <- adist(part, databases$databaseId)
         if (min(outcomeDist) < min(exposureDist)) {
-          outcomeIds <- c(outcomeIds, outcomes$outcomeId[outcomeDist == min(outcomeDist)])
+          if (min(databaseDist) < min(outcomeDist)) {
+            match <- databases$databaseId[databaseDist == min(databaseDist)]
+            writeLines(paste("Matched", part, "to database ID", match))
+            databaseIds <- c(databaseIds, match)
+          } else {
+            match <- outcomes$outcomeId[outcomeDist == min(outcomeDist)]
+            writeLines(paste("Matched", part, "to outcome ID", match))
+            outcomeIds <- c(outcomeIds, match)
+          }
         } else {
-          exposureIds <- c(exposureIds, exposures$exposureId[exposureDist == min(exposureDist)])
+          if (min(databaseDist) < min(exposureDist)) {
+            match <- databases$databaseId[databaseDist == min(databaseDist)]
+            writeLines(paste("Matched", part, "to database ID", match))
+            databaseIds <- c(databaseIds, match)
+          } else {
+            match <- exposures$exposureId[exposureDist == min(exposureDist)]
+            writeLines(paste("Matched", part, "to exposure ID", match))
+            exposureIds <- c(exposureIds, match)
+          }
         }
       }
-      tcoDbs <- getTcoDbsStrict(connection, exposureIds = exposureIds, outcomeIds = outcomeIds)
+      tcoDbs <- getTcoDbsStrict(connection, exposureIds = exposureIds, outcomeIds = outcomeIds, databaseIds = databaseIds)
       return(tcoDbs)
     }
   })
@@ -126,7 +151,7 @@ shinyServer(function(input, output, session) {
       authors <- createAuthors()
       
       # abstract <- createAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
-      abstract <- createAbstract(tcoDb)
+      abstract <- createAbstract(connection, tcoDb)
       
       title <- createTitle(tcoDb)
       
@@ -144,15 +169,25 @@ shinyServer(function(input, output, session) {
 
   output$pdf <- downloadHandler(filename = function() {
     return("Paper.pdf")
-  }, content = function(con) {
+  }, content = function(fileName) {
     tcoDb <- selectedTcoDb()
     tcoDb$indicationId <- exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)]
     title <- createTitle(tcoDb)
-    abstract <- createAbstract(tcoDb)
-    tempFileName <- paste0(paste(sample(letters, 8), collapse = ""), ".pdf")
+    abstract <- createAbstract(connection, tcoDb)
+    tempFolder <- tempdir()
+    file.copy(c("MyArticle.Rmd",
+                "DataPulls.R",
+                "PlotsAndTables.R",
+                "Table1Specs.csv",
+                "blank_template.tex", 
+                "pnasresearcharticle.sty", 
+                "pnas-markdown.cls",
+                "jss.bst",
+                "ohdsi.bib"), tempFolder)
+    tempOutput <- file.path(tempFolder, "output.pdf")
     withProgress(message = "Generating PDF", value = 0, {
-      rmarkdown::render("MyArticle.Rmd",
-                        output_file = tempFileName,
+      rmarkdown::render(file.path(tempFolder, "MyArticle.Rmd"),
+                        output_file = tempOutput,
                         params = list(targetId = tcoDb$targetId,
                                       comparatorId = tcoDb$comparatorId,
                                       outcomeId = tcoDb$outcomeId,
@@ -162,14 +197,8 @@ shinyServer(function(input, output, session) {
                                       abstract = abstract,
                                       save = NULL,
                                       load = NULL))
-      # createDocument(targetId = tcoDb$targetId,
-      #                comparatorId = tcoDb$comparatorId, 
-      #                outcomeId = tcoDb$outcomeId, 
-      #                databaseId = tcoDb$databaseId,
-      #                indicationId = tcoDb$indicationId,
-      #                outputFile = tempFileName,
-      #                workingDirectory = paste(sample(letters, 8), collapse = ""))
     })
-    file.rename(tempFileName, con)
+    file.copy(tempOutput, fileName)
+    # unlink(tempFolder, recursive = TRUE)
   })
 })

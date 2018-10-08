@@ -30,6 +30,7 @@ doMetaAnalysis <- function(exportFolders, maExportFolder, maxCores) {
     if (!file.exists(maExportFolder)) {
         dir.create(maExportFolder, recursive = TRUE)
     }
+    ParallelLogger::addDefaultFileLogger(file.path(maExportFolder, "metaAnalysisLog.txt"))
     ParallelLogger::logInfo("Performing meta-analysis for main effects")
     doMaEffectType(exportFolders = exportFolders,
                    maExportFolder = maExportFolder,
@@ -130,21 +131,21 @@ doMaEffectType <- function(exportFolders,
 }
 
 computeGroupMetaAnalysis <- function(group, interactions) {
-    # group <- groups[[2]]
+    # group <- groups[[1]]
     if (nrow(group) == 0) {
         return(NULL)
     }
     analysisId <- group$analysisId[1]
     targetId <- group$targetId[1]
     comparatorId <- group$comparatorId[1]
-    ParallelLogger::logTrace("Performing meta-analysis for target ", targetId, ", comparator ", comparatorId, ", analysis", analysisId)
+    ParallelLogger::logTrace("Performing meta-analysis for target ", targetId, ", comparator ", comparatorId, ", analysis ", analysisId)
     outcomeGroups <- split(group, group$outcomeId)
     outcomeGroupResults <- lapply(outcomeGroups, computeSingleMetaAnalysis)
     groupResults <- do.call(rbind, outcomeGroupResults)
     ncs <- groupResults[groupResults$trueEffectSize == 1, ]
-    validNcs <- sum(!is.na(ncs$seLogRr))
-    if (validNcs >= 5) {
-        null <- EmpiricalCalibration::fitMcmcNull(ncs$logRr, ncs$seLogRr)
+    validNcs <- ncs[!is.na(ncs$seLogRr), ]
+    if (nrow(validNcs) >= 5) {
+        null <- EmpiricalCalibration::fitMcmcNull(validNcs$logRr, validNcs$seLogRr)
         calibratedP <- EmpiricalCalibration::calibrateP(null = null,
                                                         logRr = groupResults$logRr,
                                                         seLogRr = groupResults$seLogRr)
@@ -155,13 +156,13 @@ computeGroupMetaAnalysis <- function(group, interactions) {
     if (!interactions) {
         pcs <- groupResults[!is.na(groupResults$trueEffectSize) &
                                 groupResults$trueEffectSize != 1, ]
-        validPcs <- sum(!is.na(pcs$seLogRr))
-        if (validPcs > 5) {
-            model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(ncs$logRr, pcs$logRr),
-                                                                   seLogRr = c(ncs$seLogRr,
-                                                                               pcs$seLogRr),
-                                                                   trueLogRr = c(rep(0, nrow(ncs)),
-                                                                                 log(pcs$trueEffectSize)),
+        validPcs <- pcs[!is.na(pcs$seLogRr), ]
+        if (nrow(validPcs) > 5) {
+            model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(validNcs$logRr, validPcs$logRr),
+                                                                   seLogRr = c(validNcs$seLogRr,
+                                                                               validPcs$seLogRr),
+                                                                   trueLogRr = c(rep(0, nrow(validNcs)),
+                                                                                 log(validPcs$trueEffectSize)),
                                                                    estimateCovarianceMatrix = FALSE)
             calibratedCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = groupResults$logRr,
                                                                               seLogRr = groupResults$seLogRr,

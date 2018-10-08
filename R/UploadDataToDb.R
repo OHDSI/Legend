@@ -36,25 +36,14 @@
 uploadResultsToDatabase <- function(connectionDetails,
                                     exportFolder,
                                     createTables = FALSE,
-                                    staging = FALSE) {
+                                    staging = FALSE,
+                                    deletePriorData = TRUE) {
     conn <- connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
     batchSize <- 1e+07
 
     ParallelLogger::addDefaultFileLogger(file.path(exportFolder, "uploadLog.txt"))
     files <- list.files(exportFolder, pattern = ".*csv")
-
-    # # Fix attrition table (fix at source here: https://github.com/OHDSI/Legend/commit/8c3f4668da55d078131c8b8509361d2bb717d3a8 )
-    # x <- read.csv(file.path(exportFolder, "attrition.csv"))
-    # x <- x[!is.na(x$exposure_id), ]
-    # write.csv(x, file.path(exportFolder, "attrition.csv"), row.names = FALSE)
-    # rm(x)
-    #
-    # # Fix covariate_balance table (fix at source here: https://github.com/OHDSI/Legend/commit/60f95baa0c25f8a9829688f2a36618b799dd95c4 )
-    # x <- read.csv(file.path(exportFolder, "covariate_balance.csv"))
-    # x <- x[!is.na(x$target_id), ]
-    # write.csv(x, file.path(exportFolder, "covariate_balance.csv"), row.names = FALSE)
-    # rm(x)
 
     infinityToNa <- function(data) {
         # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
@@ -82,19 +71,19 @@ uploadResultsToDatabase <- function(connectionDetails,
                  negative_control_outcome = c("outcome_id"),
                  positive_control_outcome = c("outcome_id"),
                  database = c("database_id"),
-                 exposure_summary = c("database_id", "exposure_id"),
-                 comparison_summary = c("database_id", "target_id"),
-                 attrition = c("database_id", "exposure_id"),
-                 cm_follow_up_dist = c("database_id", "target_id"),
-                 covariate = c("database_id", "covariate_id"),
-                 cohort_method_result = c("database_id", "target_id"),
-                 cm_interaction_result = c("database_id", "target_id"),
-                 chronograph = c("database_id", "exposure_id"),
-                 incidence = c("database_id", "exposure_id"),
-                 covariate_balance = c("database_id", "target_id"),
-                 preference_score_dist = c("database_id", "target_id"),
-                 kaplan_meier_dist = c("database_id", "target_id"),
-                 propensity_model = c("database_id", "target_id"))
+                 exposure_summary = c("database_id"),
+                 comparison_summary = c("database_id"),
+                 attrition = c("database_id"),
+                 cm_follow_up_dist = c("database_id"),
+                 covariate = c("database_id"),
+                 cohort_method_result = c("database_id"),
+                 cm_interaction_result = c("database_id"),
+                 chronograph = c("database_id"),
+                 incidence = c("database_id"),
+                 covariate_balance = c("database_id"),
+                 preference_score_dist = c("database_id"),
+                 kaplan_meier_dist = c("database_id"),
+                 propensity_model = c("database_id"))
 
     deleteExistingData <- function(data, tableName, sqlTableName, dropped) {
         key <- keys[[tableName]]
@@ -147,7 +136,7 @@ uploadResultsToDatabase <- function(connectionDetails,
         insertedCount <- 0
         dropped <- NULL
         while (nrow(data) != 0) {
-            if (!createTables) {
+            if (!createTables && deletePriorData) {
                 ParallelLogger::logInfo("- Deleting existing data with same keys")
                 dropped <- deleteExistingData(data = data,
                                               tableName = tableName,
@@ -216,6 +205,18 @@ createIndicesOnDatabase <- function(connectionDetails,
     }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
+    sql <- "CREATE INDEX idx_t_cohort_method_result ON cohort_method_result (target_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+
+    sql <- "CREATE INDEX idx_c_cohort_method_result ON cohort_method_result (comparator_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+
     sql <- "CREATE INDEX idx_cm_interaction_result ON cm_interaction_result (database_id, target_id, comparator_id, outcome_id, analysis_id);"
     if (staging) {
         sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
@@ -245,4 +246,38 @@ createIndicesOnDatabase <- function(connectionDetails,
         sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
     }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+}
+
+#' Drop the old tables, and remove _staging postfix from staging tables.
+#'
+#' @param connectionDetails                    An object of type \code{connectionDetails} as created
+#'                                             using the
+#'                                             \code{\link[DatabaseConnector]{createConnectionDetails}}
+#'                                             function in the DatabaseConnector package.
+#' @param schema                               The schema holding the LEGEND results.
+#'
+#'
+#' @export
+unstageDb <- function(connectionDetails, schema = "legend") {
+    conn <- connect(connectionDetails)
+    on.exit(DatabaseConnector::disconnect(conn))
+
+    tables <- DatabaseConnector::getTableNames(conn, schema)
+
+    stagingTables <- tables[grepl("_STAGING$", tables)]
+    toDrop <- gsub("_STAGING$", "", stagingTables)
+    for (i in 1:length(toDrop)) {
+      tableName <- toDrop[i]
+      ParallelLogger::logInfo("Dropping table ", tableName)
+      sql <- paste("DROP TABLE", tableName)
+      DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+    }
+
+    for (i in 1:length(stagingTables)) {
+        tableName <- stagingTables[i]
+        newTableName <- gsub("_STAGING$", "", tableName)
+        ParallelLogger::logInfo("Renaming table ", tableName, " to ", newTableName)
+        sql <- sprintf("ALTER TABLE %s RENAME TO %s;", tableName, newTableName)
+        DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+    }
 }
