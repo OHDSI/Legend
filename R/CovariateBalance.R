@@ -131,7 +131,8 @@ computeBalance <- function(subset,
                               "cmOutput",
                               subset$cohortMethodDataFolder[1])
     cmData <- CohortMethod::loadCohortMethodData(cmDataFolder)
-    if (is.na(subset$cmDataFolderCt[1])) {
+    cmD
+    if (!any(!is.na(subset$cmDataFolderCt))) {
         ParallelLogger::logDebug("Not computing balance for matching")
         # Matching was probably turned off
         cmDataCt <- NULL
@@ -139,7 +140,7 @@ computeBalance <- function(subset,
     } else {
         cmDataCtFolder <- file.path(indicationFolder,
                                     "cmOutput",
-                                    subset$cmDataFolderCt[1])
+                                    subset$cmDataFolderCt[!is.na(subset$cmDataFolderCt)][1])
         cmDataCt <- CohortMethod::loadCohortMethodData(cmDataCtFolder)
         # Reverse cohortMethodData objects have no covariate data. Add back in:
         cmDataCt$covariates <- cmData$covariates
