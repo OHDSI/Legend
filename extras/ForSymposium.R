@@ -70,6 +70,19 @@ duoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% comboDrugs$expos
                                           comparisons$comparatorId %in% comboDrugs$exposureId), ]
 writeLines(paste("duo vs duo drug comparisons:", nrow(duoDuoDrugComparisons)))
 
+
+
+monoDuoClassComparisons <- comparisons[(comparisons$targetId %in% singleClasses$exposureId &
+                                           comparisons$comparatorId %in% comboClasses$exposureId) |
+                                          (comparisons$targetId %in% comboClasses$exposureId &
+                                               comparisons$comparatorId %in% singleClasses$exposureId) , ]
+writeLines(paste("mono vs duo drug comparisons:", nrow(monoDuoDrugComparisons)))
+duoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% comboDrugs$exposureId &
+                                          comparisons$comparatorId %in% comboDrugs$exposureId), ]
+writeLines(paste("duo vs duo drug comparisons:", nrow(duoDuoDrugComparisons)))
+
+
+
 writeLines(paste("total comparisons:", nrow(comparisons)))
 
 
