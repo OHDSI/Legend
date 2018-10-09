@@ -4,7 +4,7 @@ searchButton <- function(inputId, label, structured) {
     var link = document.createElement('a');
     link.id = 'searchLink';
     link.href = '?structured=true'
-    link.href = link.href + '&indication=' + encodeURI(document.getElementById('indication').value);
+    // link.href = link.href + '&indication=' + encodeURI(document.getElementById('indication').value);
     link.href = link.href + '&exposureGroup=' + encodeURI(document.getElementById('exposureGroup').value);
     link.href = link.href + '&target=' + encodeURI(document.getElementById('target').value);
     link.href = link.href + '&comparator=' + encodeURI(document.getElementById('comparator').value);

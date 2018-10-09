@@ -15,7 +15,7 @@ shinyUI(fluidPage(style = "width:1000px;",
                         ),
                         conditionalPanel("input.queryType == 'Structured'",
                                          fluidRow(
-                                           column(4, selectInput("indication", "Indication", c("All", indications$indicationId))),
+                                           # column(4, selectInput("indication", "Indication", c("All", indications$indicationId))),
                                            column(4, selectInput("exposureGroup", "Exposure group", c("All", unique(exposureGroups$exposureGroup))))
                                          ),
                                          fluidRow(
