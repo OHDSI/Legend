@@ -48,6 +48,31 @@ createPriorExposureCovariateSettings <- function(cohortDatabaseSchema = "unknown
     return(covariateSettings)
 }
 
+#' Create covariates on prior exposures.
+#'
+#' @param connection          A connection to the server containing the schema as created using the
+#'                            \code{connect} function in the \code{DatabaseConnector} package.
+#' @param oracleTempSchema    A schema where temp tables can be created in Oracle.
+#' @param cdmDatabaseSchema   The name of the database schema that contains the OMOP CDM instance.
+#'                            Requires read permissions to this database. On SQL Server, this should
+#'                            specifiy both the database and the schema, so for example
+#'                            'cdm_instance.dbo'.
+#' @param cohortTable         Name of the table holding the cohort for which we want to construct
+#'                            covariates. If it is a temp table, the name should have a hash prefix,
+#'                            e.g. '#temp_table'. If it is a non-temp table, it should include the
+#'                            database schema, e.g. 'cdm_database.cohort'.
+#' @param cohortId            For which cohort ID should covariates be constructed? If set to -1,
+#'                            covariates will be constructed for all cohorts in the specified cohort
+#'                            table.
+#' @param cdmVersion          The version of the Common Data Model used. Currently only
+#'                            \code{cdmVersion = "5"} is supported.
+#' @param rowIdField          The name of the field in the cohort temp table that is to be used as the
+#'                            row_id field in the output table. This can be especially usefull if there
+#'                            is more than one period per person.
+#' @param covariateSettings   An object created using the \code{createPriorExposureCovariateSettings} function.
+#' @param aggregated          Should aggregate statistics be computed instead of covariates per
+#'                            cohort entry?
+#'
 #' @export
 getDbPriorExposuresCovariateData <- function(connection,
                                              oracleTempSchema = NULL,

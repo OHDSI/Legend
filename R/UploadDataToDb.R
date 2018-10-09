@@ -31,6 +31,8 @@
 #'                                             if they already exist prior to creating them.
 #' @param staging                              If TRUE, the table names on the server will have the postfix "_staging" to
 #'                                             allow new tables to be created while old ones are in use.
+#' @param deletePriorData                      Should prior data (with the same keys) be deleted prior to uploading the
+#'                                             data to avoid duplicates?
 #'
 #' @export
 uploadResultsToDatabase <- function(connectionDetails,

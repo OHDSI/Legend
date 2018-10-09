@@ -22,11 +22,13 @@
 #' @param outputFolder   Name of local folder to place results; make sure to use forward slashes (/).
 #'                       Do not use a folder on a network drive since this greatly impacts performance.
 #' @param indicationId   A string denoting the indicationId.
+#' @param databaseId                           A short string for identifying the database (e.g.
+#'                                             'Synpuf').
 #' @param maxCores       How many parallel cores should be used? If more cores are made available this
 #'                       can speed up the analyses.
 #'
 #' @export
-runCohortMethod <- function(outputFolder, indicationId = "Depression", maxCores = 4) {
+runCohortMethod <- function(outputFolder, indicationId = "Depression", databaseId, maxCores = 4) {
     # Note: we don't want to run all analyses on all TCO pairs. Specifically, analyses that are
     # symmetrical (e.g. PS stratification) we only want to do one way, and the interaction analyses we
     # don't want to run on the positive controls.  To do this, we split up the analyses across several

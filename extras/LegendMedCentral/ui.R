@@ -14,11 +14,14 @@ shinyUI(fluidPage(style = "width:1000px;",
                                          searchButton("textSearchButton", "Search",  structured = FALSE)
                         ),
                         conditionalPanel("input.queryType == 'Structured'",
-                                         
-                                         selectInput("indication", "Indication", c("All", indications$indicationId)),
-                                         selectInput("exposureGroup", "Exposure group", c("All", unique(exposureGroups$exposureGroup))),
-                                         selectInput("target", "Target", c("All", unique(exposures$exposureName))),
-                                         selectInput("comparator", "Comparator", c("All", unique(exposures$exposureName))),
+                                         fluidRow(
+                                           column(4, selectInput("indication", "Indication", c("All", indications$indicationId))),
+                                           column(4, selectInput("exposureGroup", "Exposure group", c("All", unique(exposureGroups$exposureGroup))))
+                                         ),
+                                         fluidRow(
+                                           column(4, selectInput("target", "Target", c("All", unique(exposures$exposureName)))),
+                                           column(4, selectInput("comparator", "Comparator", c("All", unique(exposures$exposureName))))
+                                         ),
                                          selectInput("outcome", "Outcome", c("All", unique(outcomes$outcomeName))),
                                          selectInput("database", "Database", c("All", databases$databaseId)),
                                          searchButton("structuredSearchButton", "Search", structured = TRUE)

@@ -6,6 +6,8 @@ shinyServer(function(input, output, session) {
   
   connection <- DatabaseConnector::connect(connectionDetails)
   
+  choices <- list()
+  
   session$onSessionEnded(function() {
     writeLines("Closing connection")
     DatabaseConnector::disconnect(connection)
@@ -93,15 +95,23 @@ shinyServer(function(input, output, session) {
   observe({
     indicationId <- input$indication
     if (indicationId == "All") {
-      updateSelectInput(session = session,
-                        inputId = "exposureGroup",
-                        choices = c("All", unique(exposureGroups$exposureGroup)))
+        updateSelectInput(session = session,
+                          inputId = "exposureGroup",
+                          choices = c("All", unique(exposureGroups$exposureGroup)))
     } else {
-      updateSelectInput(session = session,
-                        inputId = "exposureGroup",
-                        choices = c("All", unique(exposureGroups$exposureGroup[exposureGroups$indicationId == indicationId])))
+        updateSelectInput(session = session,
+                          inputId = "exposureGroup",
+                          choices = c("All", unique(exposureGroups$exposureGroup[exposureGroups$indicationId == indicationId])))
     }
   })
+  
+  setChoices <- function(inputId, choices) {
+    if (is.null(currentChoices[inputId]) || currentChoices[inputId] != choices) {
+      updateSelectInput(session = session,
+                        inputId = inputId,
+                        choices = choices)
+    }
+  }
 
   observe({
     indicationId <- input$indication
@@ -118,15 +128,15 @@ shinyServer(function(input, output, session) {
     } else {
       filteredExposures <- filteredExposures[filteredExposures$exposureGroup == exposureGroup, ]
     }
-    updateSelectInput(session = session,
-                      inputId = "target",
-                      choices = c("All", unique(filteredExposures$exposureName)))
-    updateSelectInput(session = session,
-                      inputId = "comparator",
-                      choices = c("All", unique(filteredExposures$exposureName)))
-    updateSelectInput(session = session,
-                      inputId = "outcome",
-                      choices = c("All", unique(filteredOutcomes$outcomeName)))
+      updateSelectInput(session = session,
+                        inputId = "target",
+                        choices = c("All", unique(filteredExposures$exposureName)))
+      updateSelectInput(session = session,
+                        inputId = "comparator",
+                        choices = c("All", unique(filteredExposures$exposureName)))
+      updateSelectInput(session = session,
+                        inputId = "outcome",
+                        choices = c("All", unique(filteredOutcomes$outcomeName)))
   })
   
   # Maintain contents of search box:
@@ -140,6 +150,9 @@ shinyServer(function(input, output, session) {
         updateSelectInput(session = session,
                           inputId = "indication",
                           selected = query$indication)
+        updateSelectInput(session = session,
+                          inputId = "exposureGroup",
+                          selected = query$exposureGroup)
         updateSelectInput(session = session,
                           inputId = "target",
                           selected = query$target)

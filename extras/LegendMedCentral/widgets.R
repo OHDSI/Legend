@@ -5,6 +5,7 @@ searchButton <- function(inputId, label, structured) {
     link.id = 'searchLink';
     link.href = '?structured=true'
     link.href = link.href + '&indication=' + encodeURI(document.getElementById('indication').value);
+    link.href = link.href + '&exposureGroup=' + encodeURI(document.getElementById('exposureGroup').value);
     link.href = link.href + '&target=' + encodeURI(document.getElementById('target').value);
     link.href = link.href + '&comparator=' + encodeURI(document.getElementById('comparator').value);
     link.href = link.href + '&outcome=' + encodeURI(document.getElementById('outcome').value);
