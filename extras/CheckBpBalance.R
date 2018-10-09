@@ -88,6 +88,12 @@ bps <- bps[!duplicated(paste(bps$rowId, bps$conceptId)), ]
 saveRDS(bps, file.path(bpFolder, "bps.rds"))
 
 # Compute balance per TC -------------------------------------------------------------
+options(fftempdir = "a:/fftemp")
+studyFolder <- "b:/Legend"
+outputFolder <- file.path(studyFolder, "panther")
+indicationId <- "Hypertension"
+indicationFolder <- file.path(outputFolder, indicationId)
+bpFolder <- file.path(indicationFolder, "bp")
 bps <- readRDS(file.path(bpFolder, "bps.rds"))
 outcomeModelReference <- readRDS(file.path(indicationFolder,
                                            "cmOutput",
@@ -97,15 +103,18 @@ outcomeModelReference <- outcomeModelReference[order(outcomeModelReference$cohor
 outcomeModelReference <- outcomeModelReference[!duplicated(paste(outcomeModelReference$targetId, outcomeModelReference$comparatorId, outcomeModelReference$analysisId)), ]
 exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
 outcomeModelReference <- merge(outcomeModelReference, exposureSummary[, c("targetId", "comparatorId", "targetName", "comparatorName")])
-which(outcomeModelReference$targetName == "Losartan" & outcomeModelReference$comparatorName == "Olmesartan")
-compBal <- function(i, indicationFolder, outcomeModelReference, exposureSummary, bps) {
-    print(i)
-    cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", outcomeModelReference$cohortMethodDataFolder[i]))
-    strataPop <- readRDS(file.path(indicationFolder, "cmOutput", outcomeModelReference$strataFile[i]))
+# which(outcomeModelReference$targetName == "Losartan" & outcomeModelReference$comparatorName == "Olmesartan")
+compBal <- function(row, indicationFolder) {
+    #row <- rows[[1]]
+    cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
+                                                           "cmOutput",
+                                                           row$cohortMethodDataFolder),
+                                                 skipCovariates = TRUE)
+    strataPop <- readRDS(file.path(indicationFolder, "cmOutput", row$strataFile))
     if (nrow(strataPop) == 0) {
         return(NULL)
     }
-    allBal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+    # allBal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
 
     subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
     cmData$cohorts <- cmData$cohorts[cmData$cohorts$rowId %in% subset$rowId, ]
@@ -117,29 +126,33 @@ compBal <- function(i, indicationFolder, outcomeModelReference, exposureSummary,
     cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
                                                   covariateName = subsetRef$conceptName))
     bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-    bal$targetId <- outcomeModelReference$targetId[i]
-    bal$targetName <- outcomeModelReference$targetName[i]
-    bal$comparatorId <- outcomeModelReference$comparatorId[i]
-    bal$comparatorName <- outcomeModelReference$comparatorName[i]
-    bal$analysisId <- outcomeModelReference$analysisId[i]
+    bal$targetId <- row$targetId
+    bal$targetName <- row$targetName
+    bal$comparatorId <- row$comparatorId
+    bal$comparatorName <- row$comparatorName
+    bal$analysisId <- row$analysisId
+
+    allBalFile <- file.path(indicationFolder,
+                            "balance",
+                            sprintf("Bal_t%s_c%s_a2.rds", row$targetId, row$comparatorId))
+    allBal <- readRDS(allBalFile)
     bal$maxStdDiffOther <- max(allBal$afterMatchingStdDiff, na.rm = TRUE)
     bal$minStdDiffOther <- min(allBal$afterMatchingStdDiff, na.rm = TRUE)
     return(bal)
 }
 # cluster <- ParallelLogger::makeCluster(5)
-# bal <- ParallelLogger::clusterApply(cluster, 1:nrow(outcomeModelReference),
+# rows <- split(outcomeModelReference, 1:nrow(outcomeModelReference))
+# bal <- ParallelLogger::clusterApply(cluster,
+#                                     rows,
 #                                     compBal,
 #                                     indicationFolder = indicationFolder,
-#                                     outcomeModelReference = outcomeModelReference,
-#                                     exposureSummary = exposureSummary,
 #                                     bps = bps)
 # ParallelLogger::stopCluster(cluster)
-bal <- plyr::llply(1:nrow(outcomeModelReference),
+
+rows <- split(outcomeModelReference, 1:nrow(outcomeModelReference))
+bal <- plyr::llply(rows,
                    compBal,
                    indicationFolder = indicationFolder,
-                   outcomeModelReference = outcomeModelReference,
-                   exposureSummary = exposureSummary,
-                   bps = bps,
                    .progress = "text")
 bal <- do.call("rbind", bal)
 write.csv(bal, file.path(bpFolder, "balance.csv"), row.names = FALSE)
@@ -148,3 +161,14 @@ write.csv(bal, file.path(bpFolder, "balance.csv"), row.names = FALSE)
 
 hist(bps$valueAsNumber[bps$conceptName == "BP diastolic"])
 hist(bps$valueAsNumber[bps$conceptName == "BP systolic"])
+
+
+library(ggplot2)
+bps <- readRDS(file.path(bpFolder, "bps.rds"))
+bps <- bps[bps$valueAsNumber < 250, ]
+bps <- bps[bps$valueAsNumber > 25, ]
+ggplot(bps, aes(x = valueAsNumber)) +
+    geom_histogram(binwidth = 1) +
+    scale_x_continuous(limits = c(40,200), breaks = seq(40,200, 10)) +
+    facet_grid(conceptName~.)
+ggsave(filename = file.path(bpFolder, "bpDist.png"), width = 8, height = 8)
