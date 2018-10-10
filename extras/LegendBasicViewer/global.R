@@ -1,6 +1,6 @@
 library(DatabaseConnector)
-source("DataPulls.R")
-source("PlotsAndTables.R")
+source("../LegendMedCentral/DataPulls.R")
+source("../LegendMedCentral/PlotsAndTables.R")
 
 # connectionDetails <- createConnectionDetails(dbms = 'postgresql', server = 'localhost/ohdsi', user
 # = 'postgres', password = Sys.getenv('pwPostgres'), schema = 'legend')

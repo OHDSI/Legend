@@ -473,6 +473,10 @@ getAttrition <- function(connection, targetId, comparatorId, outcomeId, analysis
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   attrition <- querySql(connection, sql)
   colnames(attrition) <- SqlRender::snakeCaseToCamelCase(colnames(attrition))
+  if (any(grepl("Mono-therapy", attrition$description)) &
+      any(grepl("Duo-therapy", attrition$description))) {
+    attrition$description <- gsub("(Mono-therapy)|(Duo-therapy)", "Mono/duo-therapy", attrition$description)
+  }
   targetAttrition <- attrition[attrition$exposureId == targetId, ]
   comparatorAttrition <- attrition[attrition$exposureId == comparatorId, ]
   colnames(targetAttrition)[colnames(targetAttrition) == "subjects"] <- "targetPersons"
