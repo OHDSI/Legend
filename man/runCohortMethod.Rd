@@ -4,7 +4,7 @@
 \alias{runCohortMethod}
 \title{Run the cohort method package}
 \usage{
-runCohortMethod(outputFolder, indicationId = "Depression",
+runCohortMethod(outputFolder, indicationId = "Depression", databaseId,
   maxCores = 4)
 }
 \arguments{
@@ -12,6 +12,9 @@ runCohortMethod(outputFolder, indicationId = "Depression",
 Do not use a folder on a network drive since this greatly impacts performance.}
 
 \item{indicationId}{A string denoting the indicationId.}
+
+\item{databaseId}{A short string for identifying the database (e.g.
+'Synpuf').}
 
 \item{maxCores}{How many parallel cores should be used? If more cores are made available this
 can speed up the analyses.}

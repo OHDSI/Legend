@@ -1,5 +1,23 @@
+# Copyright 2018 Observational Health Data Sciences and Informatics
+#
+# This file is part of Legend
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Code for generating numbers and plots to be presented at the OHDSI 2018 Symposium.
+
 library(DatabaseConnector)
-source("extras/PubLegendCentral/DataPulls.R")
+source("extras/LegendMedCentral/DataPulls.R")
 
 
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
@@ -38,10 +56,10 @@ singleDrugComparisons <- comparisons[comparisons$targetId %in% singleDrugs$expos
                                          comparisons$comparatorId %in% singleDrugs$exposureId, ]
 writeLines(paste("Single drug comparisons:", nrow(singleDrugComparisons)))
 singleClassComparisons <- comparisons[comparisons$targetId %in% singleClasses$exposureId &
-                                         comparisons$comparatorId %in% singleClasses$exposureId, ]
+                                          comparisons$comparatorId %in% singleClasses$exposureId, ]
 writeLines(paste("Single class comparisons:", nrow(singleClassComparisons)))
 singleMajorClassComparisons <- comparisons[comparisons$targetId %in% singleMajorClasses$exposureId &
-                                          comparisons$comparatorId %in% singleMajorClasses$exposureId, ]
+                                               comparisons$comparatorId %in% singleMajorClasses$exposureId, ]
 writeLines(paste("Single major class comparisons:", nrow(singleMajorClassComparisons)))
 monoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% singleDrugs$exposureId &
                                            comparisons$comparatorId %in% comboDrugs$exposureId) |
@@ -49,13 +67,40 @@ monoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% singleDrugs$exp
                                                comparisons$comparatorId %in% singleDrugs$exposureId) , ]
 writeLines(paste("mono vs duo drug comparisons:", nrow(monoDuoDrugComparisons)))
 duoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% comboDrugs$exposureId &
-                                           comparisons$comparatorId %in% comboDrugs$exposureId), ]
+                                          comparisons$comparatorId %in% comboDrugs$exposureId), ]
 writeLines(paste("duo vs duo drug comparisons:", nrow(duoDuoDrugComparisons)))
+
+
+
+monoDuoClassComparisons <- comparisons[(comparisons$targetId %in% singleClasses$exposureId &
+                                           comparisons$comparatorId %in% comboClasses$exposureId) |
+                                          (comparisons$targetId %in% comboClasses$exposureId &
+                                               comparisons$comparatorId %in% singleClasses$exposureId) , ]
+writeLines(paste("mono vs duo class comparisons:", nrow(monoDuoClassComparisons)))
+duoDuoClassComparisons <- comparisons[(comparisons$targetId %in% comboClasses$exposureId &
+                                          comparisons$comparatorId %in% comboClasses$exposureId), ]
+writeLines(paste("duo vs duo class comparisons:", nrow(duoDuoClassComparisons)))
+
+
 
 writeLines(paste("total comparisons:", nrow(comparisons)))
 
 
+outcomesUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
+writeLines(paste("total outcomes observed:", nrow(outcomesUsed)))
+tcos <- querySql(connection, "SELECT DISTINCT target_id, comparator_id, cmr.outcome_id FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
+writeLines(paste("total tcos observed:", nrow(tcos)))
 
+ncsUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id FROM cohort_method_result cmr INNER JOIN negative_control_outcome nco ON cmr.outcome_id = nco.outcome_id")
+writeLines(paste("total negative controls observed:", nrow(ncsUsed)))
+tcncs <- querySql(connection, "SELECT DISTINCT target_id, comparator_id, cmr.outcome_id FROM cohort_method_result cmr INNER JOIN negative_control_outcome nco ON cmr.outcome_id = nco.outcome_id")
+writeLines(paste("total tc - negative controls observed:", nrow(tcncs)))
+
+tcpcs <- querySql(connection, "SELECT DISTINCT target_id, comparator_id, cmr.outcome_id FROM cohort_method_result cmr INNER JOIN positive_control_outcome pco ON cmr.outcome_id = pco.outcome_id")
+writeLines(paste("total tc - positive controls observed:", nrow(tcpcs)))
+
+
+# Sunburst --------------------------------------------------------------------------------------
 counts <- querySql(connection, "SELECT exposure_id, subjects FROM attrition WHERE database_id = 'CCAE' AND target_id IS NULL AND sequence_number = 3")
 colnames(counts) <- SqlRender::snakeCaseToCamelCase(colnames(counts))
 counts <- merge(counts,
@@ -105,7 +150,6 @@ createSunburts <- function(counts, cutOut = "duo") {
 }
 
 # PS plot posters --------------------------------------------------------------------------------------
-
 databases <- getDatabases(connection)
 databases <- databases[databases$isMetaAnalysis == 0, ]
 exposures <- getExposures(connection = connection, filterByCmResults = FALSE)
@@ -113,67 +157,94 @@ drugs <- exposures[exposures$exposureGroup == "Drug", ]
 classes <- exposures[exposures$exposureGroup == "Drug class", ]
 
 
-createPoster <- function(connection, databaseId = "CCAE", exposureGroup = "Drug") {
-   if (exposureGroup == "Drug") {
-     title <- paste("Preference score distributions for drug (combinations) in", databaseId)
-   } else {
+createPoster <- function(connection, databaseId = "MDCD", exposureGroup = "Drug") {
+    writeLines(sprintf("Creating plot for %s at %s level", databaseId, exposureGroup))
+    eoi <- exposures[exposures$exposureGroup == exposureGroup, ]
+    ps <- getPs(connection = connection,
+                databaseId = databaseId,
+                targetIds = eoi$exposureId,
+                comparatorIds = eoi$exposureId)
+    idx <- ps$targetId > ps$comparatorId
+    ps$preferenceScore[idx] <- 1 - ps$preferenceScore[idx]
+    ps <- merge(ps, data.frame(targetId = eoi$exposureId,
+                               targetName = eoi$exposureName))
+    ps <- merge(ps, data.frame(comparatorId = eoi$exposureId,
+                               comparatorName = eoi$exposureName))
+    ps <- rbind(data.frame(targetName = ps$targetName,
+                           comparatorName = ps$comparatorName,
+                           x = ps$preferenceScore,
+                           y = ps$targetDensity,
+                           group = "Target"),
+                data.frame(targetName = ps$targetName,
+                           comparatorName = ps$comparatorName,
+                           x = ps$preferenceScore,
+                           y = ps$comparatorDensity,
+                           group = "Comparator"))
 
-   }
+    # Normalize y per trellis:
+    maxY <- aggregate(y ~ targetName + comparatorName, ps, max)
+    colnames(maxY)[colnames(maxY) == "y"] <- "maxY"
+    ps <- merge(ps, maxY)
+    ps$y <- ps$y / ps$maxY
 
-   eoi <- exposures[exposures$exposureGroup == exposureGroup, ]
-   ps <- getPs(connection = connection,
-               databaseId = databaseId,
-               targetIds = eoi$exposureId,
-               comparatorIds = eoi$exposureId)
-   ps <- merge(ps, data.frame(targetId = eoi$exposureId,
-                              targetName = eoi$exposureName))
-   ps <- merge(ps, data.frame(comparatorId = eoi$exposureId,
-                              comparatorName = eoi$exposureName))
-   ps <- rbind(data.frame(targetName = ps$targetName,
-                          comparatorName = ps$comparatorName,
-                          x = ps$preferenceScore,
-                          y = ps$targetDensity,
-                          group = "Target"),
-               data.frame(targetName = ps$targetName,
-                          comparatorName = ps$comparatorName,
-                          x = ps$preferenceScore,
-                          y = ps$comparatorDensity,
-                          group = "Comparator"))
-   ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
-   ps <- ps[ps$targetName == "Furosemide" | ps$comparatorName == "Furosemide", ]
-   plot <- ggplot2::ggplot(ps, ggplot2::aes(x = x, y = y, color = group, group = group, fill = group)) +
-       ggplot2::geom_density(stat = "identity") +
-       ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-       ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-       ggplot2::scale_x_continuous("Preference score", limits = c(0, 1)) +
-       ggplot2::scale_y_continuous("Density") +
-       ggplot2::facet_grid(targetName ~ comparatorName, scales = "free") +
-       ggplot2::ggtitle(title) +
-       ggplot2::theme(legend.title = ggplot2::element_blank(),
-                      axis.title.x = ggplot2::element_blank(),
-                      axis.text.x = ggplot2::element_blank(),
-                      axis.ticks.x = ggplot2::element_blank(),
-                      axis.title.y = ggplot2::element_blank(),
-                      axis.text.y = ggplot2::element_blank(),
-                      axis.ticks.y = ggplot2::element_blank(),
-                      panel.grid.major = ggplot2::element_blank(),
-                      panel.grid.minor = ggplot2::element_blank(),
-                      strip.text.x = ggplot2::element_text(size = 10, angle = 90, vjust = 0),
-                      strip.text.y = ggplot2::element_text(size = 10, angle = 0, hjust = 0),
-                      panel.spacing = ggplot2::unit(0.05, "lines"),
-                      legend.position = "none")
-   ggplot2::ggsave("c:/temp/plot.png", plot = plot, width = 20, height = 14, dpi = 300)
+    ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
+    plot <- ggplot2::ggplot(ps, ggplot2::aes(x = x, y = y, color = group, group = group, fill = group)) +
+        ggplot2::geom_density(stat = "identity") +
+        ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+        ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+        ggplot2::scale_x_continuous("Preference score", limits = c(0, 1)) +
+        ggplot2::scale_y_continuous("Density") +
+        ggplot2::facet_grid(cols = ggplot2::vars(comparatorName),
+                            rows = ggplot2::vars(targetName),
+                            labeller = ) +
+        ggplot2::theme(legend.title = ggplot2::element_blank(),
+                       axis.title.x = ggplot2::element_blank(),
+                       axis.text.x = ggplot2::element_blank(),
+                       axis.ticks.x = ggplot2::element_blank(),
+                       axis.title.y = ggplot2::element_blank(),
+                       axis.text.y = ggplot2::element_blank(),
+                       axis.ticks.y = ggplot2::element_blank(),
+                       panel.grid.major = ggplot2::element_blank(),
+                       panel.grid.minor = ggplot2::element_blank(),
+                       strip.background = ggplot2::element_blank(),
+                       strip.text.x = ggplot2::element_text(size = 13, angle = 90, hjust = 0),
+                       strip.text.y = ggplot2::element_text(size = 13, angle = 0, hjust = 0),
+                       panel.spacing = ggplot2::unit(0.1, "lines"),
+                       legend.position = "none")
+    fileName <- file.path("c:/temp/posters", sprintf("Plots_%s_%s.png", databaseId, exposureGroup))
+    ggplot2::ggsave(filename = fileName, plot = plot, width = 32, height = 20, dpi = 300)
 }
 
-for (i in 1:nrow(databases)) {
-
-
-
+dbs <- c("JMDC", "IMSG", "MDCD", "MDCR", "NHIS_NSC")
+dbs <- c("Optum")
+exposureGroups <- c("Drug", "Drug class")
+for (db in dbs) {
+    for (exposureGroup in exposureGroups) {
+        createPoster(connection = connection,
+                     databaseId = db,
+                     exposureGroup = exposureGroup)
+    }
 }
 
+# Panther not yet in DB
+data <- readRDS("c:/temp/Posters/ps.rds")
+exposures <- getExposures(connection = connection, filterByCmResults = FALSE)
+drugs <- exposures[exposures$exposureGroup == "Drug", ]
+classes <- exposures[exposures$exposureGroup == "Drug class", ]
+dataDrugs <- data[data$targetId %in% drugs$exposureId, ]
+dataDrugClasses <- data[data$targetId %in% classes$exposureId &
+                            data$comparatorId %in% classes$exposureId, ]
+ps <- dataDrugClasses
+ps$group <- "Target"
+ps$group[ps$treatment == 0] <- "Comparator"
+ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
+databaseId <- "Panther"
+exposureGroup <- "Drug class"
 
-exposures <- getExposures(connection)
-exposures$exposureName <- sapply(exposures$exposureName, uncapitalize)
 
-outcomes <- getOutcomes(connection)
-
+ps <- dataDrugs
+ps$group <- "Target"
+ps$group[ps$treatment == 0] <- "Comparator"
+ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
+databaseId <- "Panther"
+exposureGroup <- "Drug"

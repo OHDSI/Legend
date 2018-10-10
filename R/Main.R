@@ -139,7 +139,10 @@ execute <- function(connectionDetails,
                                            maxCores = maxCores)
     }
     if (runCohortMethod) {
-        runCohortMethod(outputFolder = outputFolder, indicationId = indicationId, maxCores = maxCores)
+        runCohortMethod(outputFolder = outputFolder,
+                        indicationId = indicationId,
+                        databaseId = databaseId,
+                        maxCores = maxCores)
     }
 
     if (computeIncidence) {

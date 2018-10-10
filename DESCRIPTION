@@ -14,16 +14,15 @@ Imports:
     ffbase,
 	SqlRender,
     FeatureExtraction,
-    CohortMethod (>= 3.0.0),
+    CohortMethod (>= 3.0.1),
     IcTemporalPatternDiscovery,
     EmpiricalCalibration (>= 1.4.0),
-	MethodEvaluation (>= 0.3.0),
+	MethodEvaluation (>= 0.3.1),
     ParallelLogger,
-    plyr
+    plyr,
+    meta
 Suggests:
-    testthat,
-    meta,
-    ggplot2
+    testthat
 License: Apache License 2.0
 LazyData: true
 RoxygenNote: 6.1.0

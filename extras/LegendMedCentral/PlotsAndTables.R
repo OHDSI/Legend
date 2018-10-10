@@ -707,7 +707,8 @@ drawAttritionDiagram <- function(attrition,
     data$currentComparator <- attrition$comparatorPersons[row]
     return(data)
   }
-  data <- list(leftBoxText = c(paste("Exposed:\n",
+  data <- list(leftBoxText = c(paste(attrition$description[1],
+                                     "\n",
                                      targetLabel,
                                      ": n = ",
                                      attrition$targetPersons[1],

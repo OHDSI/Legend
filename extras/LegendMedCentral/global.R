@@ -13,12 +13,18 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
                                              password = Sys.getenv("shinydbPw"),
                                              schema = Sys.getenv("shinydbSchema"))
 connection <- connect(connectionDetails)
-
+indications <- getIndications(connection)
 exposures <- getExposures(connection)
-exposures$exposureName <- sapply(exposures$exposureName, uncapitalize)
-
+exposures$exposureGroup[exposures$exposureGroup == "Drug" | exposures$exposureGroup == "Procedure"] <- "Drug or procedure"
+exposureGroups <- unique(exposures[, c("indicationId", "exposureGroup")])
 outcomes <- getOutcomes(connection)
 databases <- getDatabases(connection)
+
+# Sort for display:
+indications <- indications[order(indications$indicationId), ]
+exposures <- exposures[order(exposures$exposureName), ]
+outcomes <- outcomes[order(outcomes$outcomeName), ]
+databases <- databases[order(databases$isMetaAnalysis, databases$databaseId), ]
 
 writeLines("Closing connection")
 disconnect(connection)

@@ -22,6 +22,9 @@ if they already exist prior to creating them.}
 
 \item{staging}{If TRUE, the table names on the server will have the postfix "_staging" to
 allow new tables to be created while old ones are in use.}
+
+\item{deletePriorData}{Should prior data (with the same keys) be deleted prior to uploading the
+data to avoid duplicates?}
 }
 \description{
 Upload the exported results of a database-indication run into the database. Assumes the data conforms to

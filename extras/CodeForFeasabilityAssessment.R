@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This code shows how one would run the feasibility assessment on a database in CDM format.
+
 library(Legend)
 options(fftempdir = "c:/fftemp")  # Folder where temp files will be stored
 maxCores <- 3                     # Max number of cores to use
