@@ -885,6 +885,7 @@ uncapitalize <- function(x) {
     y <- gsub("dVs", "DVs", y)
     y <- gsub("lDs", "LDs", y)
     y <- gsub("tZs", "TZs", y)
+    y <- gsub("tZDs", "TZDs", y)    
     y
   })
   result <- paste(terms, collapse = " and ")
