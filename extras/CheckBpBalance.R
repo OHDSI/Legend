@@ -190,3 +190,46 @@ ggplot(bps, aes(x = valueAsNumber)) +
     scale_x_continuous(limits = c(40,200), breaks = seq(40,200, 10)) +
     facet_grid(conceptName~.)
 ggsave(filename = file.path(bpFolder, "bpDist.png"), width = 8, height = 8)
+
+
+
+
+
+folder <- "C:/Home/Research/LEGEND/BP"
+bps <- readRDS(file.path(folder, "bps.rds"))
+strataPop <- readRDS(file.path(folder, "StratPop_l1_s1_p1_t1_c2745_s1_o2.rds"))
+subset <- bps[bps$rowId %in% strataPop$rowId, ]
+subsetRef <- unique(subset[, c("conceptId", "conceptName")])
+strataPop <- strataPop[strataPop$rowId %in% subset$rowId, ]
+cmData <- list(cohorts = strataPop,
+               covariates = ff::as.ffdf(data.frame(rowId = subset$rowId,
+                                                    covariateId = subset$conceptId,
+                                                    covariateValue = subset$valueAsNumber)),
+               covariateRef = ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
+                                              covariateName = subsetRef$conceptName)))
+bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+bal
+
+strataBps <- merge(bps, strataPop[, c("rowId", "stratumId", "treatment")])
+strataBps <- strataBps[strataBps$valueAsNumber < 250, ]
+strataBps <- strataBps[strataBps$valueAsNumber > 25, ]
+library(ggplot2)
+
+d <- strataBps[strataBps$conceptName == "BP diastolic", ]
+d <- strataBps[strataBps$conceptName == "BP systolic", ]
+lims <- quantile(d$valueAsNumber, c(0.05, 0.95))
+d$yFacet <- "Comparator"
+d$yFacet[d$treatment == 1] <- "Target"
+d$xFacet <- paste0("Stratum 0", d$stratumId)
+d$xFacet[d$stratumId == 10] <- paste0("Stratum ", d$stratumId)[d$stratumId == 10]
+ggplot(d, aes(x = valueAsNumber)) +
+    geom_histogram(binwidth = 1) +
+    scale_x_continuous(limits = lims, breaks = seq(40,200, 10)) +
+    facet_grid(yFacet~xFacet, scales = "free")
+ggsave(filename = file.path(folder, "bpDistDiastolic.png"), width = 20, height = 8)
+ggsave(filename = file.path(folder, "bpDistSystolic.png"), width = 20, height = 8)
+
+wilcox.test(valueAsNumber ~ as.factor(treatment), data = d)
+
+library("coin")
+SKruskal.test
