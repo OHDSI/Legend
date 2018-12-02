@@ -94,7 +94,7 @@ Hypertension,Drug class,Beta blockers - noncardioselective,9,,nBBs,11,1313200;13
 Hypertension,Drug class,Dihydropyridine calcium channel blockers (dCCB),10,,dCCBs,4,1332418;1353776;1326012;1318137;1318853;1319880
 Hypertension,Drug class,Direct vasodilators,11,,DVs,14,1373928;1309068
 Hypertension,Drug class,Loop diuretics,12,,LDs,6,932745;956874;942350
-Hypertension,Drug class,Nodihydropyridine calcium channel blockers (ndCCB),13,,nCCBs,5,1328165;1307863
+Hypertension,Drug class,Non-dihydropyridine calcium channel blockers (ndCCB),13,,nCCBs,5,1328165;1307863
 Hypertension,Drug class,Potassium sparing diurectics,14,,KSDs,7,991382;904542
 Hypertension,Drug class,Thiazide or thiazide-like diuretics,15,,TDs,1,1395058;974166;978555;907013
 Hypertension,Drug major class,ACE inhibitors,1,,,,1335471;1340128;1341927;1363749;1308216;1310756;1373225;1331235;1334456;1342439
