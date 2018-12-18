@@ -29,7 +29,7 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 maxCores <- parallel::detectCores()
 
 # Upload data from a database for an indication -----------------------------------
-exportFolder <- "R:/Legend/exports/Hypertension/Mdcr"
+exportFolder <- "R:/Legend/exports/Hypertension/CUmc"
 
 uploadResultsToDatabase(connectionDetails = connectionDetails,
                         exportFolder = exportFolder,
@@ -48,7 +48,9 @@ exportFolders <- c("R:/Legend/exports/Hypertension/Panther",
                    "R:/Legend/exports/Hypertension/Mdcd",
                    "R:/Legend/exports/Hypertension/Mdcr",
                    "R:/Legend/exports/Hypertension/Jmdc",
-                   "R:/Legend/exports/Hypertension/Imsg")
+                   "R:/Legend/exports/Hypertension/Imsg",
+                   "R:/Legend/exports/Hypertension/Cumc",
+                   "R:/Legend/exports/Hypertension/NHIS_NSC")
 
 maExportFolder <- "R:/Legend/exports/Hypertension/MetaAnalysis"
 
@@ -104,3 +106,39 @@ for (db in dbs) {
 
 exportFolder <- dbs[3]
 deletePriorData <- FALSE
+
+# Fix reversed PS plots -------------------------------------------------------
+exportFolders <- c("R:/Legend/exports/Hypertension/Mdcd",
+                   "R:/Legend/exports/Hypertension/Optum",
+                   "R:/Legend/exports/Hypertension/Ccae_part1",
+                   "R:/Legend/exports/Hypertension/Ccae_part2",
+                   "R:/Legend/exports/Hypertension/Ccae_part3",
+                   "R:/Legend/exports/Hypertension/Mdcr",
+                   "R:/Legend/exports/Hypertension/Jmdc",
+                   "R:/Legend/exports/Hypertension/Imsg")
+for (i in 1:length(exportFolders)) {
+    # i = 1
+    exportFolder <- exportFolders[i]
+    writeLines(paste("Fixing reversed PS plots in", exportFolder))
+    csvFiles <- list.files(exportFolder, ".csv$", full.names = TRUE)
+    unlink(csvFiles)
+    zipFile <- list.files(exportFolder, ".zip$", full.names = TRUE)[1]
+    utils::unzip(zipfile = zipFile, files = "preference_score_dist.csv", exdir = exportFolder)
+    ps <- read.csv(file.path(exportFolder, "preference_score_dist.csv"))
+    ps$preference_score[ps$target_id > ps$comparator_id] <- 1 - ps$preference_score[ps$target_id > ps$comparator_id]
+    write.csv(ps, file.path(exportFolder, "preference_score_dist.csv"), row.names = FALSE)
+}
+
+for (i in 1:length(exportFolders)) {
+    exportFolder <- exportFolders[i]
+    writeLines(paste("Uploading fixed PS plots in", exportFolder))
+    deletePriorData <- TRUE
+    if (grepl("_part[^1]", exportFolder)) {
+        deletePriorData <- FALSE
+    }
+    uploadResultsToDatabase(connectionDetails = connectionDetails,
+                            exportFolder = exportFolder,
+                            createTables = FALSE,
+                            staging = FALSE,
+                            deletePriorData = deletePriorData)
+}

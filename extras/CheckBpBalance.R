@@ -291,7 +291,6 @@ bal <- do.call("rbind", bal)
 write.csv(bal, file.path(bpFolder, "balance.csv"), row.names = FALSE)
 
 
-
 # # Plot overall distribution of values ------------------------------
 # library(ggplot2)
 # bps <- readRDS(file.path(bpFolder, "bps.rds"))

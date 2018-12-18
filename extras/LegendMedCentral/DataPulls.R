@@ -120,7 +120,7 @@ getTcoDbs <- function(connection,
                       databaseIds = c(),
                       operator = "AND",
                       limit = 0) {
-  sql <- "SELECT target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1"
+  sql <- "SELECT target_id, comparator_id, outcome_id, database_id FROM cohort_method_result WHERE analysis_id = 1 AND se_log_rr IS NOT NULL"
   if (limit != 0) {
     sql <- gsub("SELECT target_id", sprintf("SELECT TOP %s target_id", limit), sql)
   }
@@ -473,6 +473,10 @@ getAttrition <- function(connection, targetId, comparatorId, outcomeId, analysis
   sql <- SqlRender::translateSql(sql, targetDialect = connection@dbms)$sql
   attrition <- querySql(connection, sql)
   colnames(attrition) <- SqlRender::snakeCaseToCamelCase(colnames(attrition))
+  if (any(grepl("Mono-therapy", attrition$description)) &
+      any(grepl("Duo-therapy", attrition$description))) {
+    attrition$description <- gsub("(Mono-therapy)|(Duo-therapy)", "Mono/duo-therapy", attrition$description)
+  }
   targetAttrition <- attrition[attrition$exposureId == targetId, ]
   comparatorAttrition <- attrition[attrition$exposureId == comparatorId, ]
   colnames(targetAttrition)[colnames(targetAttrition) == "subjects"] <- "targetPersons"

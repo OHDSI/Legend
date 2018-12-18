@@ -104,6 +104,37 @@ swapColumnContents <- function(df, column1 = "targetId", column2 = "comparatorId
     return(df)
 }
 
+
+getAsymAnalysisIds <- function() {
+    cmAnalysisListFile <- system.file("settings",
+                                      sprintf("cmAnalysisListAsym%s.json", indicationId),
+                                      package = "Legend")
+    cmAnalysisListAsym <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
+    analysisIds <- as.vector(unlist(ParallelLogger::selectFromList(cmAnalysisListAsym, "analysisId")))
+    return(analysisIds)
+}
+
+
+enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
+    toCensor <- !is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0
+    if (!silent) {
+        percent <- round(100 * sum(toCensor)/nrow(data), 1)
+        ParallelLogger::logInfo("   censoring ",
+                                sum(toCensor),
+                                " values (",
+                                percent,
+                                "%) from ",
+                                fieldName,
+                                " because value below minimum")
+    }
+    if (length(minValues) == 1) {
+        data[toCensor, fieldName] <- -minValues
+    } else {
+        data[toCensor, fieldName] <- -minValues[toCensor]
+    }
+    return(data)
+}
+
 exportIndication <- function(indicationId, outputFolder, exportFolder, databaseId) {
     ParallelLogger::logInfo("Exporting indication")
     ParallelLogger::logInfo("- indication table")
@@ -373,17 +404,20 @@ exportMetadata <- function(indicationId,
         return(NULL)
     }
     outcomeModelReference1 <- readRDS(pathToRds)
-    outcomeModelReference1$symmetrical <- TRUE
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
     outcomeModelReference2 <- readRDS(pathToRds)
-    outcomeModelReference2$symmetrical <- FALSE
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
     outcomeModelReference3 <- readRDS(pathToRds)
-    outcomeModelReference3$symmetrical <- TRUE
     outcomeModelReference <- rbind(outcomeModelReference1,
                                    outcomeModelReference2,
                                    outcomeModelReference3)
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
+
+    # Flag assymmetric analyses:
+    analysisIds <- Legend:::getAsymAnalysisIds()
+    outcomeModelReference$symmetrical <- TRUE
+    outcomeModelReference$symmetrical[outcomeModelReference$analysisId %in% analysisIds] <- FALSE
+
     first <- !file.exists(fileName)
     pb <- txtProgressBar(style = 3)
     for (i in 1:nrow(outcomeModelReference)) {
@@ -431,7 +465,7 @@ exportMetadata <- function(indicationId,
                     qmethod = "double",
                     append = !first)
         first <- FALSE
-        if (i%%1000 == 10) {
+        if (i %% 1000 == 10) {
             setTxtProgressBar(pb, i/nrow(outcomeModelReference))
         }
     }
@@ -495,17 +529,18 @@ exportMetadata <- function(indicationId,
 
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference1.rds")
     outcomeModelReference1 <- readRDS(pathToRds)
-    outcomeModelReference1$symmetrical <- TRUE
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference2.rds")
     outcomeModelReference2 <- readRDS(pathToRds)
-    outcomeModelReference2$symmetrical <- FALSE
     pathToRds <- file.path(outputFolder, indicationId, "cmOutput", "outcomeModelReference3.rds")
     outcomeModelReference3 <- readRDS(pathToRds)
-    outcomeModelReference3$symmetrical <- TRUE
     outcomeModelReference <- rbind(outcomeModelReference1,
                                    outcomeModelReference2,
                                    outcomeModelReference3)
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$outcomeId %in% outcomesOfInterest$cohortId, ]
+    analysisIds <- Legend:::getAsymAnalysisIds()
+    outcomeModelReference$symmetrical <- TRUE
+    outcomeModelReference$symmetrical[outcomeModelReference$analysisId %in% analysisIds] <- FALSE
+
     getResult <- function(i) {
         strataPop <- readRDS(file.path(outputFolder,
                                        indicationId,
@@ -565,27 +600,6 @@ exportMetadata <- function(indicationId,
     rm(results)  # Free up memory
 }
 
-enforceMinCellValue <- function(data, fieldName, minValues, silent = FALSE) {
-    toCensor <- !is.na(data[, fieldName]) & data[, fieldName] < minValues & data[, fieldName] != 0
-    if (!silent) {
-        percent <- round(100 * sum(toCensor)/nrow(data), 1)
-        ParallelLogger::logInfo("   censoring ",
-                                sum(toCensor),
-                                " values (",
-                                percent,
-                                "%) from ",
-                                fieldName,
-                                " because value below minimum")
-    }
-    if (length(minValues) == 1) {
-        data[toCensor, fieldName] <- -minValues
-    } else {
-        data[toCensor, fieldName] <- -minValues[toCensor]
-    }
-    return(data)
-}
-
-
 exportMainResults <- function(indicationId,
                               outputFolder,
                               exportFolder,
@@ -615,8 +629,9 @@ exportMainResults <- function(indicationId,
                              analysesSum2,
                              analysesSum3)
     }
+    analysisIds <- Legend:::getAsymAnalysisIds()
     analysesSum$symmetrical <- TRUE
-    analysesSum$symmetrical[analysesSum$analysisId %in% c(3, 4)] <- FALSE
+    analysesSum$symmetrical[analysesSum$analysisId %in% analysisIds] <- FALSE
 
     ParallelLogger::logInfo("  Performing empirical calibration on main effects")
     cluster <- ParallelLogger::makeCluster(min(6, maxCores))
@@ -949,6 +964,7 @@ exportDiagnostics <- function(indicationId,
     first <- TRUE
     balanceFolder <- file.path(outputFolder, indicationId, "balance")
     files <- list.files(balanceFolder, pattern = "Bal_.*.rds", full.names = TRUE)
+    analysisIds <- Legend:::getAsymAnalysisIds()
     pb <- txtProgressBar(style = 3)
     for (i in 1:length(files)) {
         ids <- gsub("^.*Bal_t", "", files[i])
@@ -1015,7 +1031,7 @@ exportDiagnostics <- function(indicationId,
         balance$targetMeanAfter[is.na(balance$targetMeanAfter)] <- 0
         balance$comparatorMeanAfter[is.na(balance$comparatorMeanAfter)] <- 0
         balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
-        if (!(analysisId %in% c(3, 4))) {
+        if (!(analysisId %in% analysisIds)) {
             balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
             balanceCt <- swapColumnContents(balanceCt, "targetMeanBefore", "comparatorMeanBefore")
             balanceCt$stdDiffBefore <- -balanceCt$stdDiffBefore
@@ -1182,6 +1198,11 @@ exportDiagnostics <- function(indicationId,
                                                        "comparatorId",
                                                        "outcomeId",
                                                        "analysisId")]
+    # Flag assymmetric analyses:
+    analysisIds <- Legend:::getAsymAnalysisIds()
+    outcomeModelReference$symmetrical <- TRUE
+    outcomeModelReference$symmetrical[outcomeModelReference$analysisId %in% analysisIds] <- FALSE
+
     tempFolder <- file.path(exportFolder, "temp")
     if (!file.exists(tempFolder)) {
         dir.create(tempFolder)
@@ -1257,13 +1278,17 @@ prepareKm <- function(task,
     dataTc$comparatorId <- task$comparatorId
     dataTc$outcomeId <- task$outcomeId
     dataTc$analysisId <- task$analysisId
-    population$treatment <- 1 - population$treatment
-    dataCt <- Legend:::prepareKaplanMeier(population)
-    dataCt$targetId <- task$comparatorId
-    dataCt$comparatorId <- task$targetId
-    dataCt$outcomeId <- task$outcomeId
-    dataCt$analysisId <- task$analysisId
-    data <- rbind(dataTc, dataCt)
+    if (task$symmetrical) {
+        population$treatment <- 1 - population$treatment
+        dataCt <- Legend:::prepareKaplanMeier(population)
+        dataCt$targetId <- task$comparatorId
+        dataCt$comparatorId <- task$targetId
+        dataCt$outcomeId <- task$outcomeId
+        dataCt$analysisId <- task$analysisId
+        data <- rbind(dataTc, dataCt)
+    } else {
+        data <- dataTc
+    }
     data$databaseId <- databaseId
     data <- enforceMinCellValue(data, "targetAtRisk", minCellCount)
     data <- enforceMinCellValue(data, "comparatorAtRisk", minCellCount)

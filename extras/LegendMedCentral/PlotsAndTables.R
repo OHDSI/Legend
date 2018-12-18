@@ -629,7 +629,7 @@ plotScatter <- function(controlResults) {
   return(plot)
 }
 
-plotLargeScatter <- function(d, xLabel) {
+plotLargeScatter <- function(d, xLabel, pointSize = 2) {
   d$Significant <- d$ci95Lb > 1 | d$ci95Ub < 1
 
   oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
@@ -654,7 +654,7 @@ plotLargeScatter <- function(d, xLabel) {
                          linetype = "dashed",
                          size = 1,
                          alpha = 0.5) +
-    ggplot2::geom_point(size = 2, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
+    ggplot2::geom_point(size = pointSize, color = rgb(0, 0, 0, alpha = 0.05), alpha = alpha, shape = 16) +
     ggplot2::geom_hline(yintercept = 0) +
     ggplot2::geom_label(x = log(0.11),
                         y = 1,
@@ -707,7 +707,8 @@ drawAttritionDiagram <- function(attrition,
     data$currentComparator <- attrition$comparatorPersons[row]
     return(data)
   }
-  data <- list(leftBoxText = c(paste("Exposed:\n",
+  data <- list(leftBoxText = c(paste(attrition$description[1],
+                                     "\n",
                                      targetLabel,
                                      ": n = ",
                                      attrition$targetPersons[1],

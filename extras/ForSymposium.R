@@ -70,6 +70,19 @@ duoDuoDrugComparisons <- comparisons[(comparisons$targetId %in% comboDrugs$expos
                                           comparisons$comparatorId %in% comboDrugs$exposureId), ]
 writeLines(paste("duo vs duo drug comparisons:", nrow(duoDuoDrugComparisons)))
 
+
+
+monoDuoClassComparisons <- comparisons[(comparisons$targetId %in% singleClasses$exposureId &
+                                           comparisons$comparatorId %in% comboClasses$exposureId) |
+                                          (comparisons$targetId %in% comboClasses$exposureId &
+                                               comparisons$comparatorId %in% singleClasses$exposureId) , ]
+writeLines(paste("mono vs duo class comparisons:", nrow(monoDuoClassComparisons)))
+duoDuoClassComparisons <- comparisons[(comparisons$targetId %in% comboClasses$exposureId &
+                                          comparisons$comparatorId %in% comboClasses$exposureId), ]
+writeLines(paste("duo vs duo class comparisons:", nrow(duoDuoClassComparisons)))
+
+
+
 writeLines(paste("total comparisons:", nrow(comparisons)))
 
 
@@ -235,3 +248,17 @@ ps$group[ps$treatment == 0] <- "Comparator"
 ps$group <- factor(ps$group, levels = c("Target", "Comparator"))
 databaseId <- "Panther"
 exposureGroup <- "Drug"
+
+
+# Overall scatter plot ----------------------------------------
+outcomes <- getOutcomes(connection)
+data <- getMainResults(connection, outcomeIds = outcomes$outcomeId, analysisIds = 1, estimatesOnly = FALSE)
+saveRDS(data, "r:/legend/mainResults.rds")
+source("extras/LegendMedCentral/PlotsAndTables.R")
+d <- data.frame(logRr = data$calibratedLogRr,
+                seLogRr = data$calibratedSeLogRr,
+                ci95Lb = data$calibratedCi95Lb,
+                ci95Ub = data$calibratedCi95Ub)
+d <- d[!is.na(d$seLogRr), ]
+plot <- plotLargeScatter(d, "Hazard ratio", pointSize = 0.2)
+ggplot2::ggsave("r:/legend/plot.png", width = 10, height = 6, dpi = 300)
