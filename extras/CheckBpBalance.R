@@ -143,7 +143,7 @@ rows <- split(outcomeModelReference, 1:nrow(outcomeModelReference))
 rowIndex <- which(outcomeModelReference$targetName == "Hydrochlorothiazide" & outcomeModelReference$comparatorName == "Chlorthalidone")
 rows <- list(rows[[rowIndex]])
 compBal <- function(row, indicationFolder) {
-    #row <- rows[[4759]]
+    #row <- rows[[1]]
     cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                            "cmOutput",
                                                            row$cohortMethodDataFolder),
@@ -158,7 +158,11 @@ compBal <- function(row, indicationFolder) {
     temp <- row$targetName
     row$targetName <- row$comparatorName
     row$comparatorName <- temp
+
+    # Try variable ratio matching:
     # strataPop <- CohortMethod::matchOnPs(strataPop, maxRatio = 100)
+    # Conclusion: does not fix imbalance
+
     if (nrow(strataPop) == 0) {
         return(NULL)
     }
@@ -172,6 +176,17 @@ compBal <- function(row, indicationFolder) {
     writeLines("After restricting to those with blood pressure measurements:")
     writeLines(paste0("Number of subjects starting ", row$targetName,": ", sum(strataPop$treatment == 1)))
     writeLines(paste0("Number of subjects starting ", row$comparatorName,": ", sum(strataPop$treatment == 0)))
+
+    # Try stratifying by BP deciles in addition to PS:
+    # cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
+    #                                             covariateId = subset$conceptId,
+    #                                             covariateValue = round(subset$valueAsNumber/10)))
+    # subsetRef <- unique(subset[, c("conceptId", "conceptName")])
+    # cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
+    #                                               covariateName = subsetRef$conceptName))
+    # strataPop <- CohortMethod::stratifyByPsAndCovariates(strataPop, numberOfStrata = 10, cohortMethodData = cmData, covariateIds = c(3012888, 3004249))
+    # strataSizes <- aggregate(rowId ~ stratumId, strataPop, length)
+    # Conclusion: achieves perfect balance, but removes a lot of people (in strata with size 1)
 
     # Create histogram:
     m <- merge(subset, strataPop[, c("rowId", "treatment", "stratumId")])
@@ -291,62 +306,241 @@ bal <- do.call("rbind", bal)
 write.csv(bal, file.path(bpFolder, "balance.csv"), row.names = FALSE)
 
 
-# # Plot overall distribution of values ------------------------------
-# library(ggplot2)
-# bps <- readRDS(file.path(bpFolder, "bps.rds"))
-# bps <- bps[bps$valueAsNumber < 250, ]
-# bps <- bps[bps$valueAsNumber > 25, ]
-# ggplot(bps, aes(x = valueAsNumber)) +
-#     geom_histogram(binwidth = 1) +
-#     scale_x_continuous(limits = c(40,200), breaks = seq(40,200, 10)) +
-#     facet_grid(conceptName~.)
-# ggsave(filename = file.path(bpFolder, "bpDist.png"), width = 8, height = 8)
+# Test refitting PS model using BP variables as splines -----------------------------------------------
+indicationFolder <- file.path(outputFolder, indicationId)
+bpFolder <- file.path(indicationFolder, "bp")
+bps <- readRDS(file.path(bpFolder, "bps.rds"))
+bps <- bps[bps$valueAsNumber < 250, ]
+bps <- bps[bps$valueAsNumber > 25, ]
+outcomeModelReference1 <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference1.rds"))
+outcomeModelReference2 <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference2.rds"))
+outcomeModelReference3 <- readRDS(file.path(indicationFolder,
+                                           "cmOutput",
+                                           "outcomeModelReference3.rds"))
+outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
+outcomeModelReference <- outcomeModelReference[outcomeModelReference$analysisId %in% c(1,3), ]
+exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
+outcomeModelReference <- merge(outcomeModelReference, exposureSummary[, c("targetId", "comparatorId", "targetName", "comparatorName")])
+
+# For now: only pick one TC:
+tcIdx <- which(outcomeModelReference$targetName == "Hydrochlorothiazide" & outcomeModelReference$comparatorName == "Chlorthalidone")
+rows <- outcomeModelReference[tcIdx, ]
+row <- rows[1, ]
+
+# Create new CohortMethodData object, restricting to people with BP data, and adding BP as splines
+cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
+                                                       "cmOutput",
+                                                       row$cohortMethodDataFolder),
+                                             skipCovariates = FALSE)
+subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
+# Convert to splines:
+newCovars <- data.frame()
+newCovarRef <- data.frame()
+for (conceptId in unique(subset$conceptId)) {
+    # conceptId <- 3012888
+    measurement <- subset[subset$conceptId == conceptId, ]
+    designMatrix <- splines::bs(measurement$valueAsNumber, 5)
+    sparse <- lapply(1:5, function(x) data.frame(rowId = measurement$rowId,
+                                                 covariateId = conceptId * 10 + x,
+                                                 covariateValue = designMatrix[, x]))
+
+    sparse <- do.call("rbind", sparse)
+    newCovars <- rbind(newCovars, sparse)
+    ref <- data.frame(covariateId = conceptId * 10 + 1:5,
+                      covariateName = paste(measurement$conceptName[1], 1:5),
+                      analysisId = conceptId,
+                      conceptId = conceptId)
+    newCovarRef <- rbind(newCovarRef, ref)
+
+
+}
+covariates <- cmData$covariates
+covariates <- covariates[ffbase::`%in%`(covariates$rowId, subset$rowId), ]
+covariates <- ffbase::ffdfappend(covariates, newCovars)
+covariateRef <- cmData$covariateRef
+covariateRef <- ffbase::ffdfappend(covariateRef, newCovarRef)
+newCmData <- cmData
+newCmData$cohorts <- newCmData$cohorts[newCmData$cohorts$rowId %in% subset$rowId, ]
+attrition <- attr(newCmData$cohorts, "metaData")$attrition
+attrition <- rbind(attrition,
+                   data.frame(description = "Having BP data",
+                              targetPersons =  sum(newCmData$cohort$treatment == 1),
+                              comparatorPersons =  sum(newCmData$cohort$treatment == 0),
+                              targetExposures =  sum(newCmData$cohort$treatment == 1),
+                              comparatorExposures =  sum(newCmData$cohort$treatment == 0)))
+attr(newCmData$cohorts, "metaData")$attrition <- attrition
+newCmData$outcomes <- newCmData$outcomes[newCmData$outcomes$rowId %in% subset$rowId, ]
+newCmData$covariates <- covariates
+newCmData$covariateRef <- covariateRef
+CohortMethod::saveCohortMethodData(cohortMethodData = newCmData,
+                                   file = file.path(bpFolder,row$cohortMethodDataFolder),
+                                   compress = TRUE)
+
+# Fit propensity model:
+cmData <- CohortMethod::loadCohortMethodData(file.path(bpFolder, row$cohortMethodDataFolder))
+
+subgroupCovariateIds <- c(1998, 2998, 3998, 4998, 5998, 6998, 7998, 8998)
+ps <- CohortMethod::createPs(cohortMethodData = cmData,
+                             control = Cyclops::createControl(noiseLevel = "quiet",
+                                                              cvType = "auto",
+                                                              tolerance = 2e-07,
+                                                              cvRepetitions = 1,
+                                                              fold = 10,
+                                                              startingVariance = 0.01,
+                                                              seed = 123,
+                                                              threads = 10),
+                             stopOnError = TRUE,
+                             excludeCovariateIds = subgroupCovariateIds,
+                             maxCohortSizeForFitting = 1e+05)
+saveRDS(ps, file.path(bpFolder, row$sharedPsFile))
+
+# Overall balance:
+studyPop <- CohortMethod::createStudyPopulation(population = ps,
+                                                removeDuplicateSubjects = "keep first",
+                                                removeSubjectsWithPriorOutcome = TRUE,
+                                                riskWindowStart = 1,
+                                                riskWindowEnd = 0,
+                                                addExposureDaysToEnd = TRUE,
+                                                minDaysAtRisk = 1,
+                                                censorAtNewRiskWindow = TRUE)
+strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+
+bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, "BalanceAfterStrataUsingBp.png"))
+CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(bpFolder, "BalanceTopAfterStrataUsingBp.png"))
+
+# matchedPop <- CohortMethod::matchOnPs(studyPop, maxRatio = 100)
 #
-# # Plot distribution per PS strata -----------------------------------------------
-# targetId <- 1
-# comparatorId <- 2745
-# options(fftempdir = "a:/fftemp")
-# studyFolder <- "b:/Legend"
-# outputFolder <- file.path(studyFolder, "panther")
-# indicationId <- "Hypertension"
-# indicationFolder <- file.path(outputFolder, indicationId)
-# bpFolder <- file.path(indicationFolder, "bp")
-# bps <- readRDS(file.path(bpFolder, "bps.rds"))
-# # bps <- bps[bps$valueAsNumber < 250, ]
-# # bps <- bps[bps$valueAsNumber > 25, ]
-# outcomeModelReference <- readRDS(file.path(indicationFolder,
-#                                            "cmOutput",
-#                                            "outcomeModelReference1.rds"))
-# outcomeModelReference <- outcomeModelReference[outcomeModelReference$analysisId %in% c(1,3), ]
-# outcomeModelReference <- outcomeModelReference[order(outcomeModelReference$cohortMethodDataFolder, outcomeModelReference$outcomeId), ]
-# outcomeModelReference <- outcomeModelReference[!duplicated(paste(outcomeModelReference$targetId, outcomeModelReference$comparatorId, outcomeModelReference$analysisId)), ]
-# exposureSummary <- read.csv(file.path(indicationFolder, "pairedExposureSummaryFilteredBySize.csv"))
-# outcomeModelReference <- merge(outcomeModelReference, exposureSummary[, c("targetId", "comparatorId", "targetName", "comparatorName")])
-#
-# row <- outcomeModelReference[outcomeModelReference$targetId == targetId &
-#                                  outcomeModelReference$comparatorId == comparatorId &
-#                                  outcomeModelReference$analysisId == 1, ]
-#
-# strataFile <- row$strataFile
-# strata <- readRDS(file.path(indicationFolder, "cmOutput", strataFile))
-# saveRDS(strata, file.path(bpFolder, strataFile))
-# cmDataFolder <- row$cohortMethodDataFolder
-# cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", cmDataFolder),
-#                                              skipCovariates = TRUE)
-# nrow(cmData$cohorts)
-# nrow(strata)
-# # cmData$cohorts <- cmData$cohorts[cmData$cohorts$rowId %in% strata$rowId, ]
-#
-# subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
-# strataPop <- strata[strata$rowId %in% subset$rowId, ]
-# # Limit before subjects to those in after:
-# cmData$cohorts <- cmData$cohorts[cmData$cohorts$rowId %in% strataPop$rowId, ]
-#
-# cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
-#                                             covariateId = subset$conceptId,
-#                                             covariateValue = subset$valueAsNumber))
-# subsetRef <- unique(subset[, c("conceptId", "conceptName")])
-# cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
-#                                               covariateName = subsetRef$conceptName))
-# bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-# bal
+# bal <- CohortMethod::computeCovariateBalance(matchedPop, cmData)
+# CohortMethod::plotCovariateBalanceScatterPlot(bal)
+
+cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
+                                            covariateId = subset$conceptId,
+                                            covariateValue = subset$valueAsNumber))
+subsetRef <- unique(subset[, c("conceptId", "conceptName")])
+cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
+                                              covariateName = subsetRef$conceptName))
+bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+
+
+
+# Recompute HR for each outcome:
+onTreatment <- rows[rows$analysisId == 1, ]
+analysisFolder <- file.path(bpFolder, "Analysis_1")
+if (!file.exists(analysisFolder)) {
+    dir.create(analysisFolder)
+}
+computeHr <- function(i) {
+    # i = 1
+    omFile <- file.path(bpFolder, onTreatment$outcomeModelFile[i])
+    if (!file.exists(omFile)) {
+        studyPop <- CohortMethod::createStudyPopulation(population = ps,
+                                                        cohortMethodData = cmData,
+                                                        outcomeId = onTreatment$outcomeId[i],
+                                                        removeDuplicateSubjects = "keep first",
+                                                        removeSubjectsWithPriorOutcome = TRUE,
+                                                        riskWindowStart = 1,
+                                                        riskWindowEnd = 0,
+                                                        addExposureDaysToEnd = TRUE,
+                                                        minDaysAtRisk = 1,
+                                                        censorAtNewRiskWindow = TRUE)
+        strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+        outcomeModel <- CohortMethod::fitOutcomeModel(population = strataPop,
+                                                      stratified = TRUE,
+                                                      modelType = "cox")
+        saveRDS(outcomeModel, omFile)
+    }
+}
+plyr::l_ply(1:nrow(onTreatment), computeHr, .progress = "text")
+
+
+originalSummary <- CohortMethod::summarizeAnalyses(onTreatment, file.path(indicationFolder, "cmOutput"))
+bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, bpFolder)
+
+pathToCsv <- file.path(indicationFolder, "signalInjectionSummary.csv")
+siSummary <- read.csv(pathToCsv)
+siSummary <- siSummary[siSummary$exposureId == row$targetId, ]
+pcs <- data.frame(outcomeId = siSummary$newOutcomeId, targetEffectSize = siSummary$targetEffectSize)
+pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
+negativeControls <- read.csv(pathToCsv)
+negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
+ncs <- data.frame(outcomeId = negativeControls$cohortId, targetEffectSize = 1)
+controls <- rbind(pcs, ncs)
+pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
+
+calibrate <- function(estimates) {
+    controlEstimates <- merge(estimates, controls)
+    errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
+                                                                seLogRr = controlEstimates$seLogRr,
+                                                                trueLogRr = log(controlEstimates$targetEffectSize))
+    # EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
+    #                                               seLogRr = controlEstimates$seLogRr,
+    #                                               trueLogRr = log(controlEstimates$targetEffectSize))
+    calibrated <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = estimates$logRr,
+                                                                            seLogRr = estimates$seLogRr,
+                                                                            model = errorModel)
+    calibrated$rr <- exp(calibrated$logRr)
+    calibrated$ci95lb <- exp(calibrated$logLb95Rr)
+    calibrated$ci95ub <- exp(calibrated$logUb95Rr)
+    calibrated$logLb95Rr <- NULL
+    calibrated$logUb95Rr <- NULL
+    calibrated$outcomeId <- estimates$outcomeId
+    calibrated$estimate <- "Calibrated"
+    estimates$estimate <- "Uncalibrated"
+    estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
+}
+originalSummary <- calibrate(originalSummary)
+bpAdjustedSummary <- calibrate(bpAdjustedSummary)
+
+originalSummary$type <- "Original"
+bpAdjustedSummary$type <- "Adjusting for\nblood pressure"
+vizData <- rbind(originalSummary, bpAdjustedSummary)
+vizData <- merge(vizData, data.frame(outcomeId = outcomesOfInterest$cohortId,
+                                     outcomeName = outcomesOfInterest$name))
+vizData <- vizData[!is.na(vizData$seLogRr), ]
+outcomeNames <- unique(vizData$outcomeName)
+outcomeNames <- outcomeNames[order(outcomeNames, decreasing = TRUE)]
+vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
+
+# flip HR:
+temp <- 1/vizData$ci95lb
+vizData$ci95lb <- 1/vizData$ci95ub
+vizData$ci95ub <- temp
+vizData$rr <- 1/vizData$rr
+breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 8, 10)
+odd <- seq(1, length(outcomeNames), by = 2)
+bars <- data.frame(xmin = 0.01,
+                   xmax = 100,
+                   ymin = odd - 0.5,
+                   ymax = odd + 0.5,
+                   type = "Original",
+                   rr = 1,
+                   y = 1)
+vizData$estimate <- factor(vizData$estimate, levels = c("Uncalibrated", "Calibrated"))
+ggplot2::ggplot(vizData, ggplot2::aes(x = rr, y = y, color = type, shape = type, xmin = ci95lb, xmax = ci95ub)) +
+    ggplot2::geom_rect(ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "#EEEEEE", colour = "#EEEEEE", size = 0, data = bars) +
+    ggplot2::geom_vline(xintercept = breaks, colour = "#AAAAAA", lty = 1, size = 0.25) +
+    ggplot2::geom_vline(xintercept = 1, size = 0.5) +
+    ggplot2::geom_errorbarh(alpha = 0.65, size = 0.6, height = 0.3) +
+    ggplot2::geom_point(alpha = 0.65, size = 2) +
+    ggplot2::scale_y_continuous(breaks = 1:length(outcomeNames), labels = outcomeNames) +
+    ggplot2::coord_cartesian(xlim = c(0.1, 10)) +
+    ggplot2::scale_x_log10(breaks = breaks, labels = breaks) +
+    ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.65), rgb(0, 0, 0.8, alpha = 0.65))) +
+    ggplot2::xlab("Hazard Ratio") +
+    ggplot2::facet_grid(~estimate) +
+    ggplot2::theme(axis.title.y = ggplot2::element_blank(),
+                   legend.title = ggplot2::element_blank(),
+                   panel.grid.minor = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   strip.background = ggplot2::element_blank())
+ggplot2::ggsave(file.path(bpFolder, "hrs.png"), width = 8, height = 10, dpi = 400)
+
