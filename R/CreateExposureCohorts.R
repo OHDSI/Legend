@@ -36,6 +36,7 @@
 #'                               priviliges for storing temporary tables.
 #' @param outputFolder           Name of local folder to place results; make sure to use forward
 #'                               slashes (/)
+#' @param imputeExposureLengthWhenMissing  For PanTher: impute length of drug exposures when the length is missing?
 #'
 #' @export
 createExposureCohorts <- function(connectionDetails,
@@ -44,7 +45,11 @@ createExposureCohorts <- function(connectionDetails,
                                   tablePrefix = "legend",
                                   indicationId = "Depression",
                                   oracleTempSchema,
-                                  outputFolder) {
+                                  outputFolder,
+                                  imputeExposureLengthWhenMissing = FALSE) {
+    if (imputeExposureLengthWhenMissing && indicationId == "Depression")
+        stop("Exposure length imputation currently not supported for depression")
+
     ParallelLogger::logInfo("Creating exposure cohorts for indicationId: ", indicationId)
 
     indicationFolder <- file.path(outputFolder, indicationId)
@@ -217,6 +222,20 @@ createExposureCohorts <- function(connectionDetails,
                                        oracleTempSchema = oracleTempSchema,
                                        data = drugAncestor)
 
+        # Impute exposure lengths (if specified)
+        if (imputeExposureLengthWhenMissing) {
+            ParallelLogger::logInfo("- Imputing exposure lengths when missing")
+            sql <- SqlRender::loadRenderTranslateSql("ExposureLengthImputation.sql",
+                                                     "Legend",
+                                                     dbms = connectionDetails$dbms,
+                                                     oracleTempSchema = oracleTempSchema,
+                                                     cdm_database_schema = cdmDatabaseSchema,
+                                                     drug_ancestor_table = "#drug_ancestor",
+                                                     eoi_table = "#eoi",
+                                                     min_frequency = 11)
+            DatabaseConnector::executeSql(conn, sql)
+        }
+
         # Create exposure cohorts
         sql <- SqlRender::loadRenderTranslateSql("CreateExposureCohortsHypertension.sql",
                                                  "Legend",
@@ -229,6 +248,7 @@ createExposureCohorts <- function(connectionDetails,
                                                  drug_ancestor_table = "#drug_ancestor",
                                                  exposure_combi_table = "#exposure_combi",
                                                  eoi_table = "#eoi",
+                                                 impute_exposure_length_when_missing = imputeExposureLengthWhenMissing,
                                                  max_gap = 30,
                                                  washout_period = 365)
         DatabaseConnector::executeSql(conn, sql)
