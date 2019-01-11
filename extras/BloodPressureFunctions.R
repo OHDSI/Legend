@@ -149,7 +149,7 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
     m$conceptName[m$conceptName == "BP systolic"] <- "Systolic"
 
     # Save for Marc:
-    fileName <- file.path(bpFolder, sprintf("BpData_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName)))
+    fileName <- file.path(bpFolder, sprintf("BpData_%s_%s.rds", as.character(row$targetName), as.character(row$comparatorName)))
     saveRDS(m, fileName)
 
     before <- data.frame()
@@ -452,6 +452,10 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
     outcomeNames <- unique(vizData$outcomeName)
     outcomeNames <- outcomeNames[order(outcomeNames, decreasing = TRUE)]
     vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
+
+    # Save for Marc:
+    fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s.rds", row$targetName, row$comparatorName))
+    saveRDS(vizData, fileName)
 
     plotHrs <- function(vizData, fileName) {
         breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 8, 10)

@@ -26,4 +26,4 @@ balance <- do.call("rbind", balance)
 write.csv(balance, file.path(bpFolder, "BalanceAdjustBp.csv"), row.names = FALSE)
 
 # Recompute hazard ratios using new propensity models ------------------------------------------
-plyr::l_ply(split(tcs[5:nrow(tcs), ], 5:nrow(tcs)), computeAdjustedHrs, indicationFolder = indicationFolder, bpFolder = bpFolder)
+plyr::l_ply(split(tcs, 1:nrow(tcs)), computeAdjustedHrs, indicationFolder = indicationFolder, bpFolder = bpFolder)
