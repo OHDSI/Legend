@@ -147,6 +147,11 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
                                           as.character(row$comparatorName)))
     m$conceptName[m$conceptName == "BP diastolic"] <- "Diastolic"
     m$conceptName[m$conceptName == "BP systolic"] <- "Systolic"
+
+    # Save for Marc:
+    fileName <- file.path(bpFolder, sprintf("BpData_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName)))
+    saveRDS(m, fileName)
+
     before <- data.frame()
     after <- data.frame()
     for (conceptName in c("Diastolic", "Systolic")) {
