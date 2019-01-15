@@ -22,8 +22,8 @@ outcomeModelReference <- readRDS(file.path(indicationFolder,
                                             "cmOutput",
                                             "outcomeModelReference1.rds"))
 targetId <- 4
-# comparatorId <- 15 # THZ
-comparatorId <- 10 # dCCB
+comparatorId <- 15 # THZ
+# comparatorId <- 10 # dCCB
 outcomeId <- 32
 censorId <- 1
 analysisId <- 1
@@ -32,8 +32,13 @@ analysisId <- 1
 pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
 pathToCsv <- system.file("settings", "ExposuresOfInterest.csv", package = "Legend")
 exposuresOfInterest <- read.csv(pathToCsv)
-censorDescendantIds <- exposuresOfInterest$includedConceptIds[exposuresOfInterest$cohortId == censorId]
-censorDescendantIds <- as.numeric(strsplit(as.character(censorDescendantIds), ";")[[1]])
+exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$indicationId == indicationId, ]
+# exposuresOfInterest <- exposuresOfInterest[exposuresOfInterest$cohortId == censorId, ]
+censorDescendantIds <- exposuresOfInterest$includedConceptIds
+censorDescendantIds <- as.numeric(unlist(strsplit(as.character(censorDescendantIds), ";")))
+censorDescendantIds <- c(censorDescendantIds,
+                         exposuresOfInterest$conceptId[exposuresOfInterest$includedConceptIds == ""])
+censorDescendantIds <- unique(censorDescendantIds)
 sql <- "SELECT DATEDIFF(DAY, cohort_start_date, MIN(drug_era_start_date)) AS days_to_censor,
   cohort_start_date,
   subject_id
@@ -85,3 +90,5 @@ stratPop$outcomeCount[idx] <- 0
 om <- CohortMethod::fitOutcomeModel(population = stratPop, modelType = "cox", stratified = TRUE)
 om
 summary(om)
+stratPop$stratumId <- NULL
+CohortMethod::plotKaplanMeier(stratPop)

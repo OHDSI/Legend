@@ -24,10 +24,10 @@ install.packages(c("assertthat", "crayon", "bit", "cli", "devtools", "colorspace
 # assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
 # find_rtools()
 
+install.packages("Cyclops")
 devtools::install_github("ohdsi/SqlRender", dep = FALSE)
-devtools::install_github("ohdsi/DatabaseConnectorJars", ref = "v1.0.0", dep = FALSE)
-devtools::install_github("ohdsi/DatabaseConnector", ref = "v2.2.0", dep = FALSE)
-devtools::install_github("ohdsi/Cyclops", ref = "v2.0.0", dep = FALSE)
+devtools::install_github("ohdsi/DatabaseConnectorJars", dep = FALSE)
+devtools::install_github("ohdsi/DatabaseConnector", dep = FALSE)
 devtools::install_github("ohdsi/FeatureExtraction", ref = "v2.1.5", dep = FALSE)
 devtools::install_github("ohdsi/ParallelLogger",ref = "develop",dep = FALSE)
 devtools::install_github("ohdsi/CohortMethod", dep = FALSE)
