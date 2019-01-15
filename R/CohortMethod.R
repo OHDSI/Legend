@@ -106,8 +106,8 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", databaseI
     if ((databaseId == "CCAE" || databaseId == "Optum" || databaseId == "Panther") && indicationId == "Hypertension") {
         # ParallelLogger::logInfo("*** Skipping matching and interactions for CCAE, Optum, and Panther (Hypertension) ***")
         ParallelLogger::logInfo("*** Skipping interactions for CCAE, Optum, and Panther (Hypertension) ***")
-        cmAnalysisListAsym <- list()
-        # cmAnalysisListInteractions <- list()
+        # cmAnalysisListAsym <- list()
+        cmAnalysisListInteractions <- list()
     }
 
 
