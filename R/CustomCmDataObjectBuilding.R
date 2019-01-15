@@ -301,7 +301,7 @@ generateAllCohortMethodDataObjects <- function(outputFolder,
         }
         return(NULL)
     }
-    cluster <- ParallelLogger::makeCluster(min(maxCores, 3))
+    cluster <- ParallelLogger::makeCluster(min(maxCores, 8))
     ParallelLogger::clusterApply(cluster = cluster,
                                  x = 1:nrow(exposureSummary),
                                  fun = createObject,
@@ -316,6 +316,7 @@ generateAllCohortMethodDataObjects <- function(outputFolder,
 }
 
 constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFolder, useSample) {
+    ParallelLogger::logInfo("Creating cohort method data object for target ", targetId, " and comparator ", comparatorId)
     if (useSample) {
         # Sample is used for feasibility assessment
         covariatesFolder <- file.path(indicationFolder, "sampleCovariates")
@@ -327,6 +328,7 @@ constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFo
         outcomesFolder <- file.path(indicationFolder, "allOutcomes")
     }
     # copying cohorts
+    ParallelLogger::logTrace("Copying cohorts")
     fileName <- file.path(cohortsFolder, paste0("cohorts_t", targetId, "_c", comparatorId, ".rds"))
     cohorts <- readRDS(fileName)
     targetPersons <- length(unique(cohorts$subjectId[cohorts$treatment == 1]))
@@ -342,6 +344,7 @@ constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFo
     attr(cohorts, "metaData") <- metaData
 
     # Subsetting outcomes
+    ParallelLogger::logTrace("Subsetting outcomes")
     outcomes <- NULL
     ffbase::load.ffdf(dir = outcomesFolder)  # Loads outcomes
     ff::open.ffdf(outcomes, readonly = TRUE)
@@ -380,11 +383,13 @@ constructCohortMethodDataObject <- function(targetId, comparatorId, indicationFo
     attr(outcomes, "metaData") <- metaData
 
     # Subsetting covariates
+    ParallelLogger::logTrace("Subsetting covariates")
     covariateData <- FeatureExtraction::loadCovariateData(covariatesFolder)
     idx <- ffbase::`%in%`(covariateData$covariates$rowId, ff::as.ff(cohorts$rowId))
     covariates <- covariateData$covariates[idx, ]
 
     # Filtering covariates
+    ParallelLogger::logTrace("Filtering covariates")
     filterConcepts <- readRDS(file.path(indicationFolder, "filterConceps.rds"))
     filterConcepts <- filterConcepts[filterConcepts$cohortId %in% c(targetId, comparatorId), ]
     filterConceptIds <- unique(filterConcepts$filterConceptId)

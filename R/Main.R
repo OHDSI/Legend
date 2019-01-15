@@ -93,10 +93,11 @@ execute <- function(connectionDetails,
         dir.create(indicationFolder, recursive = TRUE)
     }
     ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
+    on.exit(ParallelLogger::unregisterLogger("DEFAULT"))
 
     sinkFile <- file(file.path(indicationFolder, "console.txt"), open = "wt")
     sink(sinkFile, split = TRUE)
-    on.exit(sink())
+    on.exit(sink(), add = TRUE)
 
     if (createExposureCohorts) {
         createExposureCohorts(connectionDetails = connectionDetails,
@@ -176,4 +177,5 @@ execute <- function(connectionDetails,
                       minCellCount = minCellCount,
                       maxCores = maxCores)
     }
+    ParallelLogger::logFatal("Finished")
 }
