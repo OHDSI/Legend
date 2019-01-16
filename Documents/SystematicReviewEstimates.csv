@@ -1,0 +1,117 @@
+targetId,targetName,comparatorId,comparatorName,outcomeId,outcomeName,logHR,logLb,logUb,type,studies
+4,ARB,1,ACEi,29,All cause mortality,-0.19,-0.94,0.53,Direct meta-analysis,"DETAIL, CORD IB, Bremner"
+5,BB,1,ACEi,29,All cause mortality,-0.04,-0.31,0.18,Direct meta-analysis,"UKPDS 39, AASK, Cacciapuoti, Agarwal"
+10,dCCB,1,ACEi,29,All cause mortality,-0.05,-0.16,0.1,Direct meta-analysis,"ALLHAT, AASK, ELVERA, ATTEST, ABCD, FACEIsT, BENEDICT, STOP-HTN2, ESPIRAL, JMIC-B, Cacciapuoti, Omvik, Fegari, Yilmaz, Sareli, Zucchelli"
+15,THZ,1,ACEi,29,All cause mortality,0,-0.09,0.1,Direct meta-analysis,"ALLHAT, HYVET Pilot, ANBP2, NESTOR, LIVE, Sareli"
+1,ACEi,4,ARB,29,All cause mortality,0,-0.08,0.18,Network meta-analysis,
+5,BB,4,ARB,29,All cause mortality,0.1,-0.06,0.26,Direct meta-analysis,LIFE
+10,dCCB,4,ARB,29,All cause mortality,-0.03,-0.16,0.1,Direct meta-analysis,"VALUE, IDNT, MOSES, VART, Rosendorff"
+1,ACEi,5,BB,29,All cause mortality,-0.06,-0.17,0,Network meta-analysis,
+4,ARB,5,BB,29,All cause mortality,-0.09,-0.2,0,Network meta-analysis,
+10,dCCB,5,BB,29,All cause mortality,-0.13,-0.29,0,Direct meta-analysis,"ASCOT-BPLA, ELSA, AASK, Cacciapuoti"
+15,THZ,5,BB,29,All cause mortality,-0.06,-0.24,0.1,Direct meta-analysis,"HAPPHY, MRC Mild, MRC Old"
+1,ACEi,10,dCCB,29,All cause mortality,0,-0.03,0.1,Network meta-analysis,
+4,ARB,10,dCCB,29,All cause mortality,0,-0.07,0.1,Network meta-analysis,
+5,BB,10,dCCB,29,All cause mortality,0.1,0,0.18,Network meta-analysis,
+15,THZ,10,dCCB,29,All cause mortality,0,-0.13,0.1,Direct meta-analysis,"SHELL, ALLHAT, MIDAS, VHAS, INSIGHT, Sareli"
+1,ACEi,15,THZ,29,All cause mortality,0,-0.05,0.1,Network meta-analysis,
+4,ARB,15,THZ,29,All cause mortality,-0.01,-0.13,0.1,Network meta-analysis,
+5,BB,15,THZ,29,All cause mortality,0.1,-0.02,0.18,Network meta-analysis,
+10,dCCB,15,THZ,29,All cause mortality,-0.03,-0.11,0.1,Network meta-analysis,
+1,ACEi,4,ARB,36,Cardiovascular disease,0,-0.11,0.18,Network meta-analysis,
+1,ACEi,5,BB,36,Cardiovascular disease,-0.11,-0.22,0.1,Network meta-analysis,
+4,ARB,5,BB,36,Cardiovascular disease,-0.13,-0.25,0,Network meta-analysis,
+1,ACEi,10,dCCB,36,Cardiovascular disease,-0.01,-0.12,0.1,Network meta-analysis,
+4,ARB,10,dCCB,36,Cardiovascular disease,-0.03,-0.16,0.1,Network meta-analysis,
+5,BB,10,dCCB,36,Cardiovascular disease,0.1,-0.05,0.18,Network meta-analysis,
+1,ACEi,15,THZ,36,Cardiovascular disease,0.1,-0.04,0.26,Network meta-analysis,
+4,ARB,15,THZ,36,Cardiovascular disease,0,-0.12,0.18,Network meta-analysis,
+5,BB,15,THZ,36,Cardiovascular disease,0.18,0,0.34,Network meta-analysis,
+10,dCCB,15,THZ,36,Cardiovascular disease,0.1,-0.02,0.18,Network meta-analysis,
+4,ARB,1,ACEi,36,Cardiovascular mortality,0.1,-1.66,1.82,Direct meta-analysis,DETAIL
+5,BB,1,ACEi,36,Cardiovascular mortality,-0.29,-0.71,0.1,Direct meta-analysis,"UKPDS 39, AASK, Agarwal"
+10,dCCB,1,ACEi,36,Cardiovascular mortality,-0.03,-0.19,0.18,Direct meta-analysis,"ALLHAT, AASK, ABCD, BENEDICT, STOP-HTN2, ESPIRAL, JMIC-B, Forgari, Zucchelli"
+15,THZ,1,ACEi,36,Cardiovascular mortality,-0.04,-0.21,0.18,Direct meta-analysis,"ALLHAT,HYVET Pilot, ANBP2"
+1,ACEi,4,ARB,36,Cardiovascular mortality,-0.05,-0.33,0.26,Network meta-analysis,
+5,BB,4,ARB,36,Cardiovascular mortality,0.1,-0.04,0.34,Direct meta-analysis,LIFE
+10,dCCB,4,ARB,36,Cardiovascular mortality,-0.37,-0.82,0.1,Direct meta-analysis,"VALUE, IDNT, J-RHYTHYM, Du"
+1,ACEi,5,BB,36,Cardiovascular mortality,-0.11,-0.26,0.1,Network meta-analysis,
+4,ARB,5,BB,36,Cardiovascular mortality,-0.05,-0.27,0.26,Network meta-analysis,
+10,dCCB,5,BB,36,Cardiovascular mortality,-0.27,-0.53,-0.04,Direct meta-analysis,"ASCOT-BPLA, ELSA, AASK"
+15,THZ,5,BB,36,Cardiovascular mortality,-0.08,-0.33,0.18,Direct meta-analysis,"HAPPHY, MRC Mild, MRC Old"
+1,ACEi,10,dCCB,36,Cardiovascular mortality,0.1,-0.08,0.18,Network meta-analysis,
+4,ARB,10,dCCB,36,Cardiovascular mortality,0.1,-0.14,0.41,Network meta-analysis,
+5,BB,10,dCCB,36,Cardiovascular mortality,0.18,-0.02,0.34,Network meta-analysis,
+15,THZ,10,dCCB,36,Cardiovascular mortality,-0.05,-0.31,0.18,Direct meta-analysis,"ALLHAT, VHAS, INSIGHT"
+1,ACEi,15,THZ,36,Cardiovascular mortality,0.1,-0.08,0.26,Network meta-analysis,
+4,ARB,15,THZ,36,Cardiovascular mortality,0.1,-0.14,0.41,Network meta-analysis,
+5,BB,15,THZ,36,Cardiovascular mortality,0.18,-0.02,0.34,Network meta-analysis,
+10,dCCB,15,THZ,36,Cardiovascular mortality,0,-0.15,0.18,Network meta-analysis,
+4,ARB,1,ACEi,49,Heart failure,0.18,-0.8,1.16,Direct meta-analysis,DETAIL
+5,BB,1,ACEi,49,Heart failure,-0.22,-0.69,0.26,Direct meta-analysis,"AASK, UKPDS 39, Agarwal"
+10,dCCB,1,ACEi,49,Heart failure,0.18,-0.07,0.34,Direct meta-analysis,"ABCD, AASK, JMIC-B, J-MIND, ALLHAT, STOP-HTN 2"
+15,THZ,1,ACEi,49,Heart failure,-0.11,-0.33,0.18,Direct meta-analysis,"ALLHAT, ANBP2"
+1,ACEi,4,ARB,49,Heart failure,0.03,-0.31,0.35,Network meta-analysis,
+5,BB,4,ARB,49,Heart failure,0,-0.31,0.41,Direct meta-analysis,LIFE
+10,dCCB,4,ARB,49,Heart failure,0.34,-0.14,0.69,Direct meta-analysis,"IDNT, VART, J-RHYTYHM II, Du"
+1,ACEi,5,BB,49,Heart failure,-0.11,-0.37,0.18,Network meta-analysis,
+4,ARB,5,BB,49,Heart failure,-0.14,-0.42,0.22,Network meta-analysis,
+10,dCCB,5,BB,49,Heart failure,-0.2,-0.54,0.1,Direct meta-analysis,"ASCOT-BPLA, AASK"
+15,THZ,5,BB,49,Heart failure,-0.4,-1.02,0.18,Direct meta-analysis,HAPPHY
+1,ACEi,10,dCCB,49,Heart failure,-0.13,-0.29,0.1,Network meta-analysis,
+4,ARB,10,dCCB,49,Heart failure,-0.15,-0.43,0.2,Network meta-analysis,
+5,BB,10,dCCB,49,Heart failure,-0.01,-0.27,0.24,Network meta-analysis,
+15,THZ,10,dCCB,49,Heart failure,-0.31,-0.58,-0.06,Direct meta-analysis,"INSIGHT, SHELL, ALLHAT, MIDAS, NICS-EH"
+1,ACEi,15,THZ,49,Heart failure,0.15,-0.09,0.39,Network meta-analysis,
+4,ARB,15,THZ,49,Heart failure,0.11,-0.24,0.49,Network meta-analysis,
+5,BB,15,THZ,49,Heart failure,0.25,-0.07,0.55,Network meta-analysis,
+10,dCCB,15,THZ,49,Heart failure,0.27,0.01,0.49,Network meta-analysis,
+4,ARB,1,ACEi,2,Myocardial infarction,-0.67,-2.12,0.59,Direct meta-analysis,"DETAIL, CORD IB"
+5,BB,1,ACEi,2,Myocardial infarction,-0.26,-0.92,0.41,Direct meta-analysis,"UKPDS 39, Agarwal"
+10,dCCB,1,ACEi,2,Myocardial infarction,0.18,-0.13,0.59,Direct meta-analysis,"STOP-HTN 2, FACEIsT, JMIC-B, J-MIND, ESPIRAL, ALLHAT, Fogari, ABCD"
+15,THZ,1,ACEi,2,Myocardial infarction,0.18,-0.25,0.69,Direct meta-analysis,"ALLHAT, ANBP2, PHYLLIS"
+1,ACEi,4,ARB,2,Myocardial infarction,-0.33,-0.75,0.06,Network meta-analysis,
+5,BB,4,ARB,2,Myocardial infarction,-0.05,-0.71,0.64,Direct meta-analysis,LIFE
+10,dCCB,4,ARB,2,Myocardial infarction,-0.33,-0.92,0.1,Direct meta-analysis,"VALUE, IDNT, VART, J-RHYTHYM II, Du"
+15,THZ,4,ARB,2,Myocardial infarction,-0.89,-4.61,1.72,Direct meta-analysis,ALPINE
+1,ACEi,5,BB,2,Myocardial infarction,-0.19,-0.49,0.15,Network meta-analysis,
+4,ARB,5,BB,2,Myocardial infarction,0.13,-0.2,0.54,Network meta-analysis,
+10,dCCB,5,BB,2,Myocardial infarction,-0.12,-0.6,0.41,Direct meta-analysis,"ASCOT-BPLA, ELSA"
+15,THZ,5,BB,2,Myocardial infarction,-0.3,-0.82,0.18,Direct meta-analysis,"HAPPHY, MRC Old"
+1,ACEi,10,dCCB,2,Myocardial infarction,-0.14,-0.41,0.1,Network meta-analysis,
+4,ARB,10,dCCB,2,Myocardial infarction,0.19,-0.15,0.52,Network meta-analysis,
+5,BB,10,dCCB,2,Myocardial infarction,0.06,-0.27,0.32,Network meta-analysis,
+15,THZ,10,dCCB,2,Myocardial infarction,-0.17,-0.69,0.18,Direct meta-analysis,"INSIGHT, SHELL, ALLHAT, MIDAS, NICS-EH"
+1,ACEi,15,THZ,2,Myocardial infarction,-0.02,-0.28,0.31,Network meta-analysis,
+4,ARB,15,THZ,2,Myocardial infarction,0.31,-0.05,0.76,Network meta-analysis,
+5,BB,15,THZ,2,Myocardial infarction,0.18,-0.12,0.49,Network meta-analysis,
+10,dCCB,15,THZ,2,Myocardial infarction,0.13,-0.12,0.45,Network meta-analysis,
+1,ACEi,15,THZ,28,Renal,-0.15,-0.99,0.64,Network meta-analysis,
+4,ARB,15,THZ,28,Renal,-0.27,-2.41,1.72,Network meta-analysis,
+5,BB,15,THZ,28,Renal,-0.02,-1.24,1.19,Network meta-analysis,
+10,dCCB,15,THZ,28,Renal,0,-0.78,0.92,Network meta-analysis,
+4,ARB,1,ACEi,18,Stroke,0,-0.76,0.74,Direct meta-analysis,"DETAIL, CORD IB"
+5,BB,1,ACEi,18,Stroke,-0.12,-0.58,0.34,Direct meta-analysis,"UKPDS 39, Agarwal, AASK"
+10,dCCB,1,ACEi,18,Stroke,-0.13,-0.39,0.1,Direct meta-analysis,"AASK, STOP-HTN2, JMIC-B, J-MIND, ESPIRAL, ALLHAT, Fogari, ABCD"
+15,THZ,1,ACEi,18,Stroke,-0.14,-0.48,0.1,Direct meta-analysis,"ALLHAT, HYVET Pilot, ANBP2, PHYLLIS"
+1,ACEi,4,ARB,18,Stroke,0,-0.19,0.26,Network meta-analysis,
+1,ACEi,4,ARB,18,Stroke,0,-0.19,0.26,Network meta-analysis,
+5,BB,4,ARB,18,Stroke,0.26,0.1,0.47,Direct meta-analysis,LIFE
+10,dCCB,4,ARB,18,Stroke,-0.19,-0.51,0.1,Direct meta-analysis,"VALUE, IDNT, VART, J-RHYTHYM II, Du"
+1,ACEi,5,BB,18,Stroke,-0.15,-0.34,0.1,Network meta-analysis,
+1,ACEi,5,BB,18,Stroke,-0.15,-0.34,0.1,Network meta-analysis,
+4,ARB,5,BB,18,Stroke,-0.17,-0.39,0.1,Network meta-analysis,
+4,ARB,5,BB,18,Stroke,-0.17,-0.39,0.1,Network meta-analysis,
+10,dCCB,5,BB,18,Stroke,-0.4,-1.08,0.26,Direct meta-analysis,"ELSA, AASK"
+15,THZ,5,BB,18,Stroke,-0.21,-0.54,0.1,Direct meta-analysis,"HAPPHY, MRC Mild, MRC Old"
+1,ACEi,10,dCCB,18,Stroke,0.18,0,0.34,Network meta-analysis,
+1,ACEi,10,dCCB,18,Stroke,0.18,0,0.34,Network meta-analysis,
+4,ARB,10,dCCB,18,Stroke,0.1,-0.07,0.34,Network meta-analysis,
+4,ARB,10,dCCB,18,Stroke,0.1,-0.07,0.34,Network meta-analysis,
+5,BB,10,dCCB,18,Stroke,0.34,0.1,0.53,Network meta-analysis,
+5,BB,10,dCCB,18,Stroke,0.34,0.1,0.53,Network meta-analysis,
+15,THZ,10,dCCB,18,Stroke,0,-0.27,0.26,Direct meta-analysis,"INSIGHT, SHELL, ALLHAT, MIDAS, NICS-EH"
+1,ACEi,15,THZ,18,Stroke,0.1,-0.02,0.34,Network meta-analysis,
+4,ARB,15,THZ,18,Stroke,0.1,-0.13,0.34,Network meta-analysis,
+5,BB,15,THZ,18,Stroke,0.26,0.1,0.47,Network meta-analysis,
+10,dCCB,15,THZ,18,Stroke,-0.04,-0.19,0.18,Network meta-analysis,
