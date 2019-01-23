@@ -31,6 +31,13 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 connection <- connect(connectionDetails)
 
 
+x <- querySql(connection, "SELECT COUNT(*) FROM chronograph WHERE ic IS NULL;")
+
+querySql(connection, "SELECT COUNT(*) FROM chronograph WHERE ic IS NULL;")
+querySql(connection, "SELECT COUNT(*) FROM chronograph;")
+
+2600581 / 3967179
+
 # Numbers for diagram ---------------------------------------------------------------------------
 exposures <- getExposures(connection = connection, filterByCmResults = TRUE)
 drugs <- unique(exposures[exposures$exposureGroup == "Drug", ])
@@ -154,12 +161,12 @@ querySql(connection, sql)
 # Concordance ------------------------------------------------------------------------------------------
 
 rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
-rctEstimates$hrRct <- exp(rctEstimates$logHR)
-rctEstimates$lbRct <- exp(rctEstimates$logLb)
-rctEstimates$ubRct <- exp(rctEstimates$logUb)
-rctEstimates$logHR <- NULL
-rctEstimates$logLb <- NULL
-rctEstimates$logUb <- NULL
+# rctEstimates$hrRct <- exp(rctEstimates$logHR)
+# rctEstimates$lbRct <- exp(rctEstimates$logLb)
+# rctEstimates$ubRct <- exp(rctEstimates$logUb)
+# rctEstimates$logHR <- NULL
+# rctEstimates$logLb <- NULL
+# rctEstimates$logUb <- NULL
 legendEstimates <- getMainResults(connection = connection,
                                   targetIds = unique(rctEstimates$targetId),
                                   comparatorIds = unique(rctEstimates$comparatorId),
@@ -173,67 +180,133 @@ legendEstimates$hrLegend <- legendEstimates$calibratedRr
 legendEstimates$lbLegend <- legendEstimates$calibratedCi95Lb
 legendEstimates$ubLegend <- legendEstimates$calibratedCi95Ub
 combined <- merge(rctEstimates, legendEstimates[, c("targetId", "comparatorId", "outcomeId", "hrLegend", "lbLegend", "ubLegend", "i2")])
-combined$someOverlap <- combined$lbLegend <= combined$ubRct & combined$ubLegend >= combined$lbRct
-combined$completeOverlap <- combined$lbLegend >= combined$lbRct & combined$ubLegend <= combined$ubRct
-combined$estimateInCi <- combined$hrLegend >= combined$lbRct & combined$hrLegend <= combined$ubRct
+combined$someOverlapDm <- combined$lbLegend <= combined$ubDm & combined$ubLegend >= combined$lbDm
+combined$someOverlapNm <- combined$lbLegend <= combined$ubNm & combined$ubLegend >= combined$lbNm
+combined$completeOverlapDm <- combined$lbLegend >= combined$lbDm & combined$ubLegend <= combined$ubDm
+combined$completeOverlapNm <- combined$lbLegend >= combined$lbNm & combined$ubLegend <= combined$ubNm
+oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
+    s1 <- (log(ub1) - log(lb1))/(2*1.96)
+    s2 <- (log(ub2) - log(lb2))/(2*1.96)
+    se <- sqrt(s1^2 + s2^2)
+    z <- (log(hr2) - log(hr1))/se
+    dat <- 2*pnorm(-abs(z))
+    return(dat)
+}
+combined$pDifferenceDm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbDm, combined$hrDm, combined$ubDm)
+combined$pDifferenceNm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbNm, combined$hrNm, combined$ubNm)
 
-combined <- combined[combined$outcomeName %in% c("Myocardial infarction", "Heart failure", "Stroke") & combined$type == "Direct meta-analysis", ]
-mean(combined$someOverlap)
-mean(combined$completeOverlap)
-mean(combined$estimateInCi)
-combined <- combined[combined$type == "Direct meta-analysis", ]
 
-outcome <- "Myocardial infarction"
-outcome <- "Heart failure"
-outcome <- "Stroke"
 
-vizData <- rbind(data.frame(Target = combined$targetName,
-                            Comparator = combined$comparatorName,
-                            outcome = combined$outcomeName,
-                            Source = "Systematic review",
-                            hr = combined$hrRct,
-                            lb = combined$lbRct,
-                            ub = combined$ubRct,
-                            stringsAsFactors = FALSE),
-                 data.frame(Target = combined$targetName,
-                            Comparator = combined$comparatorName,
-                            outcome = combined$outcomeName,
-                            Source = "LEGEND meta-analysis",
-                            hr = combined$hrLegend,
-                            lb = combined$lbLegend,
-                            ub = combined$ubLegend,
-                            stringsAsFactors = FALSE))
-vizData <- vizData[vizData$outcome == outcome, ]
-vizData$show <- 1
 
-breaks <- c(0.25, 0.5, 1, 2, 4)
-ggplot2::ggplot(vizData, ggplot2::aes(x = hr, xmin = lb, xmax = ub, y = Source, color = Source, shape = Source)) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = 0.25*show), colour = "#AAAAAA", size = 0.2) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = 0.5*show), colour = "#AAAAAA", size = 0.2) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = 2*show), colour = "#AAAAAA", size = 0.2) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = 4*show), colour = "#AAAAAA", size = 0.2) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = 1*show), size = 0.5, ) +
-    ggplot2::geom_errorbarh(alpha = 0.65, size = 0.6, height = 0.3) +
-    ggplot2::geom_point(alpha = 0.65, size = 2) +
-    ggplot2::scale_x_log10("Hazard ratio",
-                           breaks = breaks,
-                           labels = as.character(breaks),
-                           position = "bottom") +
-    ggplot2::coord_cartesian(xlim = c(0.125, 8)) +
-    ggplot2::facet_grid(Target ~ Comparator, switch = "y") +
-    ggplot2::scale_shape_manual(values = c(16,17),
-                                guide = ggplot2::guide_legend(reverse = TRUE)) +
-    ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5),
-                                           rgb(0, 0, 0.8, alpha = 0.5)),
-                                guide = ggplot2::guide_legend(reverse = TRUE)) +
-    ggplot2::ggtitle(outcome) +
-    ggplot2::theme(panel.grid = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   axis.title.y = ggplot2::element_blank(),
-                   axis.text.y = ggplot2::element_blank(),
-                   axis.ticks = ggplot2::element_blank(),
-                   strip.background = ggplot2::element_blank(),
-                   legend.title = ggplot2::element_blank(),
-                   legend.position = c(.85,.8),
-                   plot.title = ggplot2::element_text(hjust = 0.5))
-ggplot2::ggsave(filename = sprintf("c:/temp/%s.png", outcome), width = 8, height = 2.5, dpi = 300)
+createPlotForOutcome <- function(outcome, combined) {
+    vizData <- rbind(data.frame(Target = combined$targetName,
+                                Comparator = combined$comparatorName,
+                                outcome = combined$outcomeName,
+                                Source = "Direct meta-analysis",
+                                hr = combined$hrDm,
+                                lb = combined$lbDm,
+                                ub = combined$ubDm,
+                                completeOverlap = combined$completeOverlapDm,
+                                someOverlap = combined$someOverlapDm,
+                                pDifference = combined$pDifferenceDm,
+                                stringsAsFactors = FALSE),
+                     data.frame(Target = combined$targetName,
+                                Comparator = combined$comparatorName,
+                                outcome = combined$outcomeName,
+                                Source = "Network meta-analysis",
+                                hr = combined$hrNm,
+                                lb = combined$lbNm,
+                                ub = combined$ubNm,
+                                completeOverlap = combined$completeOverlapNm,
+                                someOverlap = combined$someOverlapNm,
+                                pDifference = combined$pDifferenceNm,
+                                stringsAsFactors = FALSE),
+                     data.frame(Target = combined$targetName,
+                                Comparator = combined$comparatorName,
+                                outcome = combined$outcomeName,
+                                Source = "LEGEND meta-analysis",
+                                hr = combined$hrLegend,
+                                lb = combined$lbLegend,
+                                ub = combined$ubLegend,
+                                completeOverlap = NA,
+                                someOverlap = NA,
+                                pDifference = NA,
+                                stringsAsFactors = FALSE))
+    vizData <- vizData[vizData$outcome == outcome, ]
+    vizData$Source <- factor(vizData$Source, levels = c("Network meta-analysis", "Direct meta-analysis", "LEGEND meta-analysis"))
+    vizData$Concordance <- "Reference"
+    vizData$Concordance[vizData$someOverlap] <- "Partial overlap of confidence intervals"
+    vizData$Concordance[vizData$completeOverlap] <- "Full overlap of confidence intervals"
+    vizData$Concordance[vizData$pDifference < 0.05] <- "Statistically significant difference (p < 0.05)"
+    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Full overlap of confidence intervals", "Partial overlap of confidence intervals",  "Statistically significant difference (p < 0.05)"))
+    vizData$show <- 1
+    breaks <- c(0.25, 0.5, 1, 2, 4)
+    plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = hr, xmin = lb, xmax = ub, y = Source, color = Concordance, shape = Source)) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 0.25*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 0.5*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 2*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 4*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 1*show), size = 0.5) +
+        ggplot2::geom_errorbarh(size = 0.6, height = 0.3) +
+        ggplot2::geom_point(size = 2) +
+        ggplot2::scale_x_log10("Hazard ratio",
+                               breaks = breaks,
+                               labels = as.character(breaks),
+                               position = "bottom") +
+        ggplot2::coord_cartesian(xlim = c(0.20, 5)) +
+        ggplot2::facet_grid(Target ~ Comparator, switch = "y") +
+        ggplot2::scale_shape_manual(values = c(15, 16, 17),
+                                    guide = ggplot2::guide_legend(direction = "vertical", reverse = TRUE)) +
+        # Colors from http://ksrowell.com/blog-visualizing-data/2012/02/02/optimal-colors-for-graphs/
+        ggplot2::scale_color_manual(values = c(rgb(0, 0, 0),
+                                               rgb(0.2431373, 0.5882353, 0.3176471),
+                                               rgb(0.8549020, 0.4862745, 0.1882353),
+                                               rgb(0.8000000, 0.1450980, 0.1607843)),
+                                    guide = ggplot2::guide_legend(direction = "vertical", reverse = FALSE)) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank(),
+                       panel.background = ggplot2::element_blank(),
+                       axis.title.y = ggplot2::element_blank(),
+                       axis.text.y = ggplot2::element_blank(),
+                       axis.text.x = ggplot2::element_text(size = 8),
+                       axis.ticks = ggplot2::element_blank(),
+                       strip.background = ggplot2::element_blank(),
+                       legend.position = "bottom")
+    return(plot)
+}
+
+plot1 <- createPlotForOutcome("Heart failure", combined)
+plot2 <- createPlotForOutcome("Myocardial infarction", combined)
+plot3 <- createPlotForOutcome("Stroke", combined)
+
+# ggplot2::ggsave(filename = sprintf("c:/temp/%s.png", outcome), width = 8, height = 4, dpi = 300)
+
+grabLegend <- function(a.gplot){
+    tmp <- ggplot2::ggplot_gtable(ggplot2::ggplot_build(a.gplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)}
+
+mylegend <- grabLegend(plot1)
+
+plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
+                                                       axis.title.x = ggplot2::element_blank(),
+                                                       axis.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Heart failure", rot = -90),
+                                plot2 + ggplot2::theme(legend.position = "none",
+                                                       axis.title.x = ggplot2::element_blank(),
+                                                       axis.text.x = ggplot2::element_blank(),
+                                                       strip.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Myocardial infarction", rot = -90),
+                                plot3 + ggplot2::theme(legend.position = "none",
+                                                       strip.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Stroke", rot = -90),
+                                mylegend,
+                                grid::textGrob(""),
+                                ncol = 2,
+                                widths = c(100, 3),
+                                heights = c(100, 85, 105, 80))
+
+
+ggplot2::ggsave(filename = "c:/temp/concordance.png", plot, width = 7, height = 7, dpi = 300)
+
+
