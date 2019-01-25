@@ -31,7 +31,7 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 connection <- connect(connectionDetails)
 
 
-x <- querySql(connection, "SELECT COUNT(*) FROM chronograph WHERE ic IS NULL;")
+x <- querySql(connection, "SELECT * FROM database;")
 
 querySql(connection, "SELECT COUNT(*) FROM chronograph WHERE ic IS NULL;")
 querySql(connection, "SELECT COUNT(*) FROM chronograph;")
@@ -161,21 +161,12 @@ querySql(connection, sql)
 # Concordance ------------------------------------------------------------------------------------------
 
 rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
-# rctEstimates$hrRct <- exp(rctEstimates$logHR)
-# rctEstimates$lbRct <- exp(rctEstimates$logLb)
-# rctEstimates$ubRct <- exp(rctEstimates$logUb)
-# rctEstimates$logHR <- NULL
-# rctEstimates$logLb <- NULL
-# rctEstimates$logUb <- NULL
 legendEstimates <- getMainResults(connection = connection,
                                   targetIds = unique(rctEstimates$targetId),
                                   comparatorIds = unique(rctEstimates$comparatorId),
                                   outcomeIds = unique(rctEstimates$outcomeId),
                                   databaseIds = "Meta-analysis",
                                   analysisIds = 1)
-# legendEstimates$hrLegend <- legendEstimates$rr
-# legendEstimates$lbLegend <- legendEstimates$ci95Lb
-# legendEstimates$ubLegend <- legendEstimates$ci95Ub
 legendEstimates$hrLegend <- legendEstimates$calibratedRr
 legendEstimates$lbLegend <- legendEstimates$calibratedCi95Lb
 legendEstimates$ubLegend <- legendEstimates$calibratedCi95Ub
@@ -196,6 +187,22 @@ combined$pDifferenceDm <- oddsTest(combined$lbLegend, combined$hrLegend, combine
 combined$pDifferenceNm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbNm, combined$hrNm, combined$ubNm)
 
 
+combined$ConcordanceDm[combined$someOverlapDm] <- "Partial"
+combined$ConcordanceDm[combined$completeOverlapDm] <- "Full"
+combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "None"
+combined$ConcordanceNm[combined$someOverlapNm] <- "Partial"
+combined$ConcordanceNm[combined$completeOverlapNm] <- "Full"
+combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "None"
+
+
+writeLines(paste("Number of comparisons:", 2*nrow(combined)))
+writeLines(paste("Complete overlap DM:", sum(combined$ConcordanceDm == "Full"), "(", 100*sum(combined$ConcordanceDm == "Full")/nrow(combined), "%)"))
+writeLines(paste("Partial overlap DM:", sum(combined$ConcordanceDm == "Partial"), "(", 100*sum(combined$ConcordanceDm == "Partial")/nrow(combined), "%)"))
+writeLines(paste("No overlap DM:", sum(combined$ConcordanceDm == "None"), "(", 100*sum(combined$ConcordanceDm == "None")/nrow(combined), "%)"))
+
+writeLines(paste("Complete overlap NM:", sum(combined$ConcordanceNm == "Full"), "(", 100*sum(combined$ConcordanceNm == "Full")/nrow(combined), "%)"))
+writeLines(paste("Partial overlap NM:", sum(combined$ConcordanceNm == "Partial"), "(", 100*sum(combined$ConcordanceNm == "Partial")/nrow(combined), "%)"))
+writeLines(paste("No overlap NM:", sum(combined$ConcordanceNm == "None"), "(", 100*sum(combined$ConcordanceNm == "None")/nrow(combined), "%)"))
 
 
 createPlotForOutcome <- function(outcome, combined) {
@@ -309,4 +316,171 @@ plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
 
 ggplot2::ggsave(filename = "c:/temp/concordance.png", plot, width = 7, height = 7, dpi = 300)
 
+# Internal validity ----------------------------------------------------------
+connection <- connect(connectionDetails)
+
+# Coverage
+sql <- "
+SELECT COUNT(*) AS control_count,
+    SUM(coverage) AS coverage,
+    SUM(coverage_calibrated) AS coverage_calibrated
+FROM (
+    SELECT CASE WHEN ci_95_lb <= effect_size AND ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage,
+        CASE WHEN calibrated_ci_95_lb <= effect_size AND calibrated_ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage_calibrated
+    FROM (
+        SELECT cohort_method_result.*,
+          CAST(1 AS numeric) AS effect_size
+        FROM cohort_method_result
+        INNER JOIN negative_control_outcome
+            ON cohort_method_result.outcome_id = negative_control_outcome.outcome_id
+        WHERE calibrated_se_log_rr IS NOT NULL
+
+        UNION ALL
+
+        SELECT cohort_method_result.*,
+          effect_size
+        FROM cohort_method_result
+        INNER JOIN positive_control_outcome
+            ON cohort_method_result.outcome_id = positive_control_outcome.outcome_id
+                AND cohort_method_result.target_id = positive_control_outcome.exposure_id
+        WHERE calibrated_se_log_rr IS NOT NULL
+    ) tmp1
+) tmp2;
+"
+coverage <- querySql(connection, sql)
+writeLines(paste("Total control estimates:", coverage$CONTROL_COUNT))
+writeLines(paste("Coverage uncalibrated:", 100 * coverage$COVERAGE / coverage$CONTROL_COUNT, "%"))
+writeLines(paste("Coverage calibrated:", 100 * coverage$COVERAGE_CALIBRATED / coverage$CONTROL_COUNT, "%"))
+
+# Transitivity
+sql <- "
+SELECT cohort_method_result.*
+FROM cohort_method_result
+INNER JOIN outcome_of_interest
+ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
+WHERE calibrated_se_log_rr IS NOT NULL
+    AND indication_id = 'Hypertension'
+    AND database_id = 'Meta-analysis'
+    AND analysis_id IN (1, 2, 3, 4);
+"
+estimates <- querySql(connection, sql)
+colnames(estimates) <- SqlRender::snakeCaseToCamelCase(colnames(estimates))
+saveRDS(estimates, "c:/temp/maEstimates.rds")
+estimates <- readRDS("c:/temp/maEstimates.rds")
+
+d <- estimates
+d$sign <- d$calibratedCi95Lb > 1 | d$calibratedCi95Ub < 1
+sign <- d[d$sign, ]
+ab <- data.frame(nameA = sign$targetId,
+                 nameB = sign$comparatorId,
+                 outcome = sign$outcomeId,
+                 analysisId = sign$analysisId,
+                 increase = sign$calibratedRr > 1,
+                 rrAB = sign$calibratedRr,
+                 lbAB = sign$calibratedCi95Lb,
+                 ubAB = sign$calibratedCi95Ub)
+bc <- data.frame(nameB = sign$targetId,
+                 nameC = sign$comparatorId,
+                 outcome = sign$outcomeId,
+                 analysisId = sign$analysisId,
+                 increase = sign$calibratedRr > 1,
+                 rrBC = sign$calibratedRr,
+                 lbBC = sign$calibratedCi95Lb,
+                 ubBC = sign$calibratedCi95Ub)
+abc <- merge(ab, bc)
+ac <- data.frame(nameA = d$targetId,
+                 nameC = d$comparatorId,
+                 outcome = d$outcomeId,
+                 analysisId = d$analysisId,
+                 rrAC = d$calibratedRr,
+                 lbAC = d$calibratedCi95Lb,
+                 ubAC = d$calibratedCi95Ub)
+abcPlusAc <- merge(abc, ac)
+
+agree <- (abcPlusAc$increase & abcPlusAc$lbAC > 1) | (!abcPlusAc$increase & abcPlusAc$ubAC < 1)
+mean(agree)
+length(agree)
+sum(agree)
+
+# Between-database heterogeneity
+library(meta)
+library(ggplot2)
+
+sql <- "
+SELECT cohort_method_result.outcome_id,
+    target_id,
+    comparator_id,
+    database_id,
+    analysis_id,
+    log_rr,
+    se_log_rr,
+    calibrated_log_rr,
+    calibrated_se_log_rr
+FROM cohort_method_result
+INNER JOIN outcome_of_interest
+ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
+WHERE calibrated_se_log_rr IS NOT NULL
+    AND indication_id = 'Hypertension'
+    AND database_id != 'Meta-analysis'
+    AND analysis_id IN (1, 2, 3, 4);
+"
+d <- querySql(connection, sql)
+colnames(d) <- SqlRender::snakeCaseToCamelCase(colnames(d))
+saveRDS(d, "c:/temp/nonMaEstimates.rds")
+d <- readRDS("c:/temp/nonMaEstimates.rds")
+
+d <- d[d$analysisId == 1, ]
+dd <- aggregate(databaseId ~ targetId + comparatorId + outcomeId, data = d, length)
+dd <- dd[dd$databaseId >= 4, ]
+dd$databaseId <- NULL
+nrow(dd)
+
+computeI2 <- function(i, dd, d, calibrated = TRUE) {
+    triplet <- dd[i,]
+    studies <- d[d$targetId == triplet$targetId &
+                     d$comparatorId == triplet$comparatorId &
+                     d$outcomeId == triplet$outcomeId &
+                     d$analysisId == triplet$analysisId, ]
+    if (calibrated) {
+        meta <- metagen(studies$calibratedLogRr, studies$calibratedSeLogRr, sm = "RR")
+    } else {
+        meta <- metagen(studies$logRr, studies$seLogRr, sm = "RR")
+    }
+    return(meta$I2)
+}
+
+i2Cal <- sapply(1:nrow(dd), computeI2, dd = dd, d = d, calibrated = TRUE)
+i2 <- sapply(1:nrow(dd), computeI2, dd = dd, d = d, calibrated = FALSE)
+
+ddd <- data.frame(i2 = c(i2, i2Cal),
+                  group = c(rep("Uncalibrated", length(i2)), rep("Calibrated", length(i2Cal))))
+
+# ggplot(ddd, aes(x=i2, group = group, color = group, fill = group)) +
+#     geom_density() +
+#     scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+#     scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+#     theme(legend.title = ggplot2::element_blank())
+
+ggplot(ddd, aes(x=i2, group = group, color = group, fill = group)) +
+    geom_histogram(binwidth = 0.05, boundary = 0, position = "identity") +
+    scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.4))) +
+    scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.4))) +
+    scale_x_continuous(expression(i^2)) +
+    scale_y_continuous("TCO triplets") +
+    theme(legend.title = ggplot2::element_blank(),
+          panel.background = element_blank(),
+          panel.grid.major.y = element_line(color = rgb(0.25,0.25,0.25, alpha = 0.2)),
+          panel.grid.major.x = element_line(color = rgb(0.25,0.25,0.25, alpha = 0.2)))
+
+ggsave(file.path(paperFolder, "I2.png"), width = 4.5, height = 2, dpi=300)
+length(i2Cal)
+mean(i2Cal < 0.25)
+mean(i2 <0.25)
+
+
+
+
+
+
+disconnect(connection)
 
