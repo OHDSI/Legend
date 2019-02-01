@@ -225,7 +225,13 @@ createIndicesOnDatabase <- function(connectionDetails,
     }
     DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
 
-    sql <- "CREATE INDEX idx_covariate_balance ON covariate_balance (database_id, target_id, comparator_id);"
+    sql <- "CREATE INDEX idx_covariate_balance ON covariate_balance (database_id, target_id, comparator_id, outcome_id, analysis_id);"
+    if (staging) {
+        sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
+    }
+    DatabaseConnector::executeSql(conn, sql, progressBar = FALSE)
+
+    sql <- "CREATE INDEX idx_covariate_balance_2 ON covariate_balance (target_id, comparator_id, outcome_id, analysis_id);"
     if (staging) {
         sql <- gsub(" \\(", "_staging (", gsub(" ON ", "_staging ON ", sql))
     }
