@@ -260,7 +260,7 @@ createPlotForOutcome <- function(outcome, combined) {
                                breaks = breaks,
                                labels = as.character(breaks),
                                position = "bottom") +
-        ggplot2::coord_cartesian(xlim = c(0.20, 5)) +
+        ggplot2::coord_cartesian(xlim = c(1/3, 3)) +
         ggplot2::facet_grid(Target ~ Comparator, switch = "y") +
         ggplot2::scale_shape_manual(values = c(15, 16, 17),
                                     guide = ggplot2::guide_legend(direction = "vertical", reverse = TRUE)) +
@@ -422,7 +422,7 @@ ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
 WHERE calibrated_se_log_rr IS NOT NULL
     AND indication_id = 'Hypertension'
     AND database_id != 'Meta-analysis'
-    AND analysis_id IN (1, 2, 3, 4);
+    AND analysis_id = 1;
 "
 d <- querySql(connection, sql)
 colnames(d) <- SqlRender::snakeCaseToCamelCase(colnames(d))
@@ -435,22 +435,25 @@ dd <- dd[dd$databaseId >= 4, ]
 dd$databaseId <- NULL
 nrow(dd)
 
-computeI2 <- function(i, dd, d, calibrated = TRUE) {
-    triplet <- dd[i,]
-    studies <- d[d$targetId == triplet$targetId &
-                     d$comparatorId == triplet$comparatorId &
-                     d$outcomeId == triplet$outcomeId &
-                     d$analysisId == triplet$analysisId, ]
+d <- merge(d, dd)
+
+
+computeI2 <- function(studies, calibrated = TRUE) {
     if (calibrated) {
-        meta <- metagen(studies$calibratedLogRr, studies$calibratedSeLogRr, sm = "RR")
+        meta <- meta::metagen(studies$calibratedLogRr, studies$calibratedSeLogRr, sm = "RR")
     } else {
-        meta <- metagen(studies$logRr, studies$seLogRr, sm = "RR")
+        meta <- meta::metagen(studies$logRr, studies$seLogRr, sm = "RR")
     }
     return(meta$I2)
 }
 
-i2Cal <- sapply(1:nrow(dd), computeI2, dd = dd, d = d, calibrated = TRUE)
-i2 <- sapply(1:nrow(dd), computeI2, dd = dd, d = d, calibrated = FALSE)
+splitD <- split(d, paste(d$targetId, d$comparatorId, d$outcomeId))
+cluster <- ParallelLogger::makeCluster(15)
+i2Cal <- ParallelLogger::clusterApply(cluster, splitD, computeI2, calibrated = TRUE)
+i2Cal <- do.call("rbind", i2Cal)
+i2 <- ParallelLogger::clusterApply(cluster, splitD, computeI2, calibrated = FALSE)
+i2 <- do.call("rbind", i2)
+ParallelLogger::stopCluster(cluster)
 
 ddd <- data.frame(i2 = c(i2, i2Cal),
                   group = c(rep("Uncalibrated", length(i2)), rep("Calibrated", length(i2Cal))))
@@ -475,7 +478,7 @@ ggplot(ddd, aes(x=i2, group = group, color = group, fill = group)) +
 ggsave(file.path(paperFolder, "I2.png"), width = 4.5, height = 2, dpi=300)
 length(i2Cal)
 mean(i2Cal < 0.25)
-mean(i2 <0.25)
+mean(i2 < 0.25)
 
 
 
