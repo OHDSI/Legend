@@ -18,7 +18,7 @@
 
 library(DatabaseConnector)
 source("extras/LegendMedCentral/DataPulls.R")
-
+paperFolder <- "c:/temp"
 
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
                                              server = paste(Sys.getenv("legendServer"),
@@ -314,7 +314,7 @@ plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
                                 heights = c(100, 85, 105, 80))
 
 
-ggplot2::ggsave(filename = "c:/temp/concordance.png", plot, width = 7, height = 7, dpi = 300)
+ggplot2::ggsave(filename = file.path(paperFolder, "concordance.png"), plot, width = 7, height = 7, dpi = 300)
 
 # Internal validity ----------------------------------------------------------
 connection <- connect(connectionDetails)
@@ -475,15 +475,71 @@ ggplot(ddd, aes(x=i2, group = group, color = group, fill = group)) +
           panel.grid.major.y = element_line(color = rgb(0.25,0.25,0.25, alpha = 0.2)),
           panel.grid.major.x = element_line(color = rgb(0.25,0.25,0.25, alpha = 0.2)))
 
-ggsave(file.path(paperFolder, "I2.png"), width = 4.5, height = 2, dpi=300)
+ggsave(file.path(paperFolder, "I2.png"), width = 4.5, height = 2, dpi = 300)
 length(i2Cal)
 mean(i2Cal < 0.25)
 mean(i2 < 0.25)
 
 
 
+# Exemplar study ----------------------------------------------
+targetId <- 15 # THZ
+comparatorId <- 1 # ACE
+outcomeId <- 2 # AMI
 
+estimates <- getMainResults(connection = connection,
+                            targetIds = targetId,
+                            comparatorIds = comparatorId,
+                            outcomeIds = outcomeId,
+                            analysisIds = 1)
+estimates <- estimates[!is.na(estimates$calibratedSeLogRr), ]
+estimates$databaseId[estimates$databaseId == "NHIS_NSC"] <- "NHIS"
+source("extras/LegendMedCentral/PlotsAndTables.R")
+plot <- plotForest(estimates, limits = c(1/3, 3))
+ggplot2::ggsave(file.path(paperFolder, "Forest.png"), plot = plot, width = 13, height = 4, dpi = 400)
 
+balanceSummary <- getCovariateBalanceSummary(connection, targetId, comparatorId, analysisId = 2)
+balanceSummary$databaseId[balanceSummary$databaseId == "NHIS_NSC"] <- "NHIS"
+stringToVars <- function(string) {
+    parts <- as.numeric(unlist(strsplit(gsub("\\{|\\}", "", string), ",")))
+    parts <- as.data.frame(matrix(parts, ncol = 5, byrow = TRUE))
+    colnames(parts) <- c("ymin", "lower", "median", "upper", "ymax")
+    return(parts)
+}
+before <- stringToVars(balanceSummary$percentilesBefore)
+after <- stringToVars(balanceSummary$percentilesAfter)
+balanceSummary <- data.frame(databaseId = balanceSummary$databaseId,
+                             covariateCount = balanceSummary$covariateCount,
+                             maxBefore = pmax(abs(before$ymax), abs(before$ymin)),
+                             maxAfter = pmax(abs(after$ymax), abs(after$ymin)))
+powerTable <- merge(estimates, balanceSummary, all.x = TRUE)
+powerTable$targetYears <- powerTable$targetDays/365.25
+powerTable$comparatorYears <- powerTable$comparatorDays/365.25
+powerTable <- powerTable[, c("databaseId",
+                            "targetSubjects",
+                            "comparatorSubjects",
+                            "targetYears",
+                            "comparatorYears",
+                            "targetOutcomes",
+                            "comparatorOutcomes",
+                            "covariateCount",
+                            "maxBefore",
+                            "maxAfter")]
+dbResults <- powerTable[powerTable$databaseId != "Meta-analysis", ]
+dbResults <- dbResults[order(dbResults$databaseId), ]
+maResult <- powerTable[powerTable$databaseId == "Meta-analysis", ]
+powerTable <- rbind(dbResults, maResult)
+colnames(powerTable) <- c("Source",
+                          "THZ subjects",
+                          "ACE subjects",
+                          "THZ years",
+                          "ACE years",
+                          "THZ events",
+                          "ACE events",
+                          "Covariate count",
+                          "Before strat. max SD ",
+                          "After strat. max SD ")
+write.csv(powerTable, file.path(paperFolder, "Power.csv"), row.names = FALSE)
 
 disconnect(connection)
 
