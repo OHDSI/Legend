@@ -3,7 +3,7 @@ createTitle <- function(tcoDbs) {
   tcoDbs$comparatorName <- exposures$exposureName[match(tcoDbs$comparatorId, exposures$exposureId)]
   tcoDbs$outcomeName <- outcomes$outcomeName[match(tcoDbs$outcomeId, outcomes$outcomeId)]
   tcoDbs$indicationId <- exposures$indicationId[match(tcoDbs$targetId, exposures$exposureId)]
-  
+
   titles <- paste(tcoDbs$outcomeName,
                   "risk in new-users of",
                   tcoDbs$targetName,
@@ -37,18 +37,18 @@ createAbstract <- function(connection, tcoDb) {
   comparatorName <- uncapitalize(exposures$exposureName[match(tcoDb$comparatorId, exposures$exposureId)])
   outcomeName <- uncapitalize(outcomes$outcomeName[match(tcoDb$outcomeId, outcomes$outcomeId)])
   indicationId <- uncapitalize(exposures$indicationId[match(tcoDb$targetId, exposures$exposureId)])
-  
+
   results <- getMainResults(connection,
                             targetIds = tcoDb$targetId,
                             comparatorIds = tcoDb$comparatorId,
                             outcomeIds = tcoDb$outcomeId,
                             databaseIds = tcoDb$databaseId)
-  
+
   studyPeriod <- getStudyPeriod(connection = connection,
                                 targetId = tcoDb$targetId,
                                 comparatorId = tcoDb$comparatorId,
                                 databaseId = tcoDb$databaseId)
-  
+
   writeAbstract(outcomeName, targetName, comparatorName, tcoDb$databaseId, studyPeriod, results)
 }
 
@@ -58,10 +58,10 @@ writeAbstract <- function(outcomeName,
                           databaseId,
                           studyPeriod,
                           mainResults) {
-  
+
   minYear <- substr(studyPeriod$minDate, 1, 4)
   maxYear <- substr(studyPeriod$maxDate, 1, 4)
-  
+
   abstract <- paste0(
     "We conduct a large-scale study on the incidence of ", outcomeName, " among new users of ", targetName, " and ", comparatorName, " from ", minYear, " to ", maxYear, " in the ", databaseId, " database.  ",
     "Outcomes of interest are estimates of the hazard ratio (HR) for incident events between comparable new users under on-treatment and intent-to-treat risk window assumptions.  ",
@@ -73,7 +73,7 @@ writeAbstract <- function(outcomeName,
     " risk as compared to ", comparatorName, " [HR: ", prettyHr(mainResults[1, "calibratedRr"]), ", 95% confidence interval (CI) ",
     prettyHr(mainResults[1, "calibratedCi95Lb"]), " - ", prettyHr(mainResults[1, "calibratedCi95Ub"]), "]."
   )
-  
+
   abstract
 }
 
@@ -135,7 +135,7 @@ preparePowerTable <- function(mainResults, analyses, showDatabaseId = FALSE) {
   table$targetIr <- 1000 * table$targetOutcomes/table$targetYears
   table$comparatorIr <- 1000 * table$comparatorOutcomes/table$comparatorYears
   table <- table[, c("description",
-                     "databaseId", 
+                     "databaseId",
                      "targetSubjects",
                      "comparatorSubjects",
                      "targetYears",
@@ -173,20 +173,20 @@ prepareSubgroupTable <- function(subgroupResults, output = "latex") {
   rnd <- function(x) {
     ifelse(x > 10, sprintf("%.1f", x), sprintf("%.2f", x))
   }
-  
+
   subgroupResults$hrr <- paste0(rnd(subgroupResults$rrr),
                                 " (",
                                 rnd(subgroupResults$ci95Lb),
                                 " - ",
                                 rnd(subgroupResults$ci95Ub),
                                 ")")
-  
+
   subgroupResults$hrr[is.na(subgroupResults$rrr)] <- ""
   subgroupResults$p <- sprintf("%.2f", subgroupResults$p)
   subgroupResults$p[subgroupResults$p == "NA"] <- ""
   subgroupResults$calibratedP <- sprintf("%.2f", subgroupResults$calibratedP)
   subgroupResults$calibratedP[subgroupResults$calibratedP == "NA"] <- ""
-  
+
   if (any(grepl("on-treatment", subgroupResults$analysisDescription)) &&
       any(grepl("intent-to-treat", subgroupResults$analysisDescription))) {
     idx <- grepl("on-treatment", subgroupResults$analysisDescription)
@@ -235,7 +235,7 @@ prepareTable1 <- function(balance,
     space <- "&nbsp;"
   }
   specifications <- read.csv(pathToCsv, stringsAsFactors = FALSE)
-  
+
   fixCase <- function(label) {
     idx <- (toupper(label) == label)
     if (any(idx)) {
@@ -244,7 +244,7 @@ prepareTable1 <- function(balance,
     }
     return(label)
   }
-  
+
   formatPercent <- function(x) {
     result <- format(round(100 * x, percentDigits), digits = percentDigits + 1, justify = "right")
     result <- gsub("^-", "<", result)
@@ -252,14 +252,14 @@ prepareTable1 <- function(balance,
     result <- gsub(" ", space, result)
     return(result)
   }
-  
+
   formatStdDiff <- function(x) {
     result <- format(round(x, stdDiffDigits), digits = stdDiffDigits + 1, justify = "right")
     result <- gsub("NA", "", result)
     result <- gsub(" ", space, result)
     return(result)
   }
-  
+
   resultsTable <- data.frame()
   for (i in 1:nrow(specifications)) {
     if (specifications$analysisId[i] == "") {
@@ -325,14 +325,14 @@ prepareTable1 <- function(balance,
   resultsTable$afterMatchingMeanTreated <- formatPercent(resultsTable$afterMatchingMeanTreated)
   resultsTable$afterMatchingMeanComparator <- formatPercent(resultsTable$afterMatchingMeanComparator)
   resultsTable$afterMatchingStdDiff <- formatStdDiff(resultsTable$afterMatchingStdDiff)
-  
+
   headerRow <- as.data.frame(t(rep("", ncol(resultsTable))))
   colnames(headerRow) <- colnames(resultsTable)
   headerRow$beforeMatchingMeanTreated <- targetLabel
   headerRow$beforeMatchingMeanComparator <- comparatorLabel
   headerRow$afterMatchingMeanTreated <- targetLabel
   headerRow$afterMatchingMeanComparator <- comparatorLabel
-  
+
   subHeaderRow <- as.data.frame(t(rep("", ncol(resultsTable))))
   colnames(subHeaderRow) <- colnames(resultsTable)
   subHeaderRow$Characteristic <- "Characteristic"
@@ -342,9 +342,9 @@ prepareTable1 <- function(balance,
   subHeaderRow$afterMatchingMeanTreated <- "%"
   subHeaderRow$afterMatchingMeanComparator <- "%"
   subHeaderRow$afterMatchingStdDiff <- "Std. diff"
-  
+
   resultsTable <- rbind(headerRow, subHeaderRow, resultsTable)
-  
+
   colnames(resultsTable) <- rep("", ncol(resultsTable))
   colnames(resultsTable)[2] <- beforeLabel
   colnames(resultsTable)[5] <- afterLabel
@@ -355,7 +355,7 @@ plotPs <- function(ps, targetName, comparatorName) {
   if (is.null(ps$databaseId)) {
     ps <- rbind(data.frame(x = ps$preferenceScore, y = ps$targetDensity, group = targetName),
                 data.frame(x = ps$preferenceScore, y = ps$comparatorDensity, group = comparatorName))
-    
+
   } else {
     ps <- rbind(data.frame(x = ps$preferenceScore, y = ps$targetDensity, databaseId = ps$databaseId, group = targetName),
                 data.frame(x = ps$preferenceScore, y = ps$comparatorDensity, databaseId = ps$databaseId, group = comparatorName))
@@ -428,8 +428,8 @@ plotAllPs <- function(ps) {
 }
 
 
-plotCovariateBalanceScatterPlot <- function(balance, 
-                                            beforeLabel = "Before stratification", 
+plotCovariateBalanceScatterPlot <- function(balance,
+                                            beforeLabel = "Before stratification",
                                             afterLabel = "After stratification",
                                             showCovariateCountLabel = FALSE,
                                             showMaxLabel = FALSE) {
@@ -446,7 +446,7 @@ plotCovariateBalanceScatterPlot <- function(balance,
     ggplot2::scale_x_continuous(beforeLabel, limits = limits) +
     ggplot2::scale_y_continuous(afterLabel, limits = limits) +
     ggplot2::theme(text = theme)
-  
+
   if (showCovariateCountLabel || showMaxLabel) {
     labels <- c()
     if (showCovariateCountLabel) {
@@ -457,7 +457,7 @@ plotCovariateBalanceScatterPlot <- function(balance,
     }
     dummy <- data.frame(text = paste(labels, collapse = "\n"))
     plot <- plot + ggplot2::geom_label(x = limits[1] + 0.01, y = limits[2], hjust = "left", vjust = "top", alpha = 0.8, ggplot2::aes(label = text), data = dummy, size = 5)
-    
+
   }
   return(plot)
 }
@@ -473,7 +473,7 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                            lower = kaplanMeier$comparatorSurvivalLb,
                            upper = kaplanMeier$comparatorSurvivalUb,
                            strata = paste0(" ", comparatorName)))
-  
+
   xlims <- c(-max(data$time)/40, max(data$time))
   ylims <- c(min(data$lower), 1)
   xLabel <- "Time in days"
@@ -498,7 +498,7 @@ plotKaplanMeier <- function(kaplanMeier, targetName, comparatorName) {
                    legend.key.size = ggplot2::unit(1, "lines"),
                    plot.title = ggplot2::element_text(hjust = 0.5)) +
     ggplot2::theme(axis.title.y = ggplot2::element_text(vjust = -10))
-  
+
   targetAtRisk <- kaplanMeier$targetAtRisk[!is.na(kaplanMeier$targetAtRisk)]
   comparatorAtRisk <- kaplanMeier$comparatorAtRisk[!is.na(kaplanMeier$comparatorAtRisk)]
   labels <- data.frame(x = c(0, xBreaks, xBreaks),
@@ -557,13 +557,13 @@ getCoverage <- function(controlResults) {
   if (nrow(d) == 0) {
     return(NULL)
   }
-  
+
   d$Group <- as.factor(d$trueRr)
   d$Significant <- d$ci95Lb > d$trueRr | d$ci95Ub < d$trueRr
-  
+
   temp2 <- aggregate(Significant ~ Group + yGroup, data = d, mean)
   temp2$coverage <- (1 - temp2$Significant)
-  
+
   data.frame(true = temp2$Group, group = temp2$yGroup, coverage = temp2$coverage)
 }
 
@@ -594,19 +594,19 @@ plotScatter <- function(controlResults) {
   temp2 <- aggregate(Significant ~ Group + yGroup, data = d, mean)
   temp1$nLabel <- paste0(formatC(temp1$Significant, big.mark = ","), " estimates")
   temp1$Significant <- NULL
-  
+
   temp2$meanLabel <- paste0(formatC(100 * (1 - temp2$Significant), digits = 1, format = "f"),
                             "% of CIs include ",
                             temp2$Group)
   temp2$Significant <- NULL
   dd <- merge(temp1, temp2)
   dd$tes <- as.numeric(as.character(dd$Group))
-  
+
   breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
   theme <- ggplot2::element_text(colour = "#000000", size = 12)
   themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
   themeLA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 0)
-  
+
   d$Group <- paste("True hazard ratio =", d$Group)
   dd$Group <- paste("True hazard ratio =", dd$Group)
   alpha <- 1 - min(0.95 * (nrow(d)/nrow(dd)/50000)^0.1, 0.95)
@@ -661,22 +661,22 @@ plotScatter <- function(controlResults) {
                    strip.text.y = theme,
                    strip.background = ggplot2::element_blank(),
                    legend.position = "none")
-  
+
   return(plot)
 }
 
 plotLargeScatter <- function(d, xLabel) {
   d$Significant <- d$ci95Lb > 1 | d$ci95Ub < 1
-  
+
   oneRow <- data.frame(nLabel = paste0(formatC(nrow(d), big.mark = ","), " estimates"),
                        meanLabel = paste0(formatC(100 *
                                                     mean(!d$Significant, na.rm = TRUE), digits = 1, format = "f"), "% of CIs includes 1"))
-  
+
   breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
   theme <- ggplot2::element_text(colour = "#000000", size = 12)
   themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
   themeLA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 0)
-  
+
   alpha <- 1 - min(0.95 * (nrow(d)/50000)^0.1, 0.95)
   plot <- ggplot2::ggplot(d, ggplot2::aes(x = logRr, y = seLogRr)) +
     ggplot2::geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.5) +
@@ -756,8 +756,8 @@ drawAttritionDiagram <- function(attrition,
   for (i in 2:nrow(attrition)) {
     data <- addStep(data, attrition, i)
   }
-  
-  
+
+
   data$leftBoxText[length(data$leftBoxText) + 1] <- paste("Study population:\n",
                                                           targetLabel,
                                                           ": n = ",
@@ -770,7 +770,7 @@ drawAttritionDiagram <- function(attrition,
   leftBoxText <- data$leftBoxText
   rightBoxText <- data$rightBoxText
   nSteps <- length(leftBoxText)
-  
+
   boxHeight <- (1/nSteps) - 0.03
   boxWidth <- 0.45
   shadowOffset <- 0.01
@@ -781,7 +781,7 @@ drawAttritionDiagram <- function(attrition,
   y <- function(y) {
     return(1 - (y - 0.5) * (1/nSteps))
   }
-  
+
   downArrow <- function(p, x1, y1, x2, y2) {
     p <- p + ggplot2::geom_segment(ggplot2::aes_string(x = x1, y = y1, xend = x2, yend = y2))
     p <- p + ggplot2::geom_segment(ggplot2::aes_string(x = x2,
@@ -829,7 +829,7 @@ drawAttritionDiagram <- function(attrition,
                                 size = 3.7)
     return(p)
   }
-  
+
   p <- ggplot2::ggplot()
   for (i in 2:nSteps - 1) {
     p <- downArrow(p, x(1), y(i) - (boxHeight/2), x(1), y(i + 1) + (boxHeight/2))
@@ -860,7 +860,7 @@ drawAttritionDiagram <- function(attrition,
                           axis.text = ggplot2::element_blank(),
                           axis.title = ggplot2::element_blank(),
                           axis.ticks = ggplot2::element_blank())
-  
+
   return(p)
 }
 
@@ -943,40 +943,40 @@ createDocument <- function(targetId,
                            template = "template.Rnw",
                            workingDirectory = "temp",
                            emptyWorkingDirectory = TRUE) {
-  
+
   if (missing(outputFile)) {
     stop("Must provide an output file name")
   }
-  
+
   currentDirectory <- getwd()
   on.exit(setwd(currentDirectory))
-  
+
   input <- file(template, "r")
-  
+
   name <- paste0("paper_", targetId, "_", comparatorId, "_", outcomeId, "_", databaseId)
-  
+
   if (!dir.exists(workingDirectory)) {
     dir.create(workingDirectory)
   }
-  
+
   workingDirectory <- file.path(workingDirectory, name)
-  
+
   if (!dir.exists(workingDirectory)) {
     dir.create(workingDirectory)
   }
-  
+
   if (is.null(setwd(workingDirectory))) {
     stop(paste0("Unable to change directory into: ", workingDirectory))
   }
-  
+
   system(paste0("cp ", file.path(currentDirectory, "pnas-new.cls"), " ."))
   system(paste0("cp ", file.path(currentDirectory, "widetext.sty"), " ."))
   system(paste0("cp ", file.path(currentDirectory, "pnasresearcharticle.sty"), " ."))
   system(paste0("cp ", file.path(currentDirectory, "Sweave.sty"), " ."))
-  
+
   texName <- paste0(name, ".Rnw")
   output <- file(texName, "w")
-  
+
   while (TRUE) {
     line <- readLines(input, n = 1)
     if (length(line) == 0) {
@@ -992,30 +992,30 @@ createDocument <- function(targetId,
   }
   close(input)
   close(output)
-  
+
   Sweave(texName)
   system(paste0("pdflatex ", name))
   system(paste0("pdflatex ", name))
-  
+
   # Save result
   workingName <- file.path(workingDirectory, name)
   workingName <- paste0(workingName, ".pdf")
-  
+
   setwd(currentDirectory)
-  
+
   system(paste0("cp ", workingName, " ", outputFile))
-  
+
   if (emptyWorkingDirectory) {
     # deleteName = file.path(workingDirectory, "*")
     # system(paste0("rm ", deleteName))
     unlink(workingDirectory, recursive = TRUE)
   }
-  
+
   invisible(outputFile)
 }
 
 
-plotForest <- function(results) {
+plotForest <- function(results, limits = c(0.1, 10)) {
   dbResults <- results[results$databaseId != "Meta-analysis", ]
   dbResults <- dbResults[!is.na(dbResults$seLogRr), ]
   dbResults <- dbResults[order(dbResults$databaseId), ]
@@ -1063,11 +1063,11 @@ plotForest <- function(results) {
                    name = summaryLabel,
                    type = "ma",
                    stringsAsFactors = FALSE)
-  
+
   d <- rbind(d1, d2, d3, d4, d5, d6)
   d$name <- factor(d$name, levels = c(summaryLabel, rev(as.character(dbResults$databaseId)), "Source"))
   d$x <- factor(d$x, levels = c("Uncalibrated", "Calibrated"))
-  
+
   breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
   plot <- ggplot2::ggplot(d,ggplot2::aes(x = exp(logRr), y = name, xmin = exp(logLb95Ci), xmax = exp(logUb95Ci))) +
     ggplot2::geom_vline(xintercept = breaks, colour = "#AAAAAA", lty = 1, size = 0.2) +
@@ -1076,9 +1076,9 @@ plotForest <- function(results) {
     ggplot2::geom_point(size=3, shape = 23, ggplot2::aes(fill=type)) +
     ggplot2::scale_fill_manual(values = c("#000000", "#000000", "#FFFFFF")) +
     ggplot2::scale_x_continuous("Hazard ratio", trans = "log10", breaks = breaks, labels = breaks) +
-    ggplot2::coord_cartesian(xlim = c(0.1, 10)) +
+    ggplot2::coord_cartesian(xlim = limits) +
     ggplot2::facet_grid(~ x) +
-    ggplot2::theme(text = ggplot2::element_text(size = 18), 
+    ggplot2::theme(text = ggplot2::element_text(size = 18),
                    panel.grid.major = ggplot2::element_blank(),
                    panel.grid.minor = ggplot2::element_blank(),
                    panel.background = ggplot2::element_blank(),
@@ -1089,7 +1089,7 @@ plotForest <- function(results) {
                    axis.ticks = ggplot2::element_blank(),
                    strip.background = ggplot2::element_blank(),
                    plot.margin = grid::unit(c(0,0,0.1,0), "lines"))
-  
+
   d$hr <- paste0(formatC(exp(d$logRr),  digits = 2, format = "f"),
                  " (",
                  formatC(exp(d$logLb95Ci), digits = 2, format = "f"),
@@ -1097,7 +1097,7 @@ plotForest <- function(results) {
                  formatC(exp(d$logUb95Ci), digits = 2, format = "f"),
                  ")")
   d <- d[order(d$x), ]
-  
+
   labels <- data.frame(y = factor(c(as.character(d$name[d$x == "Uncalibrated"]), as.character(d$name)), levels = levels(d$name)),
                        x = rep(1:3, each = nrow(d)/2),
                        label = c(as.character(d$name[d$x == "Uncalibrated"]), d$hr),
@@ -1109,7 +1109,7 @@ plotForest <- function(results) {
     ggplot2::geom_text(size = 5, hjust = 0, vjust = 0.5) +
     ggplot2::geom_hline(ggplot2::aes(yintercept = nrow(d) - 0.5)) +
     ggplot2::facet_grid(~dummy) +
-    ggplot2::theme(text = ggplot2::element_text(size = 18), 
+    ggplot2::theme(text = ggplot2::element_text(size = 18),
                    panel.grid.major = ggplot2::element_blank(),
                    panel.grid.minor = ggplot2::element_blank(),
                    legend.position = "none",
@@ -1146,7 +1146,7 @@ plotCovariateBalanceSummary <- function(balanceSummary,
                          stringToVars(balanceSummary$percentilesAfter),
                          type = afterLabel))
   vizData$type <- factor(vizData$type, levels = c(beforeLabel, afterLabel))
-  
+
   plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = x,
                                                 ymin = ymin,
                                                 lower = lower,
@@ -1174,7 +1174,7 @@ plotCovariateBalanceSummary <- function(balanceSummary,
                    strip.background = ggplot2::element_blank(),
                    strip.text = ggplot2::element_text(size = 11),
                    plot.margin = grid::unit(c(0,0,0.1,0), "lines"))
-  
+
   if (threshold != 0) {
     plot <- plot + ggplot2::geom_hline(yintercept = c(threshold, -threshold), linetype = "dotted")
   }
@@ -1182,14 +1182,14 @@ plotCovariateBalanceSummary <- function(balanceSummary,
   after$max <- pmax(abs(after$ymin), abs(after$ymax))
   text <- data.frame(y = rep(c(after$x, nrow(after) + 1.25) , 3),
                      x = rep(c(1,2,3), each = nrow(after) + 1),
-                     label = c(c(as.character(after$databaseId), 
+                     label = c(c(as.character(after$databaseId),
                                  "Source",
-                                 formatC(after$covariateCount, big.mark = ",", format = "d"), 
-                                 "Covariate\ncount", 
+                                 formatC(after$covariateCount, big.mark = ",", format = "d"),
+                                 "Covariate\ncount",
                                  formatC(after$max,  digits = 2, format = "f"),
                                  paste(afterLabel, "max(absolute)", sep = "\n"))),
                      dummy = "")
-  
+
   data_table <- ggplot2::ggplot(text, ggplot2::aes(x = x, y = y, label = label)) +
     ggplot2::geom_text(size = 4, hjust=0, vjust=0.5) +
     ggplot2::geom_hline(ggplot2::aes(yintercept=nrow(after) + 0.5)) +
@@ -1206,7 +1206,7 @@ plotCovariateBalanceSummary <- function(balanceSummary,
     ggplot2::labs(x="",y="") +
     ggplot2::facet_grid(~dummy) +
     ggplot2::coord_cartesian(xlim=c(1,4), ylim = c(0.5, max(vizData$x) + 1.75))
-  
+
   plot <- gridExtra::grid.arrange(data_table, plot, ncol = 2)
   return(plot)
 }
@@ -1233,16 +1233,16 @@ fitNull <- function (logRr, seLogRr) {
     logRr <- logRr[!is.na(logRr)]
   }
   gaussianProduct <- function(mu1, mu2, sd1, sd2) {
-    (2 * pi)^(-1/2) * (sd1^2 + sd2^2)^(-1/2) * exp(-(mu1 - 
+    (2 * pi)^(-1/2) * (sd1^2 + sd2^2)^(-1/2) * exp(-(mu1 -
                                                        mu2)^2/(2 * (sd1^2 + sd2^2)))
   }
   LL <- function(theta, estimate, se) {
     result <- 0
     for (i in 1:length(estimate)) {
-      result <- result - log(gaussianProduct(estimate[i], 
+      result <- result - log(gaussianProduct(estimate[i],
                                              theta[1], se[i], exp(theta[2])))
     }
-    if (length(result) == 0 || is.infinite(result)) 
+    if (length(result) == 0 || is.infinite(result))
       result <- 99999
     result
   }
@@ -1291,17 +1291,17 @@ plotEmpiricalNulls <- function(negativeControls, limits = c(0.1, 10)) {
     dist$yMax[idx] <- d$y[i] - 0.35 + y
     dist$yMin[idx] <- d$y[i] - 0.35
   }
-  
+
   breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10)
   plot <- ggplot2::ggplot(d, ggplot2::aes(group = label)) +
-    ggplot2::geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.2) + 
+    ggplot2::geom_vline(xintercept = log(breaks), colour = "#AAAAAA", lty = 1, size = 0.2) +
     ggplot2::geom_vline(xintercept = 0) +
     ggplot2::geom_ribbon(ggplot2::aes(x = x, ymax = yMax, ymin = yMin), fill = rgb(1, 0, 0), alpha = 0.6, data = dist)
-  
-  
-  plot <- plot + ggplot2::geom_errorbarh(ggplot2::aes(xmax = xMax, xmin = xMin, y = y), height = 0.5, color = rgb(0, 0, 0), size = 0.5) + 
-    ggplot2::geom_point(ggplot2::aes(x = mean, y = y), shape = 16, size = 2) + 
-    ggplot2::coord_cartesian(xlim = log(limits), ylim = c(0.5, (nrow(d) + 1))) + 
+
+
+  plot <- plot + ggplot2::geom_errorbarh(ggplot2::aes(xmax = xMax, xmin = xMin, y = y), height = 0.5, color = rgb(0, 0, 0), size = 0.5) +
+    ggplot2::geom_point(ggplot2::aes(x = mean, y = y), shape = 16, size = 2) +
+    ggplot2::coord_cartesian(xlim = log(limits), ylim = c(0.5, (nrow(d) + 1))) +
     ggplot2::scale_x_continuous("Hazard ratio", breaks = log(breaks), labels = breaks) +
     ggplot2::theme(panel.grid.major.y = ggplot2::element_blank(),
                    panel.grid.minor.y = ggplot2::element_blank(),
@@ -1316,17 +1316,17 @@ plotEmpiricalNulls <- function(negativeControls, limits = c(0.1, 10)) {
                    strip.background = ggplot2::element_blank(),
                    strip.text = ggplot2::element_text(size = 11),
                    plot.margin = grid::unit(c(0,0,0.1,0), "lines"))
-  
+
   text <- data.frame(y = rep(c(d$y, nrow(d) + 1), 3),
                      x = rep(c(1,2,3.2), each = nrow(d) + 1),
-                     label = c(c(as.character(d$label), 
+                     label = c(c(as.character(d$label),
                                  "Source",
-                                 d$meanLabel, 
-                                 " Mean", 
+                                 d$meanLabel,
+                                 " Mean",
                                  d$sdLabel,
                                  "SD")),
                      dummy = "")
-  
+
   data_table <- ggplot2::ggplot(text, ggplot2::aes(x = x, y = y, label = label)) +
     ggplot2::geom_text(size = 4, hjust = 0, vjust = 0.5) +
     ggplot2::geom_hline(ggplot2::aes(yintercept = nrow(d) + 0.5)) +
@@ -1342,7 +1342,7 @@ plotEmpiricalNulls <- function(negativeControls, limits = c(0.1, 10)) {
                    plot.margin = grid::unit(c(0,0,0.1,0), "lines")) +
     ggplot2::labs(x = "",y = "") +
     ggplot2::coord_cartesian(xlim = c(1,4), ylim = c(0.5, (nrow(d) + 1)))
-  
+
   plot <- gridExtra::grid.arrange(data_table, plot, ncol = 2)
   return(plot)
 }
