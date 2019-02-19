@@ -1,9 +1,16 @@
-downloadBloodPressureData <- function(connectionDetails, indicationFolder, bpFolder) {
+downloadBloodPressureData <- function(connectionDetails,
+                                      indicationFolder,
+                                      bpFolder,
+                                      indicationId,
+                                      cdmDatabaseSchema,
+                                      cohortDatabaseSchema,
+                                      tablePrefix,
+                                      oracleTempSchema = NULL) {
     if (!file.exists(bpFolder)) {
         dir.create(bpFolder)
     }
 
-    prepareForDataFetch <- function(conn, indicationFolder) {
+    prepareForDataFetch <- function(conn, indicationFolder, indicationId, cohortDatabaseSchema, tablePrefix, oracleTempSchema) {
         pairedCohortTable <- paste(tablePrefix, tolower(indicationId), "pair_cohort", sep = "_")
         cohortsFolder <- file.path(indicationFolder, "allCohorts")
         exposureSummary <- read.csv(file.path(indicationFolder,
@@ -57,27 +64,8 @@ downloadBloodPressureData <- function(connectionDetails, indicationFolder, bpFol
     }
 
     conn <- DatabaseConnector::connect(connectionDetails)
-    sql <- "SELECT measurement_type_concept_id, COUNT(*)
-FROM @cdm_database_schema.measurement
-WHERE measurement_concept_id IN (3004249, 3012888)
-GROUP BY measurement_type_concept_id;"
-    sql <- SqlRender::renderSql(sql, cdm_database_schema = cdmDatabaseSchema)$sql
-    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    types <- DatabaseConnector::querySql(conn, sql)
 
-    querySql(conn, "SELECT * FROM cdm_optum_panther_v735.dbo.concept WHERE concept_id = 45754907")
-    querySql(conn, "SELECT TOP 10 * FROM cdm_optum_panther_v735.dbo.measurement WHERE measurement_concept_id IN (3004249, 3012888)")
-
-    sql <- "SELECT MEASUREMENT_SOURCE_VALUE, COUNT(*)
-FROM @cdm_database_schema.measurement
-WHERE measurement_concept_id IN (3004249, 3012888)
-GROUP BY MEASUREMENT_SOURCE_VALUE;"
-    sql <- SqlRender::renderSql(sql, cdm_database_schema = cdmDatabaseSchema)$sql
-    sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
-    types <- DatabaseConnector::querySql(conn, sql)
-
-
-    prepareForDataFetch(conn, indicationFolder)
+    prepareForDataFetch(conn, indicationFolder, indicationId, cohortDatabaseSchema, tablePrefix, oracleTempSchema)
 
     sql <- "SELECT row_id,
     value_as_number,
@@ -345,7 +333,7 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
 }
 
 computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
-    # row <- tcs[4,]
+    # row <- tcs[1,]
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
     bps <- bps[bps$valueAsNumber > 25, ]
@@ -359,6 +347,10 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
                                                 "cmOutput",
                                                 "outcomeModelReference3.rds"))
     outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
+
+    # outcomeModelReference <- readRDS(file.path(indicationFolder,
+    #                                            "cmOutput",
+    #                                            "outcomeModelReference1.rds"))
     onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
                                                        outcomeModelReference$analysisId == 1, ]
@@ -369,12 +361,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
     ps <- readRDS(file.path(bpFolder, onTreatment$sharedPsFile[1]))
     cmData <- CohortMethod::loadCohortMethodData(file.path(bpFolder, onTreatment$cohortMethodDataFolder[1]))
 
-    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
-    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
-    outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
 
-
-    onTreatment <- onTreatment[onTreatment$outcomeId %in% outcomesOfInterest$cohortId, ]
+    # onTreatment <- onTreatment[onTreatment$outcomeId %in% outcomesOfInterest$cohortId, ]
 
     computeHr <- function(i) {
         # i = 1
@@ -401,53 +389,85 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
 
 
     originalSummary <- CohortMethod::summarizeAnalyses(onTreatment, file.path(indicationFolder, "cmOutput"))
-    bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, bpFolder)
-
-    # flipPcs <- TRUE
-    # pathToCsv <- file.path(indicationFolder, "signalInjectionSummary.csv")
-    # siSummary <- read.csv(pathToCsv)
-    # if (flipPcs) {
-    #     siSummary <- siSummary[siSummary$exposureId == row$comparatorId, ]
-    #     siSummary$targetEffectSize <- 1 / siSummary$targetEffectSize
-    # } else {
-    #     siSummary <- siSummary[siSummary$exposureId == row$targetId, ]
-    # }
-    # pcs <- data.frame(outcomeId = siSummary$newOutcomeId, targetEffectSize = siSummary$targetEffectSize)
-    # pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
-    # negativeControls <- read.csv(pathToCsv)
-    # negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
-    # ncs <- data.frame(outcomeId = negativeControls$cohortId, targetEffectSize = 1)
-    # controls <- rbind(pcs, ncs)
-
-    # calibrate <- function(estimates) {
-    #     controlEstimates <- merge(estimates, controls)
-    #     errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
-    #                                                                 seLogRr = controlEstimates$seLogRr,
-    #                                                                 trueLogRr = log(controlEstimates$targetEffectSize))
-    #     EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
-    #                                                   seLogRr = controlEstimates$seLogRr,
-    #                                                   trueLogRr = log(controlEstimates$targetEffectSize))
-    #     calibrated <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = estimates$logRr,
-    #                                                                     seLogRr = estimates$seLogRr,
-    #                                                                     model = errorModel)
-    #     calibrated$rr <- exp(calibrated$logRr)
-    #     calibrated$ci95lb <- exp(calibrated$logLb95Rr)
-    #     calibrated$ci95ub <- exp(calibrated$logUb95Rr)
-    #     calibrated$logLb95Rr <- NULL
-    #     calibrated$logUb95Rr <- NULL
-    #     calibrated$outcomeId <- estimates$outcomeId
-    #     calibrated$estimate <- "Calibrated"
-    #     estimates$estimate <- "Uncalibrated"
-    #     estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
-    # }
-    # originalSummary <- calibrate(originalSummary)
-    # bpAdjustedSummary <- calibrate(bpAdjustedSummary)
-
     originalSummary$type <- "Original"
+    bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, bpFolder)
     bpAdjustedSummary$type <- "Adjusting for\nblood pressure"
-    vizData <- rbind(originalSummary, bpAdjustedSummary)
-    vizData <- merge(vizData, data.frame(outcomeId = outcomesOfInterest$cohortId,
-                                         outcomeName = outcomesOfInterest$name))
+    estimates <- rbind(originalSummary, bpAdjustedSummary)
+
+    # Calibration ------------------------------------------
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
+    pathToCsv <- file.path(indicationFolder, "signalInjectionSummary.csv")
+    siSummary <- read.csv(pathToCsv)
+    siSummary <- siSummary[siSummary$newOutcomeId %in% estimates$outcomeId, ]
+    pcs <- data.frame(outcomeId = siSummary$newOutcomeId, targetEffectSize = siSummary$trueEffectSize)
+    pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
+    negativeControls <- read.csv(pathToCsv)
+    negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
+
+    estimates <- merge(estimates,
+                       data.frame(outcomeId = siSummary$newOutcomeId,
+                                  targetEffectSize = siSummary$targetEffectSize),
+                       all.x = TRUE)
+    estimates$targetEffectSize[estimates$outcomeId %in% negativeControls$cohortId] <- 1
+
+    tcEstimates <- estimates[estimates$outcomeId %in% outcomesOfInterest$cohortId |
+                                 estimates$outcomeId %in% negativeControls$cohortId |
+                                 estimates$outcomeId  %in% siSummary$newOutcomeId[siSummary$exposureId == row$targetId], ]
+
+    ctEstimates <- estimates[estimates$outcomeId %in% outcomesOfInterest$cohortId |
+                                 estimates$outcomeId %in% negativeControls$cohortId |
+                                 estimates$outcomeId  %in% siSummary$newOutcomeId[siSummary$exposureId == row$comparatorId], ]
+    temp <- ctEstimates$targetId
+    ctEstimates$targetId <- ctEstimates$comparatorId
+    ctEstimates$comparatorId <- temp
+    temp <- ctEstimates$target
+    ctEstimates$target <- ctEstimates$comparator
+    ctEstimates$comparator <- temp
+    temp <- ctEstimates$targetDays
+    ctEstimates$targetDays <- ctEstimates$comparatorDays
+    ctEstimates$comparatorDays <- temp
+    temp <- ctEstimates$eventsTarget
+    ctEstimates$eventsTarget <- ctEstimates$eventsComparator
+    ctEstimates$eventsComparator <- temp
+    ctEstimates$logRr <- -ctEstimates$logRr
+    ctEstimates$rr <- 1/ctEstimates$r
+    temp <- 1/ctEstimates$ci95ub
+    ctEstimates$ci95ub <- 1/ctEstimates$ci95lb
+    ctEstimates$ci95lb <- temp
+
+    calibrate <- function(estimates) {
+        controlEstimates <- estimates[!is.na(estimates$targetEffectSize), ]
+        controlEstimates <- controlEstimates[!is.na(controlEstimates$seLogRr), ]
+        errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
+                                                                    seLogRr = controlEstimates$seLogRr,
+                                                                    trueLogRr = log(controlEstimates$targetEffectSize))
+        # EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
+        #                                               seLogRr = controlEstimates$seLogRr,
+        #                                               trueLogRr = log(controlEstimates$targetEffectSize))
+        cal <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = estimates$logRr,
+                                                                        seLogRr = estimates$seLogRr,
+                                                                        model = errorModel)
+        calibrated <- estimates
+        calibrated$rr <- exp(cal$logRr)
+        calibrated$ci95lb <- exp(cal$logLb95Rr)
+        calibrated$ci95ub <- exp(cal$logUb95Rr)
+        calibrated$logLb95Rr <- NULL
+        calibrated$logUb95Rr <- NULL
+        calibrated$outcomeId <- estimates$outcomeId
+        calibrated$type <- estimates$type
+        calibrated$estimate <- "Calibrated"
+        estimates$estimate <- "Uncalibrated"
+        estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
+    }
+    estimates <- rbind(calibrate(tcEstimates[tcEstimates$type == "Original", ]),
+                       calibrate(tcEstimates[tcEstimates$type == "Adjusting for\nblood pressure", ]),
+                       calibrate(ctEstimates[tcEstimates$type == "Original", ]),
+                       calibrate(ctEstimates[tcEstimates$type == "Adjusting for\nblood pressure", ]))
+
+    vizData <- merge(estimates, data.frame(outcomeId = outcomesOfInterest$cohortId,
+                                           outcomeName = outcomesOfInterest$name))
     vizData <- vizData[!is.na(vizData$seLogRr), ]
     outcomeNames <- unique(vizData$outcomeName)
     outcomeNames <- outcomeNames[order(outcomeNames, decreasing = TRUE)]
@@ -467,7 +487,7 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
                            type = "Original",
                            rr = 1,
                            y = 1)
-        # vizData$estimate <- factor(vizData$estimate, levels = c("Uncalibrated", "Calibrated"))
+        vizData$estimate <- factor(vizData$estimate, levels = c("Uncalibrated", "Calibrated"))
         plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = rr, y = y, color = type, shape = type, xmin = ci95lb, xmax = ci95ub)) +
             ggplot2::geom_rect(ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "#EEEEEE", colour = "#EEEEEE", size = 0, data = bars) +
             ggplot2::geom_vline(xintercept = breaks, colour = "#AAAAAA", lty = 1, size = 0.25) +
@@ -479,7 +499,7 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
             ggplot2::scale_x_log10(breaks = breaks, labels = breaks) +
             ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.65), rgb(0, 0, 0.8, alpha = 0.65))) +
             ggplot2::xlab("Hazard Ratio") +
-            # ggplot2::facet_grid(~estimate) +
+            ggplot2::facet_grid(~estimate) +
             ggplot2::theme(axis.title.y = ggplot2::element_blank(),
                            legend.title = ggplot2::element_blank(),
                            panel.grid.minor = ggplot2::element_blank(),
@@ -487,14 +507,10 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
                            panel.grid.major = ggplot2::element_blank(),
                            axis.ticks = ggplot2::element_blank(),
                            strip.background = ggplot2::element_blank())
-        # ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 10, dpi = 400)
-        ggplot2::ggsave(filename = fileName, plot = plot, width = 6.5, height = 10, dpi = 400)
+        ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 10, dpi = 400)
+        # ggplot2::ggsave(filename = fileName, plot = plot, width = 6.5, height = 10, dpi = 400)
     }
-    plotHrs(vizData, file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$targetName, row$comparatorName)))
-    # flip HR:
-    temp <- 1/vizData$ci95lb
-    vizData$ci95lb <- 1/vizData$ci95ub
-    vizData$ci95ub <- temp
-    vizData$rr <- 1/vizData$rr
-    plotHrs(vizData, file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$comparatorName, row$targetName)))
+    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$targetName, row$comparatorName)))
+
+    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$comparatorName, row$targetName)))
 }
