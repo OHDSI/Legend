@@ -543,3 +543,150 @@ write.csv(powerTable, file.path(paperFolder, "Power.csv"), row.names = FALSE)
 
 disconnect(connection)
 
+# Blood pressure sensitivity analysis --------------------------------------------
+
+# Balance table
+balanceOriginal <- read.csv("Documents/bpData/Balance.csv")
+balanceAdjustBp <- read.csv("Documents/bpData/BalanceAdjustBp.csv")
+rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
+balanceOriginal <- data.frame(targetId = balanceOriginal$targetId,
+                              comparatorId = balanceOriginal$comparatorId,
+                              covariateName = balanceOriginal$covariateName,
+                              beforeSdOriginal = balanceOriginal$beforeMatchingStdDiff,
+                              afterSdOriginal = balanceOriginal$afterMatchingStdDiff)
+balanceAdjustBp <- data.frame(targetId = balanceAdjustBp$targetId,
+                              comparatorId = balanceAdjustBp$comparatorId,
+                              covariateName = balanceAdjustBp$covariateName,
+                              beforeSdAdjustBp = balanceAdjustBp$beforeMatchingStdDiff,
+                              afterSdAdjustBp = balanceAdjustBp$afterMatchingStdDiff)
+selectedTcs <- unique(data.frame(targetId = rctEstimates$comparatorId,
+                                 targetName = rctEstimates$comparatorName,
+                                 comparatorId = rctEstimates$targetId,
+                                 comparatorName = rctEstimates$targetName))
+balance <- merge(balanceOriginal, balanceAdjustBp)
+balance <- merge(balance, selectedTcs)
+balance <- balance[order(balance$targetName, balance$comparatorName, balance$comparatorName), ]
+balance <- balance[, c("targetName", "comparatorName", "covariateName", "beforeSdOriginal", "afterSdOriginal", "beforeSdAdjustBp", "afterSdAdjustBp")]
+balance$covariateName <- as.character(balance$covariateName)
+balance$covariateName[balance$covariateName == "BP systolic"] <- "Systolic"
+balance$covariateName[balance$covariateName == "BP diastolic"] <- "Diastolic"
+write.csv(balance, file.path(paperFolder, "BalanceBp.csv"), row.names = FALSE)
+
+# Estimates with and without BP adjustment
+estimates <-  read.csv("Documents/bpData/HrsData_all.csv")
+estimates <- estimates[estimates$estimate == "Calibrated", ]
+rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
+combined <- merge(rctEstimates[, c("targetId", "targetName", "comparatorId", "comparatorName", "outcomeId")], estimates)
+
+computeConcordance <- function(subset) {
+    estimateOriginal <- subset[subset$type == "Original", ]
+    estimateAdjustBp <- subset[subset$type != "Original", ]
+    # someOverlap <- estimateOriginal$ci95lb <= estimateAdjustBp$ci95ub & estimateOriginal$ci95ub >= estimateAdjustBp$ci95lb
+    completeOverlap <- (estimateOriginal$ci95lb >= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub <= estimateAdjustBp$ci95ub) |
+        (estimateOriginal$ci95lb <= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub >= estimateAdjustBp$ci95ub)
+    oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
+        s1 <- (log(ub1) - log(lb1))/(2*1.96)
+        s2 <- (log(ub2) - log(lb2))/(2*1.96)
+        se <- sqrt(s1^2 + s2^2)
+        z <- (log(hr2) - log(hr1))/se
+        dat <- 2*pnorm(-abs(z))
+        return(dat)
+    }
+    pDifference <- oddsTest(estimateOriginal$ci95lb , estimateOriginal$rr, estimateOriginal$ci95ub , estimateAdjustBp$ci95lb, estimateAdjustBp$rr, estimateAdjustBp$ci95ub)
+    if (pDifference < 0.05) {
+        concordance <- "Statistically significant difference (p < 0.05)"
+    } else if (completeOverlap) {
+        concordance <- "Full overlap of confidence intervals"
+    } else {
+        concordance <- "Partial overlap of confidence intervals"
+    }
+    return(data.frame(targetId = estimateOriginal$targetId,
+                      comparatorId = estimateOriginal$comparatorId,
+                      outcomeId = estimateOriginal$outcomeId,
+                      Concordance = concordance,
+                      stringsAsFactors = FALSE))
+}
+subsets <- split(combined, paste(combined$targetId, combined$comparatorId, combined$outcomeId))
+concordance <- lapply(subsets, computeConcordance)
+concordance <- do.call("rbind", concordance)
+combined <- merge(combined, concordance)
+combined$Concordance[combined$type == "Original"] <- "Reference"
+combined$type <- as.character(combined$type)
+combined$type[combined$type == "Adjusting for\nblood pressure"] <- "Adjusting for blood pressure"
+
+outcome = "Stroke"
+createPlotForOutcome <- function(outcome, combined) {
+    vizData <- combined[combined$outcomeName == outcome, ]
+    vizData$Analysis <- factor(vizData$type, levels = c("Adjusting for blood pressure", "Original"))
+    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Partial overlap of confidence intervals", "Full overlap of confidence intervals", "Statistically significant difference (p < 0.05)"))
+    vizData$show <- 1
+    vizData
+    breaks <- c(0.25, 0.5, 1, 2, 4)
+    plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = rr, xmin = ci95lb, xmax = ci95ub, y = Analysis, color = Concordance, shape = Analysis)) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 0.25*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 0.5*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 2*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 4*show), colour = "#AAAAAA", size = 0.2) +
+        ggplot2::geom_vline(ggplot2::aes(xintercept = 1*show), size = 0.5) +
+        ggplot2::geom_errorbarh(size = 0.6, height = 0.3) +
+        ggplot2::geom_point(size = 2) +
+        ggplot2::scale_x_log10("Hazard ratio",
+                               breaks = breaks,
+                               labels = as.character(breaks),
+                               position = "bottom") +
+        ggplot2::coord_cartesian(xlim = c(1/3, 3)) +
+        ggplot2::facet_grid(targetName ~ comparatorName, switch = "y") +
+        ggplot2::scale_shape_manual(values = c(15, 16, 17),
+                                    guide = ggplot2::guide_legend(direction = "vertical", reverse = TRUE)) +
+        # Colors from http://ksrowell.com/blog-visualizing-data/2012/02/02/optimal-colors-for-graphs/
+        ggplot2::scale_color_manual(values = c(rgb(0, 0, 0),
+                                               rgb(0.8549020, 0.4862745, 0.1882353),
+                                               rgb(0.2431373, 0.5882353, 0.3176471),
+                                               rgb(0.8000000, 0.1450980, 0.1607843)),
+                                    guide = ggplot2::guide_legend(direction = "vertical", reverse = FALSE)) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank(),
+                       panel.background = ggplot2::element_blank(),
+                       axis.title.y = ggplot2::element_blank(),
+                       axis.text.y = ggplot2::element_blank(),
+                       axis.text.x = ggplot2::element_text(size = 8),
+                       axis.ticks = ggplot2::element_blank(),
+                       strip.background = ggplot2::element_blank(),
+                       legend.position = "bottom")
+    return(plot)
+}
+combined$outcomeName <- as.character(combined$outcomeName)
+combined$outcomeName[combined$outcomeName == "Acute myocardial infarction"] <- "Myocardial infarction"
+plot1 <- createPlotForOutcome("Heart failure", combined)
+plot2 <- createPlotForOutcome("Myocardial infarction", combined)
+plot3 <- createPlotForOutcome("Stroke", combined)
+
+# ggplot2::ggsave(filename = sprintf("c:/temp/%s.png", outcome), width = 8, height = 4, dpi = 300)
+
+grabLegend <- function(a.gplot){
+    tmp <- ggplot2::ggplot_gtable(ggplot2::ggplot_build(a.gplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)}
+
+mylegend <- grabLegend(plot2)
+
+plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
+                                                       axis.title.x = ggplot2::element_blank(),
+                                                       axis.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Heart failure", rot = -90),
+                                plot2 + ggplot2::theme(legend.position = "none",
+                                                       axis.title.x = ggplot2::element_blank(),
+                                                       axis.text.x = ggplot2::element_blank(),
+                                                       strip.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Myocardial infarction", rot = -90),
+                                plot3 + ggplot2::theme(legend.position = "none",
+                                                       strip.text.x = ggplot2::element_blank()),
+                                grid::textGrob("Stroke", rot = -90),
+                                mylegend,
+                                grid::textGrob(""),
+                                ncol = 2,
+                                widths = c(100, 3),
+                                heights = c(100, 85, 105, 80))
+
+
+ggplot2::ggsave(filename = file.path(paperFolder, "AdjustBpEffect.png"), plot, width = 7, height = 7, dpi = 300)
