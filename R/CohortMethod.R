@@ -104,8 +104,9 @@ runCohortMethod <- function(outputFolder, indicationId = "Depression", databaseI
     cmAnalysisListInteractions <- CohortMethod::loadCmAnalysisList(cmAnalysisListFile)
 
     if ((databaseId == "CCAE" || databaseId == "Optum" || databaseId == "Panther") && indicationId == "Hypertension") {
-        ParallelLogger::logInfo("*** Skipping matching and interactions for CCAE, Optum, and Panther (Hypertension) ***")
-        cmAnalysisListAsym <- list()
+        # ParallelLogger::logInfo("*** Skipping matching and interactions for CCAE, Optum, and Panther (Hypertension) ***")
+        ParallelLogger::logInfo("*** Skipping interactions for CCAE, Optum, and Panther (Hypertension) ***")
+        # cmAnalysisListAsym <- list()
         cmAnalysisListInteractions <- list()
     }
 

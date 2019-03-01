@@ -146,7 +146,7 @@ synthesizePositiveControls <- function(connectionDetails,
                                             workFolder = signalInjectionFolder,
                                             cdmVersion = "5",
                                             modelThreads = max(1, round(maxCores/10)),
-                                            generationThreads = min(6, maxCores))
+                                            generationThreads = min(10, maxCores))
     # summ <- read.csv(file.path(indicationFolder, 'signalInjectionSummary.csv'))
     write.csv(summ, file.path(indicationFolder, "signalInjectionSummary.csv"), row.names = FALSE)
 

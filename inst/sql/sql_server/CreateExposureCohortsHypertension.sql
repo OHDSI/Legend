@@ -22,6 +22,7 @@ limitations under the License.
 {DEFAULT @exposure_combi_table = '#exposure_combi'}
 {DEFAULT @drug_ancestor_table = '#drug_ancestor'}
 {DEFAULT @eoi_table = '#eoi'}
+{DEFAULT @impute_exposure_length_when_missing = FALSE}
 {DEFAULT @washout_period = 365} 
 {DEFAULT @max_gap = 30} 
 
@@ -44,7 +45,11 @@ FROM (
 				THEN DATEADD(DAY, days_supply, drug_exposure_start_date)
 			ELSE drug_exposure_end_date
 			END AS exposure_end_date
+{@impute_exposure_length_when_missing} ? {
+	FROM #drug_exposure
+} : {
 	FROM @cdm_database_schema.drug_exposure
+}
 	INNER JOIN @cdm_database_schema.concept_ancestor
 		ON drug_concept_id = descendant_concept_id
 	INNER JOIN @eoi_table eoi
@@ -61,7 +66,11 @@ FROM (
 				THEN DATEADD(DAY, days_supply, drug_exposure_start_date)
 			ELSE drug_exposure_end_date
 			END AS exposure_end_date
+{@impute_exposure_length_when_missing} ? {
+	FROM #drug_exposure
+} : {
 	FROM @cdm_database_schema.drug_exposure
+}
 	INNER JOIN @cdm_database_schema.concept_ancestor
 		ON drug_concept_id = concept_ancestor.descendant_concept_id
 	INNER JOIN  @drug_ancestor_table drug_ancestor
@@ -378,3 +387,8 @@ DROP TABLE #mono_new_user;
 
 TRUNCATE TABLE #duo_new_user;
 DROP TABLE #duo_new_user;
+
+{@impute_exposure_length_when_missing} ? {
+TRUNCATE TABLE #drug_exposure;
+DROP TABLE #drug_exposure;
+}

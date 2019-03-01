@@ -46,6 +46,8 @@
 #' @param databaseDescription                  A short description (several sentences) of the database.
 #' @param minCellCount                         The minimum cell count for fields contains person counts
 #'                                             or fractions when exporting to CSV.
+#' @param imputeExposureLengthWhenMissing      For PanTher: impute length of drug exposures when the
+#'                                             length is missing?
 #' @param createExposureCohorts                Create the tables with the exposure cohorts?
 #' @param createOutcomeCohorts                 Create the tables with the outcome cohorts?
 #' @param fetchAllDataFromServer               Fetch all relevant data from the server?
@@ -73,6 +75,7 @@ execute <- function(connectionDetails,
                     databaseName = "Unknown",
                     databaseDescription = "Unknown",
                     minCellCount = 5,
+                    imputeExposureLengthWhenMissing = FALSE,
                     createExposureCohorts = TRUE,
                     createOutcomeCohorts = TRUE,
                     fetchAllDataFromServer = TRUE,
@@ -90,10 +93,11 @@ execute <- function(connectionDetails,
         dir.create(indicationFolder, recursive = TRUE)
     }
     ParallelLogger::addDefaultFileLogger(file.path(indicationFolder, "log.txt"))
+    on.exit(ParallelLogger::unregisterLogger("DEFAULT"))
 
     sinkFile <- file(file.path(indicationFolder, "console.txt"), open = "wt")
     sink(sinkFile, split = TRUE)
-    on.exit(sink())
+    on.exit(sink(), add = TRUE)
 
     if (createExposureCohorts) {
         createExposureCohorts(connectionDetails = connectionDetails,
@@ -102,7 +106,8 @@ execute <- function(connectionDetails,
                               tablePrefix = tablePrefix,
                               indicationId = indicationId,
                               oracleTempSchema = oracleTempSchema,
-                              outputFolder = outputFolder)
+                              outputFolder = outputFolder,
+                              imputeExposureLengthWhenMissing = imputeExposureLengthWhenMissing)
         filterByExposureCohortsSize(outputFolder = outputFolder, indicationId = indicationId)
     }
     if (createOutcomeCohorts) {
@@ -172,4 +177,5 @@ execute <- function(connectionDetails,
                       minCellCount = minCellCount,
                       maxCores = maxCores)
     }
+    ParallelLogger::logFatal("Finished")
 }
