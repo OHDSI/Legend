@@ -4,7 +4,7 @@ bibliography: CohortDefinition.bib
 link-citations: yes
 output:
   bookdown::html_document2: default
-csl: nature-publishing-group-vancouver.csl 
+csl: nature-publishing-group-vancouver.csl
 ---
 
 ```{r setup, include=FALSE}
@@ -14,18 +14,25 @@ library(dplyr)
 
 # Definition process {-}
 
-Outcomes for LEGEND were initially identified from endpoints from clinical trials reporting in clinical guidelines and systematic reviews, and augmented by adverse events listed on US structured product labels of hypertension drugs (https://dailymed.nlm.nih.gov/dailymed/).
-Each outcome was then assessed to determine if it was evaluable in observational data by developing and evaluating an operational phenotype definition.
-All phenotypes were designed, implemented and evaluated using the same approach:  Initial design was guided by literature review in PubMed of prior observational studies of administrative claims or electronic health records where the phenotype was used as a study outcome, and if available, validated through source record verification or other means.
-Literature review was complemented by review of eMERGE PheKB phenotype entries (https://phekb.org/phenotypes).
-Clinical definitions of cardiovascular outcomes were determined from clinical guidelines and systematic review of clinical trials of hypertension treatments (@Reboussin2018 @Whelton2018 @Williams2018).
-Where possible, conceptsets originated with published codelists (e.g. ICD-9-CM and ICD-10) and were augmented through lexical search and semantic exploration of the OHDSI standardized vocabularies.
-Cohort definitions and associated conceptsets were then reviewed by a clinical adjudicator.
-Cohort definitions were developed using the OHDSI open-source platform ATLAS (https://github.com/OHDSI/atlas).
-These definitions were initially executed across 7 databases (CCAE, MDCR, MDCD, Optum, Panther, JMDC, IMS Germany) to identify qualifying patients.
-Because the databases used in this study do not all consistently contain laboratory values, outcomes involving electrolyte imbalance (hypokalemia, hypomagnesemia, hyponatremia) were defined by diagnosis records only.
-These cohorts were used to produce characterization of outcome incidence, stratified by age decile, gender, and index year, to determine if outcomes were being observed in a frequency that was generally consistent across data sources and sufficiently aligned with epidemiologic expectations of the disease.
-No source record verification or other methods for validation was performed.       
+We originally identified outcomes for LEGEND from clinical trial
+endpoints from clinical guidelines and systematic
+reviews.
+We augmented these with adverse events from US structured product labels of hypertension drugs (https://dailymed.nlm.nih.gov/dailymed/).
+For each outcome, we developed an operational phenotype definition to determine if observational data could in fact support evaluation of the outcome.
+We used the same approach to design, implement, and evaluate all
+phenotypes.
+Specifically, we conducted a PubMed literature review to identify prior observational studies that used the phenotype as an outcome, looking especially for studies where source record verification or other approaches validated the outcome.
+In addition, we reviewed eMERGE PheKB phenotype entries (https://phekb.org/phenotypes).
+Clinical guidelines and systematic review of clinical trials of hypertension treatments informed our clinical definitions of cardiovascular outcomes (@Reboussin2018 @Whelton2018 @Williams2018).
+Where possible, conceptsets originated with published codelists (e.g. ICD-9-CM and ICD-10).
+We augmented these with lexical search and semantic exploration of the OHDSI standardized vocabularies.
+A clinical adjudicator then reviewed the cohort definitions and associated conceptsets.
+We developed concept definitions using ATLAS, the OHDSI open-source platform
+(https://github.com/OHDSI/atlas).
+We initially executed these definitions across 7 databases (CCAE, MDCR, MDCD, Optum, Panther, JMDC, IMS Germany) to identify qualifying patients.
+Because the databases used in this study do not all consistently contain laboratory values, diagnosis records alone identified outcomes involving electrolyte imbalance (hypokalemia, hypomagnesemia, hyponatremia).
+To assess consistency across data sources as well as general clinical reasonableness, we utilized these cohorts to characterize outcome incidence, stratifying by age decile, gender, and index year.
+We did not perform source record verification or other validation methods.
 
 ```{r, echo=FALSE}
 tab <- read.csv("CohortDefinitionTable.csv")
