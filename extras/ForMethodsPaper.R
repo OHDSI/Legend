@@ -34,7 +34,7 @@ connection <- connect(connectionDetails)
 x <- querySql(connection, "SELECT * FROM database;")
 
 querySql(connection, "SELECT COUNT(*) FROM chronograph WHERE ic IS NULL;")
-querySql(connection, "SELECT COUNT(*) FROM chronograph;")
+querySql(connection, "SELECT * FROM preference_score_dist WHERE database_id = 'CCAE' LIMIT 100;")
 
 2600581 / 3967179
 
@@ -54,9 +54,9 @@ writeLines(paste("Combination classes:", nrow(comboClasses)))
 
 majorClasses <- unique(exposures[exposures$exposureGroup == "Drug major class", ])
 singleMajorClasses <- majorClasses[!grepl(" & ", majorClasses$exposureName), ]
-comboCMajorlasses <- majorClasses[grepl(" & ", majorClasses$exposureName), ]
+comboMajorClasses <- majorClasses[grepl(" & ", majorClasses$exposureName), ]
 writeLines(paste("Single major classes:", nrow(singleMajorClasses)))
-writeLines(paste("Combination major classes:", nrow(comboCMajorlasses)))
+writeLines(paste("Combination major classes:", nrow(comboMajorClasses)))
 
 comparisons <- querySql(connection, "SELECT target_id, comparator_id FROM cohort_method_result GROUP BY target_id, comparator_id")
 colnames(comparisons) <- SqlRender::snakeCaseToCamelCase(colnames(comparisons))
@@ -88,21 +88,34 @@ duoDuoClassComparisons <- comparisons[(comparisons$targetId %in% comboClasses$ex
 writeLines(paste("duo vs duo class comparisons:", nrow(duoDuoClassComparisons)))
 
 monoDuoMajorClassComparisons <- comparisons[(comparisons$targetId %in% singleMajorClasses$exposureId &
-                                                 comparisons$comparatorId %in% comboCMajorlasses$exposureId) |
-                                                (comparisons$targetId %in% comboCMajorlasses$exposureId &
+                                                 comparisons$comparatorId %in% comboMajorClasses$exposureId) |
+                                                (comparisons$targetId %in% comboMajorClasses$exposureId &
                                                      comparisons$comparatorId %in% singleMajorClasses$exposureId) , ]
 writeLines(paste("mono vs duo major class comparisons:", nrow(monoDuoMajorClassComparisons)))
-duoDuoMajorClassComparisons <- comparisons[(comparisons$targetId %in% comboCMajorlasses$exposureId &
-                                                comparisons$comparatorId %in% comboCMajorlasses$exposureId), ]
+duoDuoMajorClassComparisons <- comparisons[(comparisons$targetId %in% comboMajorClasses$exposureId &
+                                                comparisons$comparatorId %in% comboMajorClasses$exposureId), ]
 writeLines(paste("duo vs duo major class comparisons:", nrow(duoDuoMajorClassComparisons)))
 
 
 writeLines(paste("total comparisons:", nrow(comparisons)))
 
+# x <- comparisons[!(comparisons$targetId %in% c(singleDrugs$exposureId, singleClasses$exposureId, majorClasses$exposureId, comboDrugs$exposureId, comboClasses$exposureId, comboMajorClasses$exposureId)), ]
+# querySql(connection, "SELECT * FROM cohort_method_result WHERE target_id = 1066 LIMIT 100")
+# querySql(connection, "SELECT * FROM combi_exposure_of_interest WHERE exposure_id = 1066 LIMIT 100")
 
-outcomesUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
+outcomesToRemove <- c(39, 40, 44) # Kidney Disease, Coronary Heart Disease, Edema
+
+outcomesUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id, outcome_name FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
 writeLines(paste("total outcomes observed:", nrow(outcomesUsed)))
-tcos <- querySql(connection, "SELECT DISTINCT target_id, comparator_id, cmr.outcome_id FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
+sql <- "SELECT DISTINCT target_id,
+    comparator_id,
+    cmr.outcome_id
+FROM cohort_method_result cmr
+INNER JOIN outcome_of_interest ooi
+ON cmr.outcome_id = ooi.outcome_id
+WHERE cmr.outcome_id NOT IN (@rem)"
+sql <- SqlRender::render(sql, rem = outcomesToRemove)
+tcos <- querySql(connection, sql)
 writeLines(paste("total tcos observed:", nrow(tcos)))
 
 ncsUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id FROM cohort_method_result cmr INNER JOIN negative_control_outcome nco ON cmr.outcome_id = nco.outcome_id")
@@ -113,6 +126,8 @@ writeLines(paste("total tc - negative controls observed:", nrow(tcncs)))
 tcpcs <- querySql(connection, "SELECT DISTINCT target_id, comparator_id, cmr.outcome_id FROM cohort_method_result cmr INNER JOIN positive_control_outcome pco ON cmr.outcome_id = pco.outcome_id")
 writeLines(paste("total tc - positive controls observed:", nrow(tcpcs)))
 
+937362 + 737454
+
 
 sql <- "
 SELECT COUNT(*) FROM (
@@ -122,8 +137,10 @@ INNER JOIN outcome_of_interest
 ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
 WHERE calibrated_se_log_rr IS NOT NULL
 AND indication_id = 'Hypertension'
+AND cohort_method_result.outcome_id NOT IN (@rem)
 ) tmp;
 "
+sql <- SqlRender::render(sql, rem = outcomesToRemove)
 writeLines("Number of estimates for HOIs:")
 querySql(connection, sql)
 
@@ -352,6 +369,9 @@ writeLines(paste("Total control estimates:", coverage$CONTROL_COUNT))
 writeLines(paste("Coverage uncalibrated:", 100 * coverage$COVERAGE / coverage$CONTROL_COUNT, "%"))
 writeLines(paste("Coverage calibrated:", 100 * coverage$COVERAGE_CALIBRATED / coverage$CONTROL_COUNT, "%"))
 
+
+
+
 # Transitivity
 sql <- "
 SELECT cohort_method_result.*
@@ -483,9 +503,12 @@ mean(i2 < 0.25)
 
 
 # Exemplar study ----------------------------------------------
-targetId <- 15 # THZ
-comparatorId <- 1 # ACE
-outcomeId <- 2 # AMI
+# targetId <- 15 # THZ
+# comparatorId <- 1 # ACE
+# outcomeId <- 2 # AMI
+targetId <- 1308216 # lisinopril
+comparatorId <- 1332418 # Amlodipine
+outcomeId <- 32 # Angioedema
 
 estimates <- getMainResults(connection = connection,
                             targetIds = targetId,
@@ -540,6 +563,20 @@ colnames(powerTable) <- c("Source",
                           "Before strat. max SD ",
                           "After strat. max SD ")
 write.csv(powerTable, file.path(paperFolder, "Power.csv"), row.names = FALSE)
+
+
+estimatesSens <- getMainResults(connection = connection,
+                            targetIds = targetId,
+                            comparatorIds = comparatorId,
+                            outcomeIds = outcomeId,
+                            databaseIds = "Meta-analysis",
+                            analysisIds = 2:4)
+paste0(formatC(exp(estimatesSens$calibratedLogRr),  digits = 2, format = "f"),
+       " (",
+       formatC((estimatesSens$calibratedCi95Lb), digits = 2, format = "f"),
+       "-",
+       formatC((estimatesSens$calibratedCi95Ub), digits = 2, format = "f"),
+       ")")
 
 disconnect(connection)
 
@@ -690,3 +727,18 @@ plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
 
 
 ggplot2::ggsave(filename = file.path(paperFolder, "AdjustBpEffect.png"), plot, width = 7, height = 7, dpi = 300)
+
+# Sample sizes ---------------------------------------------------------
+sql <- "
+SELECT MIN(subjects) AS min_subjects,
+    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY subjects) AS median_subjects,
+    MAX(subjects) AS max_subjects
+FROM (
+    SELECT
+        target_subjects + comparator_subjects AS subjects
+    FROM cohort_method_result
+    WHERE database_id != 'Meta-analysis'
+        AND calibrated_se_log_rr IS NOT NULL
+) tmp;"
+sizes <- querySql(connection, sql)
+sizes
