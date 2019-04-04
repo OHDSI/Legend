@@ -1,0 +1,52 @@
+from,to,value,study
+ramipril,metoprolol,1094,AASK
+ramipril,amlodipine,1094,AASK
+metoprolol,amlodipine,1094,AASK
+enalapril,nisoldipine,470,ABCD
+lisinopril,atenolol,200,Agarwal
+enalapril,hydrochlorothiazide,6083,ANBP2
+amlodipine,atenolol,19257,ASCOT-BPLA
+trandolapril,verapamil,1209,BENEDICT
+enalapril,atenolol,237,Cacciapuoti
+enalapril,nifedipine,237,Cacciapuoti
+atenolol,nifedipine,237,Cacciapuoti
+atenolol,lacidipine,2334,ELSA
+lisinopril,amlodipine,166,ELVERA
+fosinopril,nifedipine,241,ESPIRAL
+fosinopril,amlodipine,380,FACET
+fosinopril,amlodipine,309,Fogari
+atenolol,hydrochlorothiazide,6569,HAPPHY
+metoprolol,hydrochlorothiazide,6569,HAPPHY
+atenolol,bendroflumethiazide,6569,HAPPHY
+metoprolol,bendroflumethiazide,6569,HAPPHY
+amlodipine,irbesartan,1715,INDT
+nifedipine,co-amilozide,6321,INSIGHT
+enalapril,nifedipine,1650,JMIC-B
+lisinopril,nifedipine,1650,JMIC-B
+atenolol,losartan,9193,LIFE
+enalapril,indapamide,505,LIVE
+isradipine,hydrochlorothiazide,883,MIDAS
+propranolol,bendroflumethiazide,17354,MRC Mild
+atenolol,co-amilozide,4396,MRC Old
+enalapril,indapamide,570,NESTOR
+enalapril,amlodipine,461,Omvik
+amlodipine,olmesartan,102,Rosendorff
+verapamil,hydrochlorothiazide,409,Sareli
+enalapril,hydrochlorothiazide,409,Sareli
+nifedipine,hydrochlorothiazide,409,Sareli
+enalapril,nifedipine,409,Sareli
+lacidipine,chlorthalidone,1882,SHELL
+enalapril,felodipine,6614,STOP-HTN 2
+enalapril,felodipine,6614,STOP-HTN 2
+lisinopril,isradipine,6614,STOP-HTN 2
+lisinopril,isradipine,6614,STOP-HTN 2
+captopril,atenolol,1148,UKPDS 39
+amlodipine,valsartan,15245,VALUE
+amlodipine,valsartan,1021,VART
+verapamil,chlorthalidone,1414,VHAS
+ramipril,amlodipine,112,Yilmaz
+captopril,nifedipine,121,Zucchelli
+ramipril,losartan,3813,CORD IB
+lisinopril,valsartan,501,Bremner
+lisinopril,chlorthalidone,33357,ALLHAT
+amlodipine,chlorthalidone,33357,ALLHAT
