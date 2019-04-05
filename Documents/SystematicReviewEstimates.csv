@@ -1,14 +1,14 @@
 targetId,targetName,comparatorId,comparatorName,outcomeId,outcomeName,Subgroup,Source,hrDm,lbDm,ubDm,hrNm,lbNm,ubNm
-4,ARB,1,ACE,49,Heart failure,All,DETAIL,1.2,0.45,3.2,0.97,0.71,1.36
-5,BB,1,ACE,49,Heart failure,All,"AASK, UKPDS 39, Agarwal",0.8,0.5,1.3,1.12,0.84,1.44
-5,BB,4,ARB,49,Heart failure,All,LIFE,1,0.73,1.5,1.15,0.81,1.52
-10,CCB,1,ACE,49,Heart failure,All,"ABCD, AASK, JMIC-B, J-MIND, ALLHAT, STOP-HTN 2",1.2,0.93,1.4,1.13,0.9,1.33
-10,CCB,4,ARB,49,Heart failure,All,"IDNT, VART, J-RHYTYHM II, Du",1.4,0.87,2,1.17,0.82,1.54
-10,CCB,5,BB,49,Heart failure,All,"ASCOT-BPLA, AASK",0.82,0.58,1.1,1.01,0.79,1.31
-15,THZ,1,ACE,49,Heart failure,All,"ALLHAT, ANBP2",0.9,0.72,1.2,0.87,0.68,1.09
-15,THZ,4,ARB,49,Heart failure,All,none,1,0.01,100,0.89,0.61,1.27
-15,THZ,5,BB,49,Heart failure,All,HAPPHY,0.67,0.36,1.2,0.78,0.58,1.07
-15,THZ,10,CCB,49,Heart failure,All,"INSIGHT, SHELL, ALLHAT, MIDAS, NICS-EH",0.73,0.56,0.94,0.76,0.61,0.99
+4,ARB,1,ACE,52,Heart failure,All,DETAIL,1.2,0.45,3.2,0.97,0.71,1.36
+5,BB,1,ACE,52,Heart failure,All,"AASK, UKPDS 39, Agarwal",0.8,0.5,1.3,1.12,0.84,1.44
+5,BB,4,ARB,52,Heart failure,All,LIFE,1,0.73,1.5,1.15,0.81,1.52
+10,CCB,1,ACE,52,Heart failure,All,"ABCD, AASK, JMIC-B, J-MIND, ALLHAT, STOP-HTN 2",1.2,0.93,1.4,1.13,0.9,1.33
+10,CCB,4,ARB,52,Heart failure,All,"IDNT, VART, J-RHYTYHM II, Du",1.4,0.87,2,1.17,0.82,1.54
+10,CCB,5,BB,52,Heart failure,All,"ASCOT-BPLA, AASK",0.82,0.58,1.1,1.01,0.79,1.31
+15,THZ,1,ACE,52,Heart failure,All,"ALLHAT, ANBP2",0.9,0.72,1.2,0.87,0.68,1.09
+15,THZ,4,ARB,52,Heart failure,All,none,1,0.01,100,0.89,0.61,1.27
+15,THZ,5,BB,52,Heart failure,All,HAPPHY,0.67,0.36,1.2,0.78,0.58,1.07
+15,THZ,10,CCB,52,Heart failure,All,"INSIGHT, SHELL, ALLHAT, MIDAS, NICS-EH",0.73,0.56,0.94,0.76,0.61,0.99
 4,ARB,1,ACE,2,Myocardial infarction,All,"DETAIL, CORD IB",0.51,0.12,1.8,1.39,0.94,2.12
 5,BB,1,ACE,2,Myocardial infarction,All,"UKPDS 39, Agarwal",0.77,0.4,1.5,1.22,0.86,1.63
 5,BB,4,ARB,2,Myocardial infarction,All,LIFE,0.95,0.49,1.9,0.88,0.58,1.22

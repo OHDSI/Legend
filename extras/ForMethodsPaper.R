@@ -693,6 +693,7 @@ createPlotForOutcome <- function(outcome, combined) {
 }
 combined$outcomeName <- as.character(combined$outcomeName)
 combined$outcomeName[combined$outcomeName == "Acute myocardial infarction"] <- "Myocardial infarction"
+combined$outcomeName[combined$outcomeName == "Hospitalization with heart failure"] <- "Heart failure"
 plot1 <- createPlotForOutcome("Heart failure", combined)
 plot2 <- createPlotForOutcome("Myocardial infarction", combined)
 plot3 <- createPlotForOutcome("Stroke", combined)
