@@ -1,27 +1,20 @@
 from,to
-origin,thiazide-type diuretics (THZ)
 origin,ACE inhibitors
+origin,Alpha-1 blockers
 origin,Angiotensin Receptor Blockers (ARBs)
-origin,dihydropyrdine Calcium Channel Blockers (CCB)
-origin,nondihydropyrdine Calcium Channel Blockers (CCB)
-origin,diuretics- loop
-origin,diuretics- potassium sparing
-origin,diuretics- aldosterone antagonists
 origin,Beta blockers- cardioselective
 origin,Beta blockers- cardioselective and vasodiltory
-origin,Beta blockers- noncardioselective
-origin,Beta blockers- intrinsic sympathomumetic activity
 origin,Beta blockers- combined alpha and beta-receptor
-origin,Direct renin inhibitor
-origin,Alpha-1 blockers
-origin,central alpha-1 agonist
+origin,Beta blockers- intrinsic sympathomumetic activity
+origin,Beta blockers- noncardioselective
+origin,CCB Dihydropyridine
+origin,CCB Nondihydropyridine
 origin,Direct vasodilators
-origin,diuretics combination
-thiazide-type diuretics (THZ),chlorthalidone
-thiazide-type diuretics (THZ),hydrochlorothiazide
-thiazide-type diuretics (THZ),bendroflumethiazide
-thiazide-type diuretics (THZ),indapamide
-thiazide-type diuretics (THZ),metolazone
+origin,diuretics- aldosterone antagonists
+origin,diuretics- loop
+origin,diuretics- potassium sparing
+origin,thiazide-type diuretics (THZ)
+origin,X
 ACE inhibitors,benazepril
 ACE inhibitors,captopril
 ACE inhibitors,enalapril
@@ -32,6 +25,9 @@ ACE inhibitors,perindopril
 ACE inhibitors,quinapril
 ACE inhibitors,ramipril
 ACE inhibitors,trandolapril
+Alpha-1 blockers,doxazosin
+Alpha-1 blockers,prazosin
+Alpha-1 blockers,terazosin
 Angiotensin Receptor Blockers (ARBs),azilsartan
 Angiotensin Receptor Blockers (ARBs),candesartan
 Angiotensin Receptor Blockers (ARBs),eprosartan
@@ -40,42 +36,44 @@ Angiotensin Receptor Blockers (ARBs),losartan
 Angiotensin Receptor Blockers (ARBs),olmesartan
 Angiotensin Receptor Blockers (ARBs),telmisartan
 Angiotensin Receptor Blockers (ARBs),valsartan
-dihydropyrdine Calcium Channel Blockers (CCB),amlodipine
-dihydropyrdine Calcium Channel Blockers (CCB),felodipine
-dihydropyrdine Calcium Channel Blockers (CCB),isradipine
-dihydropyrdine Calcium Channel Blockers (CCB),nicardipine
-dihydropyrdine Calcium Channel Blockers (CCB),nifedipine
-dihydropyrdine Calcium Channel Blockers (CCB),nisoldipine
-dihydropyrdine Calcium Channel Blockers (CCB),lacidipine
-nondihydropyrdine Calcium Channel Blockers (CCB),diltiazem
-nondihydropyrdine Calcium Channel Blockers (CCB),verapamil
-diuretics- loop,bumetanide
-diuretics- loop,furosemide
-diuretics- loop,torsemide
-diuretics- potassium sparing,amiloride
-diuretics- potassium sparing,triamterene
-diuretics- aldosterone antagonists,epleronone
-diuretics- aldosterone antagonists,spironolactone
 Beta blockers- cardioselective,atenolol
 Beta blockers- cardioselective,betaxolol
 Beta blockers- cardioselective,bisoprolol
 Beta blockers- cardioselective,metoprolol
 Beta blockers- cardioselective and vasodiltory,nebivolol
-Beta blockers- noncardioselective,nadolol
-Beta blockers- noncardioselective,propranolol
+Beta blockers- combined alpha and beta-receptor,carvedilol
+Beta blockers- combined alpha and beta-receptor,labetalol
 Beta blockers- intrinsic sympathomumetic activity,acebutolol
 Beta blockers- intrinsic sympathomumetic activity,carteolol
 Beta blockers- intrinsic sympathomumetic activity,penbutolol
 Beta blockers- intrinsic sympathomumetic activity,pindolol
-Beta blockers- combined alpha and beta-receptor,carvedilol
-Beta blockers- combined alpha and beta-receptor,labetalol
-Direct renin inhibitor,Aliskiren
-Alpha-1 blockers,doxazosin
-Alpha-1 blockers,prazosin
-Alpha-1 blockers,terazosin
-central alpha-1 agonist,clonidine
-central alpha-1 agonist,methyldopa
-central alpha-1 agonist,guanfacine
+Beta blockers- noncardioselective,nadolol
+Beta blockers- noncardioselective,propranolol
+CCB Dihydropyridine,amlodipine
+CCB Dihydropyridine,felodipine
+CCB Dihydropyridine,isradipine
+CCB Dihydropyridine,nicardipine
+CCB Dihydropyridine,nifedipine
+CCB Dihydropyridine,nisoldipine
+CCB Dihydropyridine,lacidipine
+CCB Nondihydropyridine,diltiazem
+CCB Nondihydropyridine,verapamil
 Direct vasodilators,hydralazine
 Direct vasodilators,minoxidil
-diuretics combination,co-amilozide
+diuretics- aldosterone antagonists,epleronone
+diuretics- aldosterone antagonists,spironolactone
+diuretics- loop,bumetanide
+diuretics- loop,furosemide
+diuretics- loop,torsemide
+diuretics- potassium sparing,amiloride
+diuretics- potassium sparing,triamterene
+thiazide-type diuretics (THZ),chlorthalidone
+thiazide-type diuretics (THZ),hydrochlorothiazide
+thiazide-type diuretics (THZ),bendroflumethiazide
+thiazide-type diuretics (THZ),indapamide
+thiazide-type diuretics (THZ),metolazone
+X,Aliskiren
+X,clonidine
+X,methyldopa
+X,guanfacine
+X,co-amilozide

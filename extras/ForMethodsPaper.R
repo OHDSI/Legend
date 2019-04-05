@@ -518,7 +518,7 @@ estimates <- getMainResults(connection = connection,
 estimates <- estimates[!is.na(estimates$calibratedSeLogRr), ]
 estimates$databaseId[estimates$databaseId == "NHIS_NSC"] <- "NHIS"
 source("extras/LegendMedCentral/PlotsAndTables.R")
-plot <- plotForest(estimates, limits = c(1/3, 3))
+plot <- plotForest(estimates, limits = c(1/6, 6))
 ggplot2::ggsave(file.path(paperFolder, "Forest.png"), plot = plot, width = 13, height = 4, dpi = 400)
 
 balanceSummary <- getCovariateBalanceSummary(connection, targetId, comparatorId, analysisId = 2)
@@ -742,3 +742,48 @@ FROM (
 ) tmp;"
 sizes <- querySql(connection, sql)
 sizes
+
+# Edges for chord diagram -----------------------------------------------
+sql <- "
+WITH exposure AS (
+  SELECT single_exposure_of_interest.exposure_id,
+    exposure_name
+  FROM single_exposure_of_interest
+  INNER JOIN exposure_group
+    ON single_exposure_of_interest.exposure_id = exposure_group.exposure_id
+  WHERE indication_id = 'Hypertension'
+    AND exposure_group = 'Drug'
+
+  UNION ALL
+
+  SELECT combi_exposure_of_interest.exposure_id,
+    'co-amilozide' AS exposure_name
+  FROM combi_exposure_of_interest
+  INNER JOIN single_exposure_of_interest exposure_1
+    ON single_exposure_id_1 = exposure_1.exposure_id
+  INNER JOIN single_exposure_of_interest exposure_2
+    ON single_exposure_id_2 = exposure_2.exposure_id
+  WHERE combi_exposure_of_interest.indication_id = 'Hypertension'
+    AND ((exposure_1.exposure_name = 'Amiloride' AND exposure_2.exposure_name = 'Hydrochlorothiazide')
+      OR (exposure_1.exposure_name = 'Hydrochlorothiazide' AND exposure_2.exposure_name = 'Amiloride'))
+)
+SELECT target.exposure_name,
+  comparator.exposure_name,
+  MAX(target_subjects + comparator_subjects) AS subjects
+FROM cohort_method_result
+INNER JOIN exposure target
+ON cohort_method_result.target_id = target.exposure_id
+INNER JOIN exposure comparator
+ON cohort_method_result.comparator_id = comparator.exposure_id
+WHERE calibrated_se_log_rr IS NOT NULL
+    AND database_id = 'Meta-analysis'
+    AND analysis_id IN (1, 2, 3, 4)
+GROUP BY target.exposure_name,
+  comparator.exposure_name;
+"
+edges <- querySql(connection, sql)
+colnames(edges) <- c("from", "to", "value")
+edges$study <- "Meta"
+edges$from <- tolower(edges$from)
+edges$to <- tolower(edges$to)
+write.csv(edges, "extras/LEGEND_Meta_connect.csv", row.names = FALSE)

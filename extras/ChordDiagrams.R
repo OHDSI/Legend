@@ -31,70 +31,51 @@ vertices = data.frame(
   value = .5
 )
 # Let's add a column with the group of each name. It will be useful later to color points
-vertices$group = edges$from[ match( vertices$name, edges$to ) ]
+vertices$group = edges$from[match(vertices$name, edges$to)]
 
 
 #Let's add information concerning the label we are going to add: angle, horizontal adjustement and potential flip
 #calculate the ANGLE of the labels
-vertices$id=NA
-myleaves=which(is.na( match(vertices$name, edges$from) ))
-nleaves=length(myleaves)
+vertices$id = NA
+myleaves = which(is.na( match(vertices$name, edges$from) ))
+nleaves = length(myleaves)
 vertices$id[ myleaves ] = seq(1:nleaves)
-vertices$angle= 90 - 360 * vertices$id / nleaves
+vertices$angle = 90 - 360 * vertices$id / nleaves
 
 # calculate the alignment of labels: right or left
 # If I am on the left part of the plot, my labels have currently an angle < -90
-vertices$hjust<-ifelse( vertices$angle < -90, 1, 0)
+vertices$hjust <- ifelse( vertices$angle < -90, 1, 0)
 
 # flip angle BY to make them readable
-vertices$angle<-ifelse(vertices$angle < -90, vertices$angle+180, vertices$angle)
-
-
+vertices$angle <- ifelse(vertices$angle < -90, vertices$angle + 180, vertices$angle)
 
 # Create a graph object
-mygraph <- graph_from_data_frame( edges, vertices=vertices )
+mygraph <- graph_from_data_frame(edges, vertices = vertices)
 
 # The connection object must refer to the ids of the leaves:
-from = match( connect$from, vertices$name)
-to = match( connect$to, vertices$name)
+from = match(connect$from, vertices$name)
+to = match(connect$to, vertices$name)
 
-# Basic usual argument
-# png("basic.png", height = 480, width=480)
-# pdf("basic.pdf", height = 10, width = 10)
-# ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
-#   geom_node_point(aes(filter = leaf, x = x*1.05, y=y*1.05)) +
-#   geom_conn_bundle(data = get_con(from = from, to = to), alpha=0.2, colour="skyblue", width=0.9) +
-#   geom_node_text(aes(x = x*1.1, y=y*1.1, filter = leaf, label=name, angle = angle, hjust=hjust), size=1.5, alpha=1) +
-#   theme_void() +
-#   theme(
-#     legend.position="none",
-#     plot.margin=unit(c(0,0,0,0),"cm"),
-#   ) +
-#   expand_limits(x = c(-1.2, 1.2), y = c(-1.2, 1.2))
-# dev.off()
+groups <- levels(vertices$group)
+groups <- groups[groups != "origin"]
+martijnColors <- c(rgb(0,0,0), rgb(0,129/255, 180/255))
+colors <- rep(martijnColors, length.out =length(groups))
+names(colors) <- groups
 
-
-
-# png("fullcolor.png", height = 480, width=480)
-pdf("fullcolor_RCT.pdf", height = 8, width= 8)
+png("fullcolor.png", units = "cm", height = 18, width = 18, res = 300)
+# pdf("fullcolor_RCT.pdf", height = 8, width= 8)
 ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
-  geom_conn_bundle(data = get_con(from = from, to = to), alpha=0.2, width=0.9, # aes(colour=..index..),
-                   tension = tension) +
-  # scale_edge_colour_distiller(palette = "RdPu") +
-
-  geom_node_text(aes(x = x*1.15, y=y*1.15, filter = leaf, label=name, angle = angle, hjust=hjust, colour=group), size=2, alpha=1) +
-
-  geom_node_point(aes(filter = leaf, x = x*1.07, y=y*1.07, colour=group, size=value, alpha=0.2)) +
-  scale_colour_manual(values= rep( brewer.pal(9,"Paired") , 30)) +
-  scale_size_continuous( range = c(0.1,10) ) +
-
-  theme_void() +
-  theme(
-    legend.position="none",
-    plot.margin=unit(c(0,0,0,0),"cm"),
-  ) +
-  expand_limits(x = c(-1.3, 1.3), y = c(-1.3, 1.3))
-
+    geom_conn_bundle(data = get_con(from = from, to = to), alpha = 0.2, width = 0.9, tension = tension) +
+    geom_node_text(aes(x = x*1.1, y = y*1.1, filter = leaf, label = name, angle = angle, hjust = hjust, colour = group), size = 5, alpha = 1) +
+    geom_node_point(aes(filter = leaf, x = x*1.04, y = y*1.04, colour = group), size = 5, alpha = 0.6) +
+    scale_colour_manual(values = colors) +
+    scale_size_continuous(range = c(0.1,10) ) +
+    theme_void() +
+    theme(
+        legend.position="none",
+        plot.margin=unit(c(0,0,0,0),"cm"),
+    ) +
+    expand_limits(x = c(-1.55, 1.45), y = c(-1.45, 1.5))
 dev.off()
 
 #
@@ -141,69 +122,61 @@ dev.off()
 #   study = "Meta"
 # )
 # write.csv(results, file = "Meta_connect.csv", quote = FALSE)
-
-connectCCAE <- read.csv("extras/CCAE_connect.csv")
-connectCCAE <- connectCCAE %>% filter(value > 0)
-connectCCAE$value <- connectCCAE$value / 100000
-
-# Create a graph object
-graphCCAE <- graph_from_data_frame( edges, vertices=vertices )
-
-# The connection object must refer to the ids of the leaves:
-from = match( connectCCAE$from, vertices$name)
-to = match( connectCCAE$to, vertices$name)
-
-pdf("fullcolor_CCAE.pdf", height = 8, width= 8)
-ggraph(graphCCAE, layout = 'dendrogram', circular = TRUE) +
-  geom_conn_bundle(data = get_con(from = from, to = to), alpha=0.2, width=0.9, # aes(colour=..index..),
-                   tension = tension) +
-  # scale_edge_colour_distiller(palette = "RdPu") +
-
-  geom_node_text(aes(x = x*1.15, y=y*1.15, filter = leaf, label=name, angle = angle, hjust=hjust, colour=group), size=2, alpha=1) +
-
-  geom_node_point(aes(filter = leaf, x = x*1.07, y=y*1.07, colour=group, size=value, alpha=0.2)) +
-  scale_colour_manual(values= rep( brewer.pal(9,"Paired") , 30)) +
-  scale_size_continuous( range = c(0.1,10) ) +
-
-  theme_void() +
-  theme(
-    legend.position="none",
-    plot.margin=unit(c(0,0,0,0),"cm"),
-  ) +
-  expand_limits(x = c(-1.3, 1.3), y = c(-1.3, 1.3))
-dev.off()
+#
+# connectCCAE <- read.csv("extras/CCAE_connect.csv")
+# connectCCAE <- connectCCAE %>% filter(value > 0)
+# connectCCAE$value <- connectCCAE$value / 100000
+#
+# # Create a graph object
+# graphCCAE <- graph_from_data_frame( edges, vertices=vertices )
+#
+# # The connection object must refer to the ids of the leaves:
+# from = match( connectCCAE$from, vertices$name)
+# to = match( connectCCAE$to, vertices$name)
+#
+# pdf("fullcolor_CCAE.pdf", height = 8, width= 8)
+# ggraph(graphCCAE, layout = 'dendrogram', circular = TRUE) +
+#   geom_conn_bundle(data = get_con(from = from, to = to), alpha=0.2, width=0.9, # aes(colour=..index..),
+#                    tension = tension) +
+#   # scale_edge_colour_distiller(palette = "RdPu") +
+#
+#   geom_node_text(aes(x = x*1.15, y=y*1.15, filter = leaf, label=name, angle = angle, hjust=hjust, colour=group), size=2, alpha=1) +
+#
+#   geom_node_point(aes(filter = leaf, x = x*1.07, y=y*1.07, colour=group, size=value, alpha=0.2)) +
+#   scale_colour_manual(values= rep( brewer.pal(9,"Paired") , 30)) +
+#   scale_size_continuous( range = c(0.1,10) ) +
+#
+#   theme_void() +
+#   theme(
+#     legend.position="none",
+#     plot.margin=unit(c(0,0,0,0),"cm"),
+#   ) +
+#   expand_limits(x = c(-1.3, 1.3), y = c(-1.3, 1.3))
+# dev.off()
 
 #
 
-connectMeta <- read.csv("Meta_connect.csv")
-connectMeta <- connectMeta %>% filter(value > 0)
-connectMeta$value <- connectMeta$value / 100000
+connectMeta <- read.csv("extras/LEGEND_Meta_connect.csv")
+connectMeta$value <- connectMeta$value / max(connectMeta$value)
 
 # Create a graph object
-graphMeta <- graph_from_data_frame( edges, vertices=vertices )
+graphMeta <- graph_from_data_frame(edges, vertices = vertices)
 
 # The connection object must refer to the ids of the leaves:
-from = match( connectMeta$from, vertices$name)
-to = match( connectMeta$to, vertices$name)
+from = match(connectMeta$from, vertices$name)
+to = match(connectMeta$to, vertices$name)
 
-pdf("fullcolor_Meta.pdf", height = 8, width= 8)
-ggraph(graphMeta, layout = 'dendrogram', circular = TRUE) +
-  geom_conn_bundle(data = get_con(from = from, to = to), alpha=0.2, width=0.9, # aes(colour=..index..),
-                   tension = tension) +
-  # scale_edge_colour_distiller(palette = "RdPu") +
-
-  geom_node_text(aes(x = x*1.15, y=y*1.15, filter = leaf, label=name, angle = angle, hjust=hjust, colour=group), size=2, alpha=1) +
-
-  geom_node_point(aes(filter = leaf, x = x*1.07, y=y*1.07, colour=group, size=value, alpha=0.2)) +
-  scale_colour_manual(values= rep( brewer.pal(9,"Paired") , 30)) +
-  scale_size_continuous( range = c(0.1,10) ) +
-
-  theme_void() +
-  theme(
-    legend.position="none",
-    plot.margin=unit(c(0,0,0,0),"cm"),
-  ) +
-  expand_limits(x = c(-1.3, 1.3), y = c(-1.3, 1.3))
+png("fullcolorMeta.png", units = "cm", height = 18, width = 18, res = 300)
+ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
+    geom_conn_bundle(data = get_con(from = from, to = to), alpha = 0.2, width = 0.9, tension = tension) +
+    geom_node_text(aes(x = x*1.1, y = y*1.1, filter = leaf, label = name, angle = angle, hjust = hjust, colour = group), size = 5, alpha = 1) +
+    geom_node_point(aes(filter = leaf, x = x*1.04, y = y*1.04, colour = group), size = 5, alpha = 0.6) +
+    scale_colour_manual(values = colors) +
+    scale_size_continuous(range = c(0.1,10) ) +
+    theme_void() +
+    theme(
+        legend.position="none",
+        plot.margin=unit(c(0,0,0,0),"cm"),
+    ) +
+    expand_limits(x = c(-1.55, 1.45), y = c(-1.45, 1.5))
 dev.off()
-
-
