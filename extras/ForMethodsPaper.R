@@ -108,8 +108,8 @@ outcomesToRemove <- c(39, 40, 44) # Kidney Disease, Coronary Heart Disease, Edem
 outcomesUsed <- querySql(connection, "SELECT DISTINCT cmr.outcome_id, outcome_name FROM cohort_method_result cmr INNER JOIN outcome_of_interest ooi ON cmr.outcome_id = ooi.outcome_id")
 writeLines(paste("total outcomes observed:", nrow(outcomesUsed)))
 sql <- "SELECT DISTINCT target_id,
-    comparator_id,
-    cmr.outcome_id
+comparator_id,
+cmr.outcome_id
 FROM cohort_method_result cmr
 INNER JOIN outcome_of_interest ooi
 ON cmr.outcome_id = ooi.outcome_id
@@ -272,7 +272,7 @@ createPlotForOutcome <- function(outcome, combined) {
         ggplot2::geom_vline(ggplot2::aes(xintercept = 4*show), colour = "#AAAAAA", size = 0.2) +
         ggplot2::geom_vline(ggplot2::aes(xintercept = 1*show), size = 0.5) +
         ggplot2::geom_errorbarh(size = 0.6, height = 0.3) +
-        ggplot2::geom_point(size = 2) +
+        ggplot2::geom_point(size = 2, show.legend = TRUE) +
         ggplot2::scale_x_log10("Hazard ratio",
                                breaks = breaks,
                                labels = as.character(breaks),
@@ -339,29 +339,29 @@ connection <- connect(connectionDetails)
 # Coverage
 sql <- "
 SELECT COUNT(*) AS control_count,
-    SUM(coverage) AS coverage,
-    SUM(coverage_calibrated) AS coverage_calibrated
+SUM(coverage) AS coverage,
+SUM(coverage_calibrated) AS coverage_calibrated
 FROM (
-    SELECT CASE WHEN ci_95_lb <= effect_size AND ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage,
-        CASE WHEN calibrated_ci_95_lb <= effect_size AND calibrated_ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage_calibrated
-    FROM (
-        SELECT cohort_method_result.*,
-          CAST(1 AS numeric) AS effect_size
-        FROM cohort_method_result
-        INNER JOIN negative_control_outcome
-            ON cohort_method_result.outcome_id = negative_control_outcome.outcome_id
-        WHERE calibrated_se_log_rr IS NOT NULL
+SELECT CASE WHEN ci_95_lb <= effect_size AND ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage,
+CASE WHEN calibrated_ci_95_lb <= effect_size AND calibrated_ci_95_ub >= effect_size THEN 1 ELSE 0 END AS coverage_calibrated
+FROM (
+SELECT cohort_method_result.*,
+CAST(1 AS numeric) AS effect_size
+FROM cohort_method_result
+INNER JOIN negative_control_outcome
+ON cohort_method_result.outcome_id = negative_control_outcome.outcome_id
+WHERE calibrated_se_log_rr IS NOT NULL
 
-        UNION ALL
+UNION ALL
 
-        SELECT cohort_method_result.*,
-          effect_size
-        FROM cohort_method_result
-        INNER JOIN positive_control_outcome
-            ON cohort_method_result.outcome_id = positive_control_outcome.outcome_id
-                AND cohort_method_result.target_id = positive_control_outcome.exposure_id
-        WHERE calibrated_se_log_rr IS NOT NULL
-    ) tmp1
+SELECT cohort_method_result.*,
+effect_size
+FROM cohort_method_result
+INNER JOIN positive_control_outcome
+ON cohort_method_result.outcome_id = positive_control_outcome.outcome_id
+AND cohort_method_result.target_id = positive_control_outcome.exposure_id
+WHERE calibrated_se_log_rr IS NOT NULL
+) tmp1
 ) tmp2;
 "
 coverage <- querySql(connection, sql)
@@ -379,9 +379,9 @@ FROM cohort_method_result
 INNER JOIN outcome_of_interest
 ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
 WHERE calibrated_se_log_rr IS NOT NULL
-    AND indication_id = 'Hypertension'
-    AND database_id = 'Meta-analysis'
-    AND analysis_id IN (1, 2, 3, 4);
+AND indication_id = 'Hypertension'
+AND database_id = 'Meta-analysis'
+AND analysis_id IN (1, 2, 3, 4);
 "
 estimates <- querySql(connection, sql)
 colnames(estimates) <- SqlRender::snakeCaseToCamelCase(colnames(estimates))
@@ -428,21 +428,21 @@ library(ggplot2)
 
 sql <- "
 SELECT cohort_method_result.outcome_id,
-    target_id,
-    comparator_id,
-    database_id,
-    analysis_id,
-    log_rr,
-    se_log_rr,
-    calibrated_log_rr,
-    calibrated_se_log_rr
+target_id,
+comparator_id,
+database_id,
+analysis_id,
+log_rr,
+se_log_rr,
+calibrated_log_rr,
+calibrated_se_log_rr
 FROM cohort_method_result
 INNER JOIN outcome_of_interest
 ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
 WHERE calibrated_se_log_rr IS NOT NULL
-    AND indication_id = 'Hypertension'
-    AND database_id != 'Meta-analysis'
-    AND analysis_id = 1;
+AND indication_id = 'Hypertension'
+AND database_id != 'Meta-analysis'
+AND analysis_id = 1;
 "
 d <- querySql(connection, sql)
 colnames(d) <- SqlRender::snakeCaseToCamelCase(colnames(d))
@@ -501,6 +501,48 @@ mean(i2Cal < 0.25)
 mean(i2 < 0.25)
 
 
+# Balance
+connection <- connect(connectionDetails)
+sql <- "
+SELECT covariate_balance.database_id,
+	covariate_balance.target_id,
+	covariate_balance.comparator_id,
+	MAX(ABS(std_diff_after)) AS std_diff
+FROM covariate_balance
+INNER JOIN (
+	SELECT DISTINCT database_id,
+		target_id,
+		comparator_id
+	FROM cohort_method_result
+	WHERE calibrated_se_log_rr IS NOT NULL
+		AND analysis_id = 4
+) cohort_method_result
+ON cohort_method_result.database_id = covariate_balance.database_id
+	AND cohort_method_result.target_id = covariate_balance.target_id
+	AND cohort_method_result.comparator_id = covariate_balance.comparator_id
+WHERE outcome_id IS NULL
+	AND analysis_id = 4
+GROUP BY covariate_balance.database_id,
+	covariate_balance.target_id,
+	covariate_balance.comparator_id"
+
+
+balance <- querySql(connection, sql)
+# write.csv(balance, file.path(paperFolder, "balanceMatching.csv"), row.names = FALSE)
+mean(balance$STD_DIFF <= 0.1)
+mean(balance$STD_DIFF[balance$TARGET_ID < 100 & balance$COMPARATOR_ID < 100] <= 0.1)
+mean(balance$STD_DIFF[balance$TARGET_ID > 10000 & balance$COMPARATOR_ID > 10000] <= 0.1)
+balance <- read.csv(file.path(paperFolder, "balanceStratification.csv"))
+
+library(ggplot2)
+ggplot(balance, aes(x = STD_DIFF)) +
+    geom_histogram(binwidth = 0.1) +
+    xlim(c(0,1))
+
+balance$pass <- balance$STD_DIFF <= 0.1
+aggregate(pass ~ DATABASE_ID, balance, mean)
+
+# 842 / 12843
 
 # Exemplar study ----------------------------------------------
 # targetId <- 15 # THZ
@@ -539,15 +581,15 @@ powerTable <- merge(estimates, balanceSummary, all.x = TRUE)
 powerTable$targetYears <- powerTable$targetDays/365.25
 powerTable$comparatorYears <- powerTable$comparatorDays/365.25
 powerTable <- powerTable[, c("databaseId",
-                            "targetSubjects",
-                            "comparatorSubjects",
-                            "targetYears",
-                            "comparatorYears",
-                            "targetOutcomes",
-                            "comparatorOutcomes",
-                            "covariateCount",
-                            "maxBefore",
-                            "maxAfter")]
+                             "targetSubjects",
+                             "comparatorSubjects",
+                             "targetYears",
+                             "comparatorYears",
+                             "targetOutcomes",
+                             "comparatorOutcomes",
+                             "covariateCount",
+                             "maxBefore",
+                             "maxAfter")]
 dbResults <- powerTable[powerTable$databaseId != "Meta-analysis", ]
 dbResults <- dbResults[order(dbResults$databaseId), ]
 maResult <- powerTable[powerTable$databaseId == "Meta-analysis", ]
@@ -566,11 +608,11 @@ write.csv(powerTable, file.path(paperFolder, "Power.csv"), row.names = FALSE)
 
 
 estimatesSens <- getMainResults(connection = connection,
-                            targetIds = targetId,
-                            comparatorIds = comparatorId,
-                            outcomeIds = outcomeId,
-                            databaseIds = "Meta-analysis",
-                            analysisIds = 2:4)
+                                targetIds = targetId,
+                                comparatorIds = comparatorId,
+                                outcomeIds = outcomeId,
+                                databaseIds = "Meta-analysis",
+                                analysisIds = 2:4)
 paste0(formatC(exp(estimatesSens$calibratedLogRr),  digits = 2, format = "f"),
        " (",
        formatC((estimatesSens$calibratedCi95Lb), digits = 2, format = "f"),
@@ -732,14 +774,14 @@ ggplot2::ggsave(filename = file.path(paperFolder, "AdjustBpEffect.png"), plot, w
 # Sample sizes ---------------------------------------------------------
 sql <- "
 SELECT MIN(subjects) AS min_subjects,
-    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY subjects) AS median_subjects,
-    MAX(subjects) AS max_subjects
+PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY subjects) AS median_subjects,
+MAX(subjects) AS max_subjects
 FROM (
-    SELECT
-        target_subjects + comparator_subjects AS subjects
-    FROM cohort_method_result
-    WHERE database_id != 'Meta-analysis'
-        AND calibrated_se_log_rr IS NOT NULL
+SELECT
+target_subjects + comparator_subjects AS subjects
+FROM cohort_method_result
+WHERE database_id != 'Meta-analysis'
+AND calibrated_se_log_rr IS NOT NULL
 ) tmp;"
 sizes <- querySql(connection, sql)
 sizes
@@ -747,40 +789,40 @@ sizes
 # Edges for chord diagram -----------------------------------------------
 sql <- "
 WITH exposure AS (
-  SELECT single_exposure_of_interest.exposure_id,
-    exposure_name
-  FROM single_exposure_of_interest
-  INNER JOIN exposure_group
-    ON single_exposure_of_interest.exposure_id = exposure_group.exposure_id
-  WHERE indication_id = 'Hypertension'
-    AND exposure_group = 'Drug'
+SELECT single_exposure_of_interest.exposure_id,
+exposure_name
+FROM single_exposure_of_interest
+INNER JOIN exposure_group
+ON single_exposure_of_interest.exposure_id = exposure_group.exposure_id
+WHERE indication_id = 'Hypertension'
+AND exposure_group = 'Drug'
 
-  UNION ALL
+UNION ALL
 
-  SELECT combi_exposure_of_interest.exposure_id,
-    'co-amilozide' AS exposure_name
-  FROM combi_exposure_of_interest
-  INNER JOIN single_exposure_of_interest exposure_1
-    ON single_exposure_id_1 = exposure_1.exposure_id
-  INNER JOIN single_exposure_of_interest exposure_2
-    ON single_exposure_id_2 = exposure_2.exposure_id
-  WHERE combi_exposure_of_interest.indication_id = 'Hypertension'
-    AND ((exposure_1.exposure_name = 'Amiloride' AND exposure_2.exposure_name = 'Hydrochlorothiazide')
-      OR (exposure_1.exposure_name = 'Hydrochlorothiazide' AND exposure_2.exposure_name = 'Amiloride'))
+SELECT combi_exposure_of_interest.exposure_id,
+'co-amilozide' AS exposure_name
+FROM combi_exposure_of_interest
+INNER JOIN single_exposure_of_interest exposure_1
+ON single_exposure_id_1 = exposure_1.exposure_id
+INNER JOIN single_exposure_of_interest exposure_2
+ON single_exposure_id_2 = exposure_2.exposure_id
+WHERE combi_exposure_of_interest.indication_id = 'Hypertension'
+AND ((exposure_1.exposure_name = 'Amiloride' AND exposure_2.exposure_name = 'Hydrochlorothiazide')
+OR (exposure_1.exposure_name = 'Hydrochlorothiazide' AND exposure_2.exposure_name = 'Amiloride'))
 )
 SELECT target.exposure_name,
-  comparator.exposure_name,
-  MAX(target_subjects + comparator_subjects) AS subjects
+comparator.exposure_name,
+MAX(target_subjects + comparator_subjects) AS subjects
 FROM cohort_method_result
 INNER JOIN exposure target
 ON cohort_method_result.target_id = target.exposure_id
 INNER JOIN exposure comparator
 ON cohort_method_result.comparator_id = comparator.exposure_id
 WHERE calibrated_se_log_rr IS NOT NULL
-    AND database_id = 'Meta-analysis'
-    AND analysis_id IN (1, 2, 3, 4)
+AND database_id = 'Meta-analysis'
+AND analysis_id IN (1, 2, 3, 4)
 GROUP BY target.exposure_name,
-  comparator.exposure_name;
+comparator.exposure_name;
 "
 edges <- querySql(connection, sql)
 colnames(edges) <- c("from", "to", "value")
