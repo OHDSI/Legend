@@ -39,13 +39,24 @@ uploadResultsToDatabase <- function(connectionDetails,
                                     exportFolder,
                                     createTables = FALSE,
                                     staging = FALSE,
-                                    deletePriorData = TRUE) {
+                                    deletePriorData = TRUE,
+                                    skipBigTables = TRUE) {
     conn <- connect(connectionDetails)
     on.exit(DatabaseConnector::disconnect(conn))
     batchSize <- 1e+07
 
+    # ParallelLogger::clearLoggers()
+    # ParallelLogger::addDefaultConsoleLogger()
     ParallelLogger::addDefaultFileLogger(file.path(exportFolder, "uploadLog.txt"))
     files <- list.files(exportFolder, pattern = ".*csv")
+
+    # Dropping cm_interaction_result and chronograph tables:
+    files <- files[files != "cm_interaction_result.csv"]
+    files <- files[files != "chronograph.csv"]
+    if (skipBigTables) {
+        files <- files[files != "kaplan_meier_dist.csv"]
+        files <- files[files != "covariate_balance.csv"]
+    }
 
     infinityToNa <- function(data) {
         # Replace infinity with NA, because OHDSI Postgres server doesn't like infinity:
@@ -113,7 +124,7 @@ uploadResultsToDatabase <- function(connectionDetails,
             }
             sql <- sapply(1:nrow(toDrop), createSqlStatement)
             sql <- paste(sql, collapse = "\n")
-            sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+            sql <- SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
             executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
         }
         dropped <- unique(rbind(dropped, toDrop))

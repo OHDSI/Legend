@@ -17,9 +17,9 @@
 # This code is used to run LEGEND on various databases.
 
 library(Legend)
-options(fftempdir = "c:/fftemp")
+options(fftempdir = "r:/fftemp")
 maxCores <- parallel::detectCores()
-studyFolder <- "c:/Legend"
+studyFolder <- "r:/Legend"
 dbms <- "pdw"
 user <- NULL
 pw <- NULL
@@ -173,14 +173,14 @@ execute(connectionDetails = connectionDetails,
         databaseDescription = databaseDescription,
         tablePrefix = tablePrefix,
         imputeExposureLengthWhenMissing = imputeExposureLengthWhenMissing,
-        createExposureCohorts = TRUE,
+        createExposureCohorts = FALSE,
         createOutcomeCohorts = FALSE,
         fetchAllDataFromServer = FALSE,
         synthesizePositiveControls = FALSE,
         generateAllCohortMethodDataObjects = FALSE,
-        runCohortMethod = FALSE,
+        runCohortMethod = TRUE,
         computeIncidence = FALSE,
         fetchChronographData = FALSE,
         computeCovariateBalance = FALSE,
-        exportToCsv = FALSE,
+        exportToCsv = TRUE,
         maxCores = maxCores)

@@ -8,9 +8,9 @@ execute(connectionDetails, cdmDatabaseSchema, oracleTempSchema,
   cohortDatabaseSchema, outputFolder, indicationId = "Depression",
   tablePrefix = "legend", databaseId = "Unknown",
   databaseName = "Unknown", databaseDescription = "Unknown",
-  minCellCount = 5, createExposureCohorts = TRUE,
-  createOutcomeCohorts = TRUE, fetchAllDataFromServer = TRUE,
-  synthesizePositiveControls = TRUE,
+  minCellCount = 5, imputeExposureLengthWhenMissing = FALSE,
+  createExposureCohorts = TRUE, createOutcomeCohorts = TRUE,
+  fetchAllDataFromServer = TRUE, synthesizePositiveControls = TRUE,
   generateAllCohortMethodDataObjects = TRUE, runCohortMethod = TRUE,
   computeIncidence = TRUE, fetchChronographData = TRUE,
   computeCovariateBalance = TRUE, exportToCsv = TRUE, maxCores = 4)
@@ -53,6 +53,9 @@ Synthetic Public Use Files (SynPUFs)').}
 
 \item{minCellCount}{The minimum cell count for fields contains person counts
 or fractions when exporting to CSV.}
+
+\item{imputeExposureLengthWhenMissing}{For PanTher: impute length of drug exposures when the
+length is missing?}
 
 \item{createExposureCohorts}{Create the tables with the exposure cohorts?}
 

@@ -12,7 +12,7 @@ Imports:
     Cyclops,
     ff,
     ffbase,
-	SqlRender,
+	SqlRender (>= 1.6.0),
     FeatureExtraction,
     CohortMethod (>= 3.0.1),
     IcTemporalPatternDiscovery,
@@ -25,4 +25,4 @@ Suggests:
     testthat
 License: Apache License 2.0
 LazyData: true
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1

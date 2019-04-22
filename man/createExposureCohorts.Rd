@@ -6,7 +6,8 @@
 \usage{
 createExposureCohorts(connectionDetails, cdmDatabaseSchema,
   cohortDatabaseSchema, tablePrefix = "legend",
-  indicationId = "Depression", oracleTempSchema, outputFolder)
+  indicationId = "Depression", oracleTempSchema, outputFolder,
+  imputeExposureLengthWhenMissing = FALSE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -32,6 +33,8 @@ priviliges for storing temporary tables.}
 
 \item{outputFolder}{Name of local folder to place results; make sure to use forward
 slashes (/)}
+
+\item{imputeExposureLengthWhenMissing}{For PanTher: impute length of drug exposures when the length is missing?}
 }
 \description{
 Create the exposure cohorts
