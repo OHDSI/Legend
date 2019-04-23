@@ -33,6 +33,7 @@
 #'                                             allow new tables to be created while old ones are in use.
 #' @param deletePriorData                      Should prior data (with the same keys) be deleted prior to uploading the
 #'                                             data to avoid duplicates?
+#' @param skipBigTables                        Skip the covariate balance and KM tables?
 #'
 #' @export
 uploadResultsToDatabase <- function(connectionDetails,

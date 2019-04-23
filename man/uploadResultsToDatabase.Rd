@@ -5,7 +5,8 @@
 \title{Upload results to the database server}
 \usage{
 uploadResultsToDatabase(connectionDetails, exportFolder,
-  createTables = FALSE, staging = FALSE, deletePriorData = TRUE)
+  createTables = FALSE, staging = FALSE, deletePriorData = TRUE,
+  skipBigTables = TRUE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created
@@ -25,6 +26,8 @@ allow new tables to be created while old ones are in use.}
 
 \item{deletePriorData}{Should prior data (with the same keys) be deleted prior to uploading the
 data to avoid duplicates?}
+
+\item{skipBigTables}{Skip the covariate balance and KM tables?}
 }
 \description{
 Upload the exported results of a database-indication run into the database. Assumes the data conforms to
