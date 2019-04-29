@@ -507,7 +507,8 @@ sql <- "
 SELECT covariate_balance.database_id,
 	covariate_balance.target_id,
 	covariate_balance.comparator_id,
-	MAX(ABS(std_diff_after)) AS std_diff
+	MAX(ABS(std_diff_after)) AS std_diff,
+    CASE WHEN propensity_model.database_id IS NULL THEN 0 ELSE 1 END AS good_ps_model
 FROM covariate_balance
 INNER JOIN (
 	SELECT DISTINCT database_id,
@@ -520,16 +521,27 @@ INNER JOIN (
 ON cohort_method_result.database_id = covariate_balance.database_id
 	AND cohort_method_result.target_id = covariate_balance.target_id
 	AND cohort_method_result.comparator_id = covariate_balance.comparator_id
+LEFT JOIN (
+    SELECT DISTINCT database_id,
+        target_id,
+        comparator_id
+    FROM propensity_model
+) propensity_model
+ON propensity_model.database_id = covariate_balance.database_id
+	AND propensity_model.target_id = covariate_balance.target_id
+    AND propensity_model.comparator_id = covariate_balance.comparator_id
 WHERE outcome_id IS NULL
-	AND analysis_id = 4
+	AND analysis_id = 2
 GROUP BY covariate_balance.database_id,
 	covariate_balance.target_id,
-	covariate_balance.comparator_id"
+	covariate_balance.comparator_id,
+    propensity_model.database_id"
 
 
 balance <- querySql(connection, sql)
 # write.csv(balance, file.path(paperFolder, "balanceMatching.csv"), row.names = FALSE)
-mean(balance$STD_DIFF <= 0.1)
+# write.csv(balance, file.path(paperFolder, "balanceStratified.csv"), row.names = FALSE)
+mean(balance$STD_DIFF[balance$GOOD_PS_MODEL == 1] <= 0.1)
 mean(balance$STD_DIFF[balance$TARGET_ID < 100 & balance$COMPARATOR_ID < 100] <= 0.1)
 mean(balance$STD_DIFF[balance$TARGET_ID > 10000 & balance$COMPARATOR_ID > 10000] <= 0.1)
 balance <- read.csv(file.path(paperFolder, "balanceStratification.csv"))
@@ -542,7 +554,52 @@ ggplot(balance, aes(x = STD_DIFF)) +
 balance$pass <- balance$STD_DIFF <= 0.1
 aggregate(pass ~ DATABASE_ID, balance, mean)
 
-# 842 / 12843
+sql <- "
+SELECT COUNT(*) AS ps_count,
+  SUM(CASE WHEN psd2.database_id IS NULL THEN 0 ELSE 1 END) AS good_ps_count
+FROM (
+    SELECT DISTINCT database_id,
+        target_id,
+        comparator_id
+    FROM preference_score_dist
+    ) psd1
+LEFT JOIN (
+    SELECT DISTINCT database_id,
+        target_id,
+        comparator_id
+    FROM preference_score_dist
+    WHERE preference_score > 0.1
+        AND preference_score < 0.9
+    ) psd2
+    ON psd1.database_id = psd2.database_id
+        AND psd1.target_id = psd2.target_id
+        AND psd1.comparator_id = psd2.comparator_id;
+"
+x <- querySql(connection, sql)
+x
+
+sql <- "
+SELECT COUNT(*) AS ps_count,
+  SUM(CASE WHEN psd2.database_id IS NULL THEN 0 ELSE 1 END) AS good_ps_count
+FROM (
+    SELECT DISTINCT database_id,
+        target_id,
+        comparator_id
+    FROM preference_score_dist
+    ) psd1
+LEFT JOIN (
+    SELECT DISTINCT database_id,
+        target_id,
+        comparator_id
+    FROM propensity_model
+    ) psd2
+    ON psd1.database_id = psd2.database_id
+        AND psd1.target_id = psd2.target_id
+        AND psd1.comparator_id = psd2.comparator_id;
+"
+
+
+x <- querySql(connection, "SELECT * FROM propensity_model LIMIT 10000")
 
 # Exemplar study ----------------------------------------------
 # targetId <- 15 # THZ
