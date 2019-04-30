@@ -184,3 +184,21 @@ execute(connectionDetails = connectionDetails,
         computeCovariateBalance = FALSE,
         exportToCsv = TRUE,
         maxCores = maxCores)
+
+# Rerun covariate balance export after fix -----------------------------
+indicationFolder <- file.path(outputFolder, indicationId)
+exportFolder <- file.path(indicationFolder, "export")
+minCellCount <- 5
+Legend:::exportCovariateBalance(indicationId = indicationId,
+                                outputFolder = outputFolder,
+                                exportFolder = exportFolder,
+                                databaseId = databaseId,
+                                minCellCount = minCellCount)
+zipName <- file.path(exportFolder, paste0("Results", indicationId, databaseId, ".zip"))
+unlink(zipName)
+files <- list.files(exportFolder, pattern = ".*\\.csv$")
+oldWd <- setwd(exportFolder)
+DatabaseConnector::createZipFile(zipFile = zipName, files = files)
+setwd(oldWd)
+
+
