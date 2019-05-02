@@ -727,7 +727,7 @@ balance$covariateName[balance$covariateName == "BP diastolic"] <- "Diastolic"
 write.csv(balance, file.path(paperFolder, "BalanceBp.csv"), row.names = FALSE)
 
 # Estimates with and without BP adjustment
-estimates <-  read.csv("Documents/bpData/HrsData_allPsMatching.csv")
+estimates <-  read.csv("Documents/bpData/HrsData_all_PsMatching.csv")
 estimates <- estimates[estimates$estimate == "Calibrated", ]
 rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
 combined <- merge(rctEstimates[, c("targetId", "targetName", "comparatorId", "comparatorName", "outcomeId")], estimates)
