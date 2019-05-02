@@ -103,14 +103,15 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
                                                "outcomeModelReference1.rds"))
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 1, ]
+                                                       outcomeModelReference$analysisId == 3, ]
     outcomeModelReference <- outcomeModelReference[1, ]
     cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                            "cmOutput",
                                                            outcomeModelReference$cohortMethodDataFolder),
                                                  skipCovariates = TRUE)
     sharedPs <- readRDS(file.path(indicationFolder, "cmOutput", outcomeModelReference$sharedPsFile))
-    strataPop <- CohortMethod::stratifyByPs(sharedPs, numberOfStrata = 10)
+    # strataPop <- CohortMethod::stratifyByPs(sharedPs, numberOfStrata = 10)
+    strataPop <- CohortMethod::matchOnPs(sharedPs, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
     if (nrow(strataPop) == 0) {
         return(NULL)
     }
@@ -120,7 +121,8 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
     resultRow$comparatorSubjects <- sum(strataPop$treatment == 0)
 
     # Restricting before cohort to just those in the after cohort:
-    subset <- bps[bps$rowId %in% strataPop$rowId, ]
+    # subset <- bps[bps$rowId %in% strataPop$rowId, ]
+    subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
     strataPop <- strataPop[strataPop$rowId %in% subset$rowId, ]
     cmData$cohorts <- cmData$cohorts[cmData$cohorts$rowId %in% subset$rowId, ]
 
@@ -140,53 +142,53 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
     fileName <- file.path(bpFolder, sprintf("BpData_%s_%s.rds", as.character(row$targetName), as.character(row$comparatorName)))
     saveRDS(m, fileName)
 
-    before <- data.frame()
-    after <- data.frame()
-    for (conceptName in c("Diastolic", "Systolic")) {
-        for (group in c(as.character(row$targetName), as.character(row$comparatorName))) {
-            d <- density(m$valueAsNumber[m$conceptName == conceptName & m$group == group], bw = 5, from = 50, to = 250, n = 210)
-            before <- rbind(before,
-                            data.frame(x = d$x,
-                                       y = d$y,
-                                       conceptName = conceptName,
-                                       group = group))
-            for (stratumId in unique(m$stratumId)) {
-                d <- density(m$valueAsNumber[m$conceptName == conceptName & m$group == group & m$stratumId == stratumId], bw = 5, from = 50, to = 250, n = 210)
-                after <- rbind(after,
-                               data.frame(x = d$x,
-                                          y = d$y,
-                                          conceptName = conceptName,
-                                          group = group,
-                                          stratumId = stratumId))
-            }
-        }
-    }
-    plotBp <- function(vizData, stratified, fileName) {
-        plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = x, y = y, group = group, color = group, fill = group)) +
-            ggplot2::geom_area(position = "identity") +
-            ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-            ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
-            ggplot2::xlab("Blood pressure") +
-            ggplot2::ylab("Density") +
-            ggplot2::xlim(c(50,200)) +
-            ggplot2::theme(legend.position = "top",
-                           legend.title = ggplot2::element_blank())
-        if (stratified) {
-            plot <- plot + ggplot2::facet_grid(conceptName~stratumId)
-        } else {
-            plot <- plot + ggplot2::facet_grid(conceptName~.)
-        }
-        width <- if (stratified) {11} else {5}
-        ggplot2::ggsave(fileName, plot, width = width, height = 4, dpi = 400)
-    }
-    plotBp(before, stratified = FALSE, fileName = file.path(bpFolder, sprintf("Before_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName))))
-    plotBp(after, stratified = TRUE, fileName = file.path(bpFolder, sprintf("After_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName))))
-
-    # Flip T and C:
-    before$group <- factor(before$group, levels = c(as.character(row$comparatorName), as.character(row$targetName)))
-    after$group <- factor(after$group, levels = c(as.character(row$comparatorName), as.character(row$targetName)))
-    plotBp(before, stratified = FALSE, fileName = file.path(bpFolder, sprintf("Before_%s_%s.png", as.character(row$comparatorName), as.character(row$targetName))))
-    plotBp(after, stratified = TRUE, fileName = file.path(bpFolder, sprintf("After_%s_%s.png", as.character(row$comparatorName), as.character(row$targetName))))
+    # before <- data.frame()
+    # after <- data.frame()
+    # for (conceptName in c("Diastolic", "Systolic")) {
+    #     for (group in c(as.character(row$targetName), as.character(row$comparatorName))) {
+    #         d <- density(m$valueAsNumber[m$conceptName == conceptName & m$group == group], bw = 5, from = 50, to = 250, n = 210)
+    #         before <- rbind(before,
+    #                         data.frame(x = d$x,
+    #                                    y = d$y,
+    #                                    conceptName = conceptName,
+    #                                    group = group))
+    #         for (stratumId in unique(m$stratumId)) {
+    #             d <- density(m$valueAsNumber[m$conceptName == conceptName & m$group == group & m$stratumId == stratumId], bw = 5, from = 50, to = 250, n = 210)
+    #             after <- rbind(after,
+    #                            data.frame(x = d$x,
+    #                                       y = d$y,
+    #                                       conceptName = conceptName,
+    #                                       group = group,
+    #                                       stratumId = stratumId))
+    #         }
+    #     }
+    # }
+    # plotBp <- function(vizData, stratified, fileName) {
+    #     plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = x, y = y, group = group, color = group, fill = group)) +
+    #         ggplot2::geom_area(position = "identity") +
+    #         ggplot2::scale_fill_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    #         ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.5), rgb(0, 0, 0.8, alpha = 0.5))) +
+    #         ggplot2::xlab("Blood pressure") +
+    #         ggplot2::ylab("Density") +
+    #         ggplot2::xlim(c(50,200)) +
+    #         ggplot2::theme(legend.position = "top",
+    #                        legend.title = ggplot2::element_blank())
+    #     if (stratified) {
+    #         plot <- plot + ggplot2::facet_grid(conceptName~stratumId)
+    #     } else {
+    #         plot <- plot + ggplot2::facet_grid(conceptName~.)
+    #     }
+    #     width <- if (stratified) {11} else {5}
+    #     ggplot2::ggsave(fileName, plot, width = width, height = 4, dpi = 400)
+    # }
+    # plotBp(before, stratified = FALSE, fileName = file.path(bpFolder, sprintf("Before_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName))))
+    # plotBp(after, stratified = TRUE, fileName = file.path(bpFolder, sprintf("After_%s_%s.png", as.character(row$targetName), as.character(row$comparatorName))))
+    #
+    # # Flip T and C:
+    # before$group <- factor(before$group, levels = c(as.character(row$comparatorName), as.character(row$targetName)))
+    # after$group <- factor(after$group, levels = c(as.character(row$comparatorName), as.character(row$targetName)))
+    # plotBp(before, stratified = FALSE, fileName = file.path(bpFolder, sprintf("Before_%s_%s.png", as.character(row$comparatorName), as.character(row$targetName))))
+    # plotBp(after, stratified = TRUE, fileName = file.path(bpFolder, sprintf("After_%s_%s.png", as.character(row$comparatorName), as.character(row$targetName))))
 
     # Compute balance
     cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
@@ -203,7 +205,7 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
 }
 
 refitPropensityModel <- function(row, indicationFolder, bpFolder) {
-    # row <- tcs[3, ]
+    # row <- tcs[1, ]
     bpFolder <- file.path(indicationFolder, "bp")
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
@@ -213,7 +215,7 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
                                                "outcomeModelReference1.rds"))
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 1, ]
+                                                       outcomeModelReference$analysisId == 3, ]
     outcomeModelReference <- outcomeModelReference[1, ]
 
     if (!file.exists(file.path(bpFolder, outcomeModelReference$cohortMethodDataFolder))) {
@@ -306,13 +308,15 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
                                                         addExposureDaysToEnd = TRUE,
                                                         minDaysAtRisk = 1,
                                                         censorAtNewRiskWindow = TRUE)
-        strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+        # strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+        strataPop <- CohortMethod::matchOnPs(studyPop, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
         saveRDS(strataPop, file.path(bpFolder, outcomeModelReference$strataFile))
     } else {
         strataPop <- readRDS(file.path(bpFolder, outcomeModelReference$strataFile))
     }
 
-    if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
+    # if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
+    if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
         # Overall balance:
         bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
         CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
@@ -353,8 +357,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
     #                                            "outcomeModelReference1.rds"))
     onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 1, ]
-    analysisFolder <- file.path(bpFolder, "Analysis_1")
+                                                       outcomeModelReference$analysisId == 3, ]
+    analysisFolder <- file.path(bpFolder, "Analysis_3")
     if (!file.exists(analysisFolder)) {
         dir.create(analysisFolder)
     }
@@ -378,7 +382,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
                                                             addExposureDaysToEnd = TRUE,
                                                             minDaysAtRisk = 1,
                                                             censorAtNewRiskWindow = TRUE)
-            strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+            # strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+            strataPop <- CohortMethod::matchOnPs(studyPop, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
             outcomeModel <- CohortMethod::fitOutcomeModel(population = strataPop,
                                                           stratified = TRUE,
                                                           modelType = "cox")
@@ -442,7 +447,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
         controlEstimates <- controlEstimates[!is.na(controlEstimates$seLogRr), ]
         errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
                                                                     seLogRr = controlEstimates$seLogRr,
-                                                                    trueLogRr = log(controlEstimates$targetEffectSize))
+                                                                    trueLogRr = log(controlEstimates$targetEffectSize),
+                                                                    estimateCovarianceMatrix = FALSE)
         # EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
         #                                               seLogRr = controlEstimates$seLogRr,
         #                                               trueLogRr = log(controlEstimates$targetEffectSize))
