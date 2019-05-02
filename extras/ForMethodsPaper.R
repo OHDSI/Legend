@@ -183,7 +183,7 @@ legendEstimates <- getMainResults(connection = connection,
                                   comparatorIds = unique(rctEstimates$comparatorId),
                                   outcomeIds = unique(rctEstimates$outcomeId),
                                   databaseIds = "Meta-analysis",
-                                  analysisIds = 1)
+                                  analysisIds = 3)
 legendEstimates$hrLegend <- legendEstimates$calibratedRr
 legendEstimates$lbLegend <- legendEstimates$calibratedCi95Lb
 legendEstimates$ubLegend <- legendEstimates$calibratedCi95Ub
@@ -442,14 +442,14 @@ ON cohort_method_result.outcome_id = outcome_of_interest.outcome_id
 WHERE calibrated_se_log_rr IS NOT NULL
 AND indication_id = 'Hypertension'
 AND database_id != 'Meta-analysis'
-AND analysis_id = 1;
+AND analysis_id = 3;
 "
 d <- querySql(connection, sql)
 colnames(d) <- SqlRender::snakeCaseToCamelCase(colnames(d))
 saveRDS(d, "c:/temp/nonMaEstimates.rds")
 d <- readRDS("c:/temp/nonMaEstimates.rds")
 
-d <- d[d$analysisId == 1, ]
+# d <- d[d$analysisId == 3, ]
 dd <- aggregate(databaseId ~ targetId + comparatorId + outcomeId, data = d, length)
 dd <- dd[dd$databaseId >= 4, ]
 dd$databaseId <- NULL
@@ -507,16 +507,34 @@ sql <- "
 SELECT covariate_balance.database_id,
 	covariate_balance.target_id,
 	covariate_balance.comparator_id,
-	MAX(ABS(std_diff_after)) AS std_diff,
+    std_diff,
+    estimate_count,
     CASE WHEN propensity_model.database_id IS NULL THEN 0 ELSE 1 END AS good_ps_model
-FROM covariate_balance
-INNER JOIN (
-	SELECT DISTINCT database_id,
+FROM (
+    SELECT database_id,
 		target_id,
-		comparator_id
+        comparator_id,
+        MAX(ABS(std_diff_after)) AS std_diff
+    FROM covariate_balance
+    WHERE analysis_id IN (@analysis_ids)
+        AND outcome_id IS NULL
+    GROUP BY database_id,
+		target_id,
+        comparator_id
+) covariate_balance
+INNER JOIN (
+	SELECT database_id,
+		target_id,
+		comparator_id,
+        COUNT(*) AS estimate_count
 	FROM cohort_method_result
+    INNER JOIN outcome_of_interest
+        ON outcome_of_interest.outcome_id = cohort_method_result.outcome_id
 	WHERE calibrated_se_log_rr IS NOT NULL
-		AND analysis_id = 4
+		AND analysis_id IN (@analysis_ids)
+    GROUP BY database_id,
+		target_id,
+        comparator_id
 ) cohort_method_result
 ON cohort_method_result.database_id = covariate_balance.database_id
 	AND cohort_method_result.target_id = covariate_balance.target_id
@@ -529,22 +547,21 @@ LEFT JOIN (
 ) propensity_model
 ON propensity_model.database_id = covariate_balance.database_id
 	AND propensity_model.target_id = covariate_balance.target_id
-    AND propensity_model.comparator_id = covariate_balance.comparator_id
-WHERE outcome_id IS NULL
-	AND analysis_id = 2
-GROUP BY covariate_balance.database_id,
-	covariate_balance.target_id,
-	covariate_balance.comparator_id,
-    propensity_model.database_id"
+    AND propensity_model.comparator_id = covariate_balance.comparator_id;"
 
 
-balance <- querySql(connection, sql)
-# write.csv(balance, file.path(paperFolder, "balanceMatching.csv"), row.names = FALSE)
-# write.csv(balance, file.path(paperFolder, "balanceStratified.csv"), row.names = FALSE)
-mean(balance$STD_DIFF[balance$GOOD_PS_MODEL == 1] <= 0.1)
-mean(balance$STD_DIFF[balance$TARGET_ID < 100 & balance$COMPARATOR_ID < 100] <= 0.1)
-mean(balance$STD_DIFF[balance$TARGET_ID > 10000 & balance$COMPARATOR_ID > 10000] <= 0.1)
-balance <- read.csv(file.path(paperFolder, "balanceStratification.csv"))
+balanceMatching <- renderTranslateQuerySql(connection, sql, analysis_ids = c(3,4))
+write.csv(balanceMatching, file.path(paperFolder, "balanceMatching.csv"), row.names = FALSE)
+# balanceMatching <- read.csv(file.path(paperFolder, "balanceMatching.csv"))
+sum(balanceMatching$ESTIMATE_COUNT)
+sum(balanceMatching$ESTIMATE_COUNT[balanceMatching$STD_DIFF <= 0.1]) / sum(balanceMatching$ESTIMATE_COUNT)
+
+balanceStratification <- renderTranslateQuerySql(connection, sql, analysis_ids = c(1,2))
+write.csv(balanceStratification, file.path(paperFolder, "balanceStratification.csv"), row.names = FALSE)
+# balanceStratification <- read.csv(file.path(paperFolder, "balanceStratification.csv"))
+sum(balanceStratification$ESTIMATE_COUNT)
+sum(balanceStratification$ESTIMATE_COUNT[balanceStratification$STD_DIFF <= 0.1]) / sum(balanceStratification$ESTIMATE_COUNT)
+
 
 library(ggplot2)
 ggplot(balance, aes(x = STD_DIFF)) +
@@ -602,6 +619,7 @@ LEFT JOIN (
 x <- querySql(connection, "SELECT * FROM propensity_model LIMIT 10000")
 
 # Exemplar study ----------------------------------------------
+# connection <- connect(connectionDetails)
 # targetId <- 15 # THZ
 # comparatorId <- 1 # ACE
 # outcomeId <- 2 # AMI
@@ -613,14 +631,14 @@ estimates <- getMainResults(connection = connection,
                             targetIds = targetId,
                             comparatorIds = comparatorId,
                             outcomeIds = outcomeId,
-                            analysisIds = 1)
+                            analysisIds = 3)
 estimates <- estimates[!is.na(estimates$calibratedSeLogRr), ]
 estimates$databaseId[estimates$databaseId == "NHIS_NSC"] <- "NHIS"
 source("extras/LegendMedCentral/PlotsAndTables.R")
-plot <- plotForest(estimates, limits = c(1/6, 6))
+plot <- plotForest(estimates, limits = c(1/2, 8))
 ggplot2::ggsave(file.path(paperFolder, "Forest.png"), plot = plot, width = 13, height = 4, dpi = 400)
 
-balanceSummary <- getCovariateBalanceSummary(connection, targetId, comparatorId, analysisId = 2)
+balanceSummary <- getCovariateBalanceSummary(connection, targetId, comparatorId, analysisId = 4)
 balanceSummary$databaseId[balanceSummary$databaseId == "NHIS_NSC"] <- "NHIS"
 stringToVars <- function(string) {
     parts <- as.numeric(unlist(strsplit(gsub("\\{|\\}", "", string), ",")))
@@ -669,7 +687,7 @@ estimatesSens <- getMainResults(connection = connection,
                                 comparatorIds = comparatorId,
                                 outcomeIds = outcomeId,
                                 databaseIds = "Meta-analysis",
-                                analysisIds = 2:4)
+                                analysisIds = 1:4)
 paste0(formatC(exp(estimatesSens$calibratedLogRr),  digits = 2, format = "f"),
        " (",
        formatC((estimatesSens$calibratedCi95Lb), digits = 2, format = "f"),
@@ -682,8 +700,8 @@ disconnect(connection)
 # Blood pressure sensitivity analysis --------------------------------------------
 
 # Balance table
-balanceOriginal <- read.csv("Documents/bpData/Balance.csv")
-balanceAdjustBp <- read.csv("Documents/bpData/BalanceAdjustBp.csv")
+balanceOriginal <- read.csv("Documents/bpData/BalancePsMatching.csv")
+balanceAdjustBp <- read.csv("Documents/bpData/BalanceAdjustBpPsMatching.csv")
 rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
 balanceOriginal <- data.frame(targetId = balanceOriginal$targetId,
                               comparatorId = balanceOriginal$comparatorId,
@@ -709,7 +727,7 @@ balance$covariateName[balance$covariateName == "BP diastolic"] <- "Diastolic"
 write.csv(balance, file.path(paperFolder, "BalanceBp.csv"), row.names = FALSE)
 
 # Estimates with and without BP adjustment
-estimates <-  read.csv("Documents/bpData/HrsData_all.csv")
+estimates <-  read.csv("Documents/bpData/HrsData_allPsMatching.csv")
 estimates <- estimates[estimates$estimate == "Calibrated", ]
 rctEstimates <- read.csv("Documents/SystematicReviewEstimates.csv")
 combined <- merge(rctEstimates[, c("targetId", "targetName", "comparatorId", "comparatorName", "outcomeId")], estimates)

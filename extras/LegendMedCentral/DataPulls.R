@@ -510,8 +510,8 @@ getStudyPeriod <- function(connection, targetId, comparatorId, databaseId) {
 }
 
 getCovariateBalanceSummary <- function(connection, targetId, comparatorId, analysisId) {
-  
-  sql <- "SELECT database_id, 
+
+  sql <- "SELECT database_id,
     COUNT(*) AS covariate_count,
     PERCENTILE_DISC(ARRAY[0, 0.25,0.5,0.75,1]) WITHIN GROUP (ORDER BY std_diff_before) AS percentiles_before,
     PERCENTILE_DISC(ARRAY[0, 0.25,0.5,0.75,1]) WITHIN GROUP (ORDER BY std_diff_after) AS percentiles_after
@@ -520,7 +520,6 @@ getCovariateBalanceSummary <- function(connection, targetId, comparatorId, analy
     AND comparator_id = @comparator_id
     AND outcome_id IS NULL
     AND analysis_id = @analysis_id
-    AND interaction_covariate_id IS NULL
   GROUP BY database_id;"
   sql <- SqlRender::renderSql(sql,
                               target_id = targetId,
@@ -533,7 +532,7 @@ getCovariateBalanceSummary <- function(connection, targetId, comparatorId, analy
 }
 
 getNegativeControlEstimates <- function(connection, targetId, comparatorId, analysisId) {
-  sql <- "SELECT database_id, 
+  sql <- "SELECT database_id,
     log_rr,
     se_log_rr
   FROM cohort_method_result
