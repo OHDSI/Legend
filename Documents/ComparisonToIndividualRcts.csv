@@ -1,0 +1,70 @@
+"","ï..target.T.in.publication","comparator.C.in.publication","RCT.sample.size","study","outcome","RR","LBRR","UBRR","metric","study.population","follow.up","other.comments","LEGENDRR","LEGENDLB","LEGENDUB","RCTSE","LEGENDSE","concordanceP","concordance","LEGENDmorePrecise","LEGENDconcordPrecise","LEGENDconcordPreciseSigImpact"
+"1","lisinopril","atenolol",200,"Agarwal","Stroke",1.1,0.08,15.11,"IRR","age>18 with HTN + ESRD","1 year","",0.96,0.84,1.12,1.33701158688594,0.0733882837887197,0.919022419050366,TRUE,TRUE,TRUE,FALSE
+"2","lisinopril","atenolol",200,"Agarwal","Heart failure",3.13,1.08,10.99,"IRR","age>18 with HTN + ESRD","1 year","",0.98,0.83,1.16,0.591843042673317,0.0853953018647364,0.0521423569347967,TRUE,TRUE,TRUE,FALSE
+"3","lisinopril","atenolol",200,"Agarwal","Acute myocardial infarction",1.61,0.18,19.26,"IRR","age>18 with HTN + ESRD","1 year","",1.01,0.8,1.19,1.19204817205661,0.101300218989196,0.696716158370461,TRUE,TRUE,TRUE,FALSE
+"4","amlodipine","chlorthalidone",33357,"ALLHAT","Stroke",0.93,0.82,1.06,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",0.97,0.57,1.66,0.0654897568489322,0.272687887888264,0.880637405699999,TRUE,FALSE,FALSE,FALSE
+"5","lisinopril","chlorthalidone",33357,"ALLHAT","Stroke",1.15,1.02,1.3,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",1.14,0.66,1.94,0.0618779686661508,0.275051892101251,0.975286610262965,TRUE,FALSE,FALSE,FALSE
+"6","amlodipine","chlorthalidone",33357,"ALLHAT","Hospitalization for heart failure",1.35,1.21,1.5,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",1.28,0.72,2.18,0.0548073338008966,0.282609424431896,0.853262638783632,TRUE,FALSE,FALSE,FALSE
+"7","lisinopril","chlorthalidone",33357,"ALLHAT","Heart failure",1.19,1.07,1.31,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",1.31,0.84,2.04,0.0516246144742973,0.226352855867577,0.67900847567786,TRUE,FALSE,FALSE,FALSE
+"8","amlodipine","chlorthalidone",33357,"ALLHAT","Heart failure",1.38,1.25,1.52,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",1.44,0.92,2.27,0.0498894855979529,0.230398326640909,0.856730329961576,TRUE,FALSE,FALSE,FALSE
+"9","lisinopril","chlorthalidone",33357,"ALLHAT","Hospitalization for heart failure",1.1,0.98,1.23,"HR","age>55 with HTN and >=1 other CHD risk factor",">4 years","",1.54,0.86,2.78,0.0579634889545525,0.299304545264574,0.26973443008224,TRUE,FALSE,FALSE,FALSE
+"10","enalapril","hydrochlorothiazide",6083,"ANBP2","Stroke",1.02,0.78,1.33,"HR","age65-84 with HTN in Australia","4 years","",0.98,0.81,1.21,0.136132729982694,0.102383007888853,0.814316536070234,TRUE,TRUE,TRUE,FALSE
+"11","enalapril","hydrochlorothiazide",6083,"ANBP2","Heart failure",0.85,0.62,1.18,"HR","age65-84 with HTN in Australia","4 years","",1.02,0.82,1.29,0.164170979444024,0.115584989055464,0.363839561671608,TRUE,TRUE,TRUE,FALSE
+"12","enalapril","hydrochlorothiazide",6083,"ANBP2","Acute myocardial infarction",0.68,0.47,0.98,"HR","age65-84 with HTN in Australia","4 years","",1.2,0.96,1.52,0.187454050245029,0.11722763504552,0.0101991625714751,FALSE,TRUE,FALSE,FALSE
+"13","amlodipine","atenolol",19257,"ASCOT-BPLA","Acute myocardial infarction",0.9,0.79,1.02,"HR","age40-79 with HTN and >=3 other CV risk factors","5 years","non-fatal MI + fatal CHD",0.8,0.65,0.99,0.0651849389839922,0.107329739856876,0.348265187993835,TRUE,FALSE,FALSE,FALSE
+"14","amlodipine","atenolol",19257,"ASCOT-BPLA","Stroke",0.77,0.66,0.89,"HR","age40-79 with HTN and >=3 other CV risk factors","5 years","",0.84,0.73,0.97,0.0762708233943149,0.0725131472844366,0.408354789086867,TRUE,TRUE,TRUE,FALSE
+"15","amlodipine","atenolol",19257,"ASCOT-BPLA","Heart failure",0.84,0.66,1.05,"HR","age40-79 with HTN and >=3 other CV risk factors","5 years","",0.91,0.81,1.05,0.118445308196709,0.0662018355829297,0.555263888593274,TRUE,TRUE,TRUE,FALSE
+"16","fosinopril","amlodipine",380,"FACET","Stroke",0.39,0.12,1.23,"HR","HTN + NIDDM","3.5 years","",0.82,0.55,1.23,0.593693292240923,0.205319176056109,0.236806554014525,TRUE,TRUE,TRUE,FALSE
+"17","fosinopril","amlodipine",380,"FACET","Acute myocardial infarction",0.77,0.34,1.75,"HR","HTN + NIDDM","3.5 years","",0.87,0.47,1.63,0.417965675843712,0.317245560994057,0.815996791891457,TRUE,TRUE,TRUE,FALSE
+"18","hydrochlorothiazide","atenolol",6569,"HAPPHY","Acute myocardial infarction",0.9,0.68,1.14,"OR","age 40-64 with HTN","3 years","not ingredient specific: beta blocker is atenolol OR metropolol; diuretic is HCTZ or bendroflumethiazide",0.82,0.7,0.95,0.131808863065915,0.0779034820283627,0.543188221559286,TRUE,TRUE,TRUE,TRUE
+"19","hydrochlorothiazide","atenolol",6569,"HAPPHY","Stroke",1.29,0.82,2.04,"OR","age 40-64 with HTN","3 years","not ingredient specific: beta blocker is atenolol OR metropolol; diuretic is HCTZ or bendroflumethiazide",0.85,0.71,1.02,0.232500190454072,0.0924216674089173,0.0954475054332701,TRUE,TRUE,TRUE,FALSE
+"20","nifedipine","lisinopril",1650,"JMIC-B","Hospitalization for heart failure",1.25,0.52,2.98,"HR","age<75 with HTN and CAD","3 years","",1.04,0.74,1.48,0.445369838756117,0.176823260346925,0.701110235518699,TRUE,TRUE,TRUE,FALSE
+"21","nifedipine","lisinopril",1650,"JMIC-B","Acute myocardial infarction",1.31,0.63,2.74,"HR","age<75 with HTN and CAD","3 years","",1.57,1.03,2.47,0.374998311223606,0.223127384795495,0.678210161693164,TRUE,TRUE,TRUE,TRUE
+"22","losartan","atenolol",9193,"LIFE","Stroke",0.75,0.63,0.89,"HR","age55-80 w HTN (160-200 SBP/95-115DBP)",">4 years","",0.9,0.73,1.14,0.0881381743215835,0.113708930419925,0.205054528844191,TRUE,FALSE,FALSE,FALSE
+"23","losartan","atenolol",9193,"LIFE","Acute myocardial infarction",1.07,0.88,1.31,"HR","age55-80 w HTN (160-200 SBP/95-115DBP)",">4 years","",0.99,0.81,1.25,0.101495027735445,0.110679740466802,0.604827450234138,TRUE,FALSE,FALSE,FALSE
+"24","captopril","atenolol",1148,"UKPDS 39","Acute myocardial infarction",1.2,0.82,1.76,"HR","HTN and T2DM","4 years","",1.79,1.04,3.2,0.194837945860688,0.286716861390918,0.248670082703589,TRUE,FALSE,FALSE,FALSE
+"25","captopril","atenolol",1148,"UKPDS 39","Stroke",1.12,0.59,2.12,"HR","HTN and T2DM","4 years","",1.8,1.04,3.2,0.326287967032218,0.286716861390918,0.274696905074719,TRUE,TRUE,TRUE,TRUE
+"26","valsartan","amlodipine",15245,"VALUE","Stroke",1.15,0.98,1.35,"HR","age>50 with HTN and high risk of CV events","4 years","",0.82,0.62,1.08,0.0817110458591473,0.141580827061002,0.0385476108745163,FALSE,FALSE,FALSE,FALSE
+"27","valsartan","amlodipine",15245,"VALUE","Acute myocardial infarction",1.19,1.02,1.38,"HR","age>50 with HTN and high risk of CV events","4 years","",0.89,0.73,1.08,0.0771124673145239,0.0999162719326094,0.0213593306293542,FALSE,FALSE,FALSE,FALSE
+"28","valsartan","amlodipine",15245,"VALUE","Heart failure",0.89,0.77,1.03,"HR","age>50 with HTN and high risk of CV events","4 years","",1.15,1.02,1.29,0.0742151955040694,0.0599080589483166,0.00720599145212952,FALSE,TRUE,FALSE,FALSE
+"29","valsartan","amlodipine",1021,"VART","Stroke",1,0.4,2.4,"HR","age>30 with HTN in Japan","3 years","",0.82,0.62,1.08,0.457081497252055,0.141580827061002,0.678339765998148,TRUE,TRUE,TRUE,FALSE
+"30","valsartan","amlodipine",1021,"VART","Acute myocardial infarction",2,0.2,22,"HR","age>30 with HTN in Japan","3 years","",0.89,0.73,1.08,1.19910213413072,0.0999162719326094,0.50100622560284,TRUE,TRUE,TRUE,FALSE
+"31","valsartan","amlodipine",1021,"VART","Heart failure",3,0.3,28.8,"HR","age>30 with HTN in Japan","3 years","",1.15,1.02,1.29,1.16437453863975,0.0599080589483166,0.410848248148286,TRUE,TRUE,TRUE,TRUE
+"32","nisoldipine","enalapril",470,"ABCD","Acute myocardial infarction",7,2.3,21.4,"HR","age40-74 with HTN","5 years","we don't have nisoldipine in LEGEND",NA,NA,NA,0.56900045895222,NA,NA,NA,NA,NA,FALSE
+"33","nisoldipine","enalapril",470,"ABCD","Heart failure",1.3,0.3,5.9,"HR","age40-74 with HTN","5 years","we don't have nisoldipine in LEGEND",NA,NA,NA,0.759929886540207,NA,NA,NA,NA,NA,NA
+"34","nisoldipine","enalapril",470,"ABCD","Stroke",2.2,0.7,7.1,"HR","age40-74 with HTN","5 years","we don't have nisoldipine in LEGEND",NA,NA,NA,0.591012685710715,NA,NA,NA,NA,NA,NA
+"35","lacidipine","chlorthalidone",1882,"SHELL","Acute myocardial infarction",0.85,0.39,1.83,"HR","age>60 with HTN","","we don't have lacidipine in LEGEND",NA,NA,NA,0.394368496610147,NA,NA,NA,NA,NA,NA
+"36","lacidipine","chlorthalidone",1882,"SHELL","Stroke",0.96,0.61,1.51,"HR","age>60 with HTN","","we don't have lacidipine in LEGEND",NA,NA,NA,0.231226013428983,NA,NA,NA,NA,NA,NA
+"37","nifedipine","co-amilozide: hydrochlorothiazide & amiloride",6321,"INSIGHT","Acute myocardial infarction",1.09,0.76,1.58,"HR","age55-80 with HTN and >=1 CV risk factor","3 years","we don't have co-amilozide in LEGEND",NA,NA,NA,0.186699411413428,NA,NA,NA,NA,NA,NA
+"38","nifedipine","co-amilozide: hydrochlorothiazide & amiloride",6321,"INSIGHT","Stroke",0.87,0.61,1.26,"HR","age55-80 with HTN and >=1 CV risk factor","3 years","we don't have co-amilozide in LEGEND",NA,NA,NA,0.185053072137287,NA,NA,NA,NA,NA,NA
+"39","nifedipine","co-amilozide: hydrochlorothiazide & amiloride",6321,"INSIGHT","Heart failure",2.2,1.07,4.49,"HR","age55-80 with HTN and >=1 CV risk factor","3 years","we don't have co-amilozide in LEGEND",NA,NA,NA,0.365865829918456,NA,NA,NA,NA,NA,FALSE
+"40","isradipine","hydrochlorothiazide",883,"MIDAS","Stroke",2,0.5,7.93,"RR","age>40 with HTN","3 years","we don't have isradipine in LEGEND",NA,NA,NA,0.705051075562934,NA,NA,NA,NA,NA,NA
+"41","isradipine","hydrochlorothiazide",883,"MIDAS","Acute myocardial infarction",1.2,0.37,3.89,"RR","age>40 with HTN","3 years","we don't have isradipine in LEGEND",NA,NA,NA,0.600168732391383,NA,NA,NA,NA,NA,NA
+"42","amlodipine","olmesartan",102,"Rosendorff","",NA,NA,NA,"","age>18 with HTN and LV hypertrophy","1 yr","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"43","ramipril","amlodipine",112,"Yilmaz","",NA,NA,NA,"","HTN + hemodialysis","1 yr","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"44","captopril","nifedipine",121,"Zucchelli","",NA,NA,NA,"","age18-70 HTN with CKD","1 year","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"45","lisinopril","amlodipine",166,"ELVERA","",NA,NA,NA,"","age60-75 with HTN","2year","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"46","enalapril","atenolol",237,"Cacciapuoti","",NA,NA,NA,"","age37-62 with HTN","","no estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"47","enalapril","nifedipine",237,"Cacciapuoti","",NA,NA,NA,"","age37-62 with HTN","","no estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"48","atenolol","nifedipine",237,"Cacciapuoti","",NA,NA,NA,"","age37-62 with HTN","","no estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"49","fosinopril","nifedipine",241,"ESPIRAL","",NA,NA,NA,"","age18-75 with HTN and CKD","3 years","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"50","fosinopril","amlodipine",309,"Fogari","",NA,NA,NA,"","HTN and T2DM and microalbuminuria","","reported case counts",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"51","verapamil","hydrochlorothiazide",409,"Sareli","",NA,NA,NA,"","age18-70 Blacks with HTN","1 year","reported 1 cases",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"52","enalapril","hydrochlorothiazide",409,"Sareli","",NA,NA,NA,"","age18-70 Blacks with HTN","1 year","reported 1 cases",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"53","nifedipine","hydrochlorothiazide",409,"Sareli","",NA,NA,NA,"","age18-70 Blacks with HTN","1 year","reported 1 cases",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"54","enalapril","nifedipine",409,"Sareli","",NA,NA,NA,"","age18-70 Blacks with HTN","1 year","reported 1 cases",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"55","enalapril","amlodipine",461,"Omvik","",NA,NA,NA,"","age40-74 with HTN","1 year","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"56","lisinopril","valsartan",501,"Bremner","",NA,NA,NA,"","age>65 with HTN","1 year","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"57","enalapril","indapamide",505,"LIVE","",NA,NA,NA,"","age>20 with HTN","1 year","reported 1 case",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"58","enalapril","indapamide",570,"NESTOR","",NA,NA,NA,"","HTN and T2DM","1 year","no CV effect estimates",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"59","ramipril","metoprolol",1094,"AASK","",NA,NA,NA,"","age18-70 African American with hypertensive renal disease","3 years","only reported %",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"60","ramipril","amlodipine",1094,"AASK","",NA,NA,NA,"","age18-70 African American with hypertensive renal disease","3 years","only reported %",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"61","metoprolol","amlodipine",1094,"AASK","",NA,NA,NA,"","age18-70 African American with hypertensive renal disease","3 years","only reported %",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"62","trandolapril","verapamil",1209,"BENEDICT","",NA,NA,NA,"","age>40 HTN and T2DM","3 years","microalbumeria primary outcome",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"63","verapamil","chlorthalidone",1414,"VHAS","",NA,NA,NA,"","age40-65 with HTN","2 years","reported case counts",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"64","amlodipine","irbesartan",1715,"INDT","",NA,NA,NA,"","age30-70 with HTN and T2DM and nephropathy","3 years","only composite CvD outcome",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"65","atenolol","lacidipine",2334,"ELSA","",NA,NA,NA,"","HTN and carotid arherosclorosis","4 years","CI only shown in figure",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"66","ramipril","losartan",3813,"CORD IB","",NA,NA,NA,"","HTN","1yr","only reported case counts",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"67","atenolol","co-amilozide: hydrochlorothiazide & amiloride",4396,"MRC Old","",NA,NA,NA,"","age65-74 with HTN","5 years","risk differences",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"68","enalapril","felodipine",6614,"STOP-HTN 2","",NA,NA,NA,"","age70-84 with HTN","4 years","not direct ingredient comparison, 'conventional' (with is BB r D) vs. ACE (2 ingredients) vs. 'newer' (2 CCB)",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"69","propranolol","bendroflumethiazide",17354,"MRC Mild","",NA,NA,NA,"","age35-64","5 years","reported risk differences",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
