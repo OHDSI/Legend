@@ -204,13 +204,18 @@ combined$pDifferenceDm <- oddsTest(combined$lbLegend, combined$hrLegend, combine
 combined$pDifferenceNm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbNm, combined$hrNm, combined$ubNm)
 
 
-combined$ConcordanceDm[combined$someOverlapDm] <- "Partial"
-combined$ConcordanceDm[combined$completeOverlapDm] <- "Full"
-combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "None"
-combined$ConcordanceNm[combined$someOverlapNm] <- "Partial"
-combined$ConcordanceNm[combined$completeOverlapNm] <- "Full"
-combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "None"
-
+# combined$ConcordanceDm[combined$someOverlapDm] <- "Partial"
+# combined$ConcordanceDm[combined$completeOverlapDm] <- "Full"
+# combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "None"
+# combined$ConcordanceNm[combined$someOverlapNm] <- "Partial"
+# combined$ConcordanceNm[combined$completeOverlapNm] <- "Full"
+# combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "None"
+combined$ConcordanceDm[combined$someOverlapDm] <- "Agreement"
+combined$ConcordanceDm[combined$completeOverlapDm] <- "Agreement"
+combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "No agreement"
+combined$ConcordanceNm[combined$someOverlapNm] <- "Agreement"
+combined$ConcordanceNm[combined$completeOverlapNm] <- "Agreement"
+combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "No agreement"
 
 writeLines(paste("Number of comparisons:", 2*nrow(combined)))
 writeLines(paste("Complete overlap DM:", sum(combined$ConcordanceDm == "Full"), "(", 100*sum(combined$ConcordanceDm == "Full")/nrow(combined), "%)"))
@@ -226,7 +231,7 @@ createPlotForOutcome <- function(outcome, combined) {
     vizData <- rbind(data.frame(Target = combined$targetName,
                                 Comparator = combined$comparatorName,
                                 outcome = combined$outcomeName,
-                                Source = "Direct meta-analysis",
+                                Source = "Randomized clinical trials meta-analysis",
                                 hr = combined$hrDm,
                                 lb = combined$lbDm,
                                 ub = combined$ubDm,
@@ -234,21 +239,21 @@ createPlotForOutcome <- function(outcome, combined) {
                                 someOverlap = combined$someOverlapDm,
                                 pDifference = combined$pDifferenceDm,
                                 stringsAsFactors = FALSE),
+                     # data.frame(Target = combined$targetName,
+                     #            Comparator = combined$comparatorName,
+                     #            outcome = combined$outcomeName,
+                     #            Source = "Network meta-analysis",
+                     #            hr = combined$hrNm,
+                     #            lb = combined$lbNm,
+                     #            ub = combined$ubNm,
+                     #            completeOverlap = combined$completeOverlapNm,
+                     #            someOverlap = combined$someOverlapNm,
+                     #            pDifference = combined$pDifferenceNm,
+                     #            stringsAsFactors = FALSE),
                      data.frame(Target = combined$targetName,
                                 Comparator = combined$comparatorName,
                                 outcome = combined$outcomeName,
-                                Source = "Network meta-analysis",
-                                hr = combined$hrNm,
-                                lb = combined$lbNm,
-                                ub = combined$ubNm,
-                                completeOverlap = combined$completeOverlapNm,
-                                someOverlap = combined$someOverlapNm,
-                                pDifference = combined$pDifferenceNm,
-                                stringsAsFactors = FALSE),
-                     data.frame(Target = combined$targetName,
-                                Comparator = combined$comparatorName,
-                                outcome = combined$outcomeName,
-                                Source = "LEGEND meta-analysis",
+                                Source = "LEGEND real-world evidence meta-analysis",
                                 hr = combined$hrLegend,
                                 lb = combined$lbLegend,
                                 ub = combined$ubLegend,
@@ -257,12 +262,17 @@ createPlotForOutcome <- function(outcome, combined) {
                                 pDifference = NA,
                                 stringsAsFactors = FALSE))
     vizData <- vizData[vizData$outcome == outcome, ]
-    vizData$Source <- factor(vizData$Source, levels = c("Network meta-analysis", "Direct meta-analysis", "LEGEND meta-analysis"))
+    # vizData$Source <- factor(vizData$Source, levels = c("Network meta-analysis", "Direct meta-analysis", "LEGEND meta-analysis"))
+    vizData$Source <- factor(vizData$Source, levels = c("Randomized clinical trials meta-analysis", "LEGEND real-world evidence meta-analysis"))
     vizData$Concordance <- "Reference"
-    vizData$Concordance[vizData$someOverlap] <- "Partial overlap of confidence intervals"
-    vizData$Concordance[vizData$completeOverlap] <- "Full overlap of confidence intervals"
+    # vizData$Concordance[vizData$someOverlap] <- "Partial overlap of confidence intervals"
+    # vizData$Concordance[vizData$completeOverlap] <- "Full overlap of confidence intervals"
+    # vizData$Concordance[vizData$pDifference < 0.05] <- "Statistically significant difference (p < 0.05)"
+    vizData$Concordance[vizData$someOverlap] <- "Estimates in agreement"
+    vizData$Concordance[vizData$completeOverlap] <- "Estimates in agreement"
     vizData$Concordance[vizData$pDifference < 0.05] <- "Statistically significant difference (p < 0.05)"
-    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Full overlap of confidence intervals", "Partial overlap of confidence intervals",  "Statistically significant difference (p < 0.05)"))
+    # vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Full overlap of confidence intervals", "Partial overlap of confidence intervals",  "Statistically significant difference (p < 0.05)"))
+    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Estimates in agreement",  "Statistically significant difference (p < 0.05)"))
     vizData$show <- 1
     breaks <- c(0.25, 0.5, 1, 2, 4)
     plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = hr, xmin = lb, xmax = ub, y = Source, color = Concordance, shape = Source)) +
@@ -282,9 +292,13 @@ createPlotForOutcome <- function(outcome, combined) {
         ggplot2::scale_shape_manual(values = c(15, 16, 17),
                                     guide = ggplot2::guide_legend(direction = "vertical", reverse = TRUE)) +
         # Colors from http://ksrowell.com/blog-visualizing-data/2012/02/02/optimal-colors-for-graphs/
+        # ggplot2::scale_color_manual(values = c(rgb(0, 0, 0),
+        #                                        rgb(0.2431373, 0.5882353, 0.3176471),
+        #                                        rgb(0.8549020, 0.4862745, 0.1882353),
+        #                                        rgb(0.8000000, 0.1450980, 0.1607843)),
+        #                             guide = ggplot2::guide_legend(direction = "vertical", reverse = FALSE)) +
         ggplot2::scale_color_manual(values = c(rgb(0, 0, 0),
                                                rgb(0.2431373, 0.5882353, 0.3176471),
-                                               rgb(0.8549020, 0.4862745, 0.1882353),
                                                rgb(0.8000000, 0.1450980, 0.1607843)),
                                     guide = ggplot2::guide_legend(direction = "vertical", reverse = FALSE)) +
         ggplot2::theme(panel.grid = ggplot2::element_blank(),
@@ -331,7 +345,7 @@ plot <- gridExtra::grid.arrange(plot1 + ggplot2::theme(legend.position = "none",
                                 heights = c(100, 85, 105, 80))
 
 
-ggplot2::ggsave(filename = file.path(paperFolder, "concordance.png"), plot, width = 7, height = 7, dpi = 300)
+ggplot2::ggsave(filename = file.path(paperFolder, "concordance.png"), plot, width = 7, height = 6, dpi = 300)
 
 # Internal validity ----------------------------------------------------------
 connection <- connect(connectionDetails)
@@ -736,8 +750,8 @@ computeConcordance <- function(subset) {
     estimateOriginal <- subset[subset$type == "Original", ]
     estimateAdjustBp <- subset[subset$type != "Original", ]
     # someOverlap <- estimateOriginal$ci95lb <= estimateAdjustBp$ci95ub & estimateOriginal$ci95ub >= estimateAdjustBp$ci95lb
-    completeOverlap <- (estimateOriginal$ci95lb >= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub <= estimateAdjustBp$ci95ub) |
-        (estimateOriginal$ci95lb <= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub >= estimateAdjustBp$ci95ub)
+    # completeOverlap <- (estimateOriginal$ci95lb >= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub <= estimateAdjustBp$ci95ub) |
+    #     (estimateOriginal$ci95lb <= estimateAdjustBp$ci95lb & estimateOriginal$ci95ub >= estimateAdjustBp$ci95ub)
     oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
         s1 <- (log(ub1) - log(lb1))/(2*1.96)
         s2 <- (log(ub2) - log(lb2))/(2*1.96)
@@ -749,10 +763,11 @@ computeConcordance <- function(subset) {
     pDifference <- oddsTest(estimateOriginal$ci95lb , estimateOriginal$rr, estimateOriginal$ci95ub , estimateAdjustBp$ci95lb, estimateAdjustBp$rr, estimateAdjustBp$ci95ub)
     if (pDifference < 0.05) {
         concordance <- "Statistically significant difference (p < 0.05)"
-    } else if (completeOverlap) {
-        concordance <- "Full overlap of confidence intervals"
+    # } else if (completeOverlap) {
+    #     concordance <- "Full overlap of confidence intervals"
     } else {
-        concordance <- "Partial overlap of confidence intervals"
+        # concordance <- "Partial overlap of confidence intervals"
+        concordance <- "Estimates in agreement"
     }
     return(data.frame(targetId = estimateOriginal$targetId,
                       comparatorId = estimateOriginal$comparatorId,
@@ -772,7 +787,8 @@ outcome = "Stroke"
 createPlotForOutcome <- function(outcome, combined) {
     vizData <- combined[combined$outcomeName == outcome, ]
     vizData$Analysis <- factor(vizData$type, levels = c("Adjusting for blood pressure", "Original"))
-    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Partial overlap of confidence intervals", "Full overlap of confidence intervals", "Statistically significant difference (p < 0.05)"))
+    # vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Partial overlap of confidence intervals", "Full overlap of confidence intervals", "Statistically significant difference (p < 0.05)"))
+    vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Estimates in agreement", "Statistically significant difference (p < 0.05)"))
     vizData$show <- 1
     vizData
     breaks <- c(0.25, 0.5, 1, 2, 4)
@@ -794,7 +810,7 @@ createPlotForOutcome <- function(outcome, combined) {
                                     guide = ggplot2::guide_legend(direction = "vertical", reverse = TRUE)) +
         # Colors from http://ksrowell.com/blog-visualizing-data/2012/02/02/optimal-colors-for-graphs/
         ggplot2::scale_color_manual(values = c(rgb(0, 0, 0),
-                                               rgb(0.8549020, 0.4862745, 0.1882353),
+                                               # rgb(0.8549020, 0.4862745, 0.1882353),
                                                rgb(0.2431373, 0.5882353, 0.3176471),
                                                rgb(0.8000000, 0.1450980, 0.1607843)),
                                     guide = ggplot2::guide_legend(direction = "vertical", reverse = FALSE)) +
@@ -860,6 +876,20 @@ AND calibrated_se_log_rr IS NOT NULL
 ) tmp;"
 sizes <- querySql(connection, sql)
 sizes
+
+sql <- "
+SELECT SUM(subjects) AS total_subjects
+FROM (
+    SELECT MAX(target_subjects) AS subjects
+    FROM cohort_method_result
+    WHERE database_id != 'Meta-analysis'
+    AND analysis_id = 2
+    AND calibrated_se_log_rr IS NOT NULL
+    GROUP BY target_id,
+        database_id
+) tmp;"
+querySql(connection, sql)
+
 
 # Edges for chord diagram -----------------------------------------------
 sql <- "
