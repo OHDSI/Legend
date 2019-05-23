@@ -11,32 +11,37 @@ oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
     return(dat)
 }
 
-concordant <- function(indexRct, indexLegend) {
+computeConcordance <- function(indexRct, indexLegend) {
     p <- oddsTest(data$LBRR[indexRct], data$RR[indexRct], data$UBRR[indexRct],
                   data$LEGENDLB[indexLegend], data$LEGENDRR[indexLegend], data$LEGENDUB[indexLegend])
-    return(p > 0.05)
+    # One option: compute fraction of pairs with p > 0.05
+    # return(mean(p > 0.05))
+
+    # Other option: mutliply all p-values to single probability
+    return(prod(p))
+
 }
 
 # Actual observed concordance:
-concordance <- mean(concordant(1:n, 1:n))
+concordance <- computeConcordance(1:n, 1:n)
 print(concordance)
 
 randomDraw <- function(dummy) {
     indexLegend <- 1:n
 
     # Pick a random RCT for each LEGEND result, just not the RCT that answers the same question as the LEGEND one:
-    indexRct <- sample.int(n - 1, length(indexLegend), replace = TRUE)
-    idx <- indexRct >= indexLegend
-    indexRct[idx] <- indexRct[idx] + 1
+    # indexRct <- sample.int(n - 1, length(indexLegend), replace = TRUE)
+    # idx <- indexRct >= indexLegend
+    # indexRct[idx] <- indexRct[idx] + 1
 
     # Alternative: just reshuffle the RCTs:
-    # indexRct <- sample(1:n, n)
+    indexRct <- sample(1:n, n)
 
-    randomConcordance <- mean(concordant(indexRct, indexLegend))
+    randomConcordance <- computeConcordance(indexRct, indexLegend)
     return(randomConcordance)
 }
 # Distribution of concordances under the null:
-dist <- sapply(1:100000, randomDraw)
+dist <- sapply(1:1000, randomDraw)
 
 # How often is null at or above observed?
 mean(dist >= concordance)
