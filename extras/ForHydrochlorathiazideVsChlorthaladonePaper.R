@@ -137,3 +137,4 @@ plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = 
 fileName <- file.path("c:/temp/papers", "bal.png")
 ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 300)
 
+length(unique(balance$covariateId))

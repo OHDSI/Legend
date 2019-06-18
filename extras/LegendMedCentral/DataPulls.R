@@ -380,7 +380,6 @@ getCovariateBalance <- function(connection,
       AND comparator_id = @comparator_id
       AND covariate.database_id = '@database_id'
       AND analysis_id = @analysis_id
-      AND interaction_covariate_id IS NULL
       {@outcome_id == \"\"} ? {AND outcome_id IS NULL} : {AND outcome_id = @outcome_id}"
   sql <- SqlRender::renderSql(sql,
                               target_id = targetId,
