@@ -1197,18 +1197,10 @@ exportCovariateBalance <- function(indicationId,
                                "stdDiffAfter")
         balance$targetMeanBefore[is.na(balance$targetMeanBefore)] <- 0
         balance$comparatorMeanBefore[is.na(balance$comparatorMeanBefore)] <- 0
-        balance$stdDiffBefore <- round(balance$stdDiffBefore, 3)
+        balance$stdDiffBefore[is.na(balance$stdDiffBefore)] <- 0
         balance$targetMeanAfter[is.na(balance$targetMeanAfter)] <- 0
         balance$comparatorMeanAfter[is.na(balance$comparatorMeanAfter)] <- 0
-        balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
-        if (!(analysisId %in% analysisIds)) {
-            balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
-            balanceCt <- swapColumnContents(balanceCt, "targetMeanBefore", "comparatorMeanBefore")
-            balanceCt$stdDiffBefore <- -balanceCt$stdDiffBefore
-            balanceCt <- swapColumnContents(balanceCt, "targetMeanAfter", "comparatorMeanAfter")
-            balanceCt$stdDiffAfter <- -balanceCt$stdDiffAfter
-            balance <- rbind(balance, balanceCt)
-        }
+        balance$stdDiffAfter[is.na(balance$stdDiffAfter)] <- 0
         balance <- enforceMinCellValue(balance,
                                        "targetMeanBefore",
                                        minCellCount/inferredTargetBeforeSize,
@@ -1225,17 +1217,24 @@ exportCovariateBalance <- function(indicationId,
                                        "comparatorMeanAfter",
                                        minCellCount/inferredComparatorAfterSize,
                                        TRUE)
-
+        if (!(analysisId %in% analysisIds)) {
+            balanceCt <- swapColumnContents(balance, "targetId", "comparatorId")
+            balanceCt <- swapColumnContents(balanceCt, "targetMeanBefore", "comparatorMeanBefore")
+            balanceCt$stdDiffBefore <- -balanceCt$stdDiffBefore
+            balanceCt <- swapColumnContents(balanceCt, "targetMeanAfter", "comparatorMeanAfter")
+            balanceCt$stdDiffAfter <- -balanceCt$stdDiffAfter
+            balance <- rbind(balance, balanceCt)
+        }
         balance$targetMeanBefore <- round(balance$targetMeanBefore, 3)
         balance$comparatorMeanBefore <- round(balance$comparatorMeanBefore, 3)
+        balance$stdDiffBefore <- round(balance$stdDiffBefore, 3)
         balance$targetMeanAfter <- round(balance$targetMeanAfter, 3)
         balance$comparatorMeanAfter <- round(balance$comparatorMeanAfter, 3)
-
+        balance$stdDiffAfter <- round(balance$stdDiffAfter, 3)
 
         balance <- balance[!(balance$targetMeanBefore == 0 & balance$comparatorMeanBefore == 0 & balance$targetMeanAfter ==
                                  0 & balance$comparatorMeanAfter == 0 & balance$stdDiffBefore == 0 & balance$stdDiffAfter ==
                                  0), ]
-        balance <- balance[!is.na(balance$targetId), ]
         colnames(balance) <- SqlRender::camelCaseToSnakeCase(colnames(balance))
         write.table(x = balance,
                     file = fileName,
