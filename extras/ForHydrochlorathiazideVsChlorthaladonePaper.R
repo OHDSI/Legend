@@ -91,17 +91,25 @@ ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 3
 databaseIds <-  c("CCAE", "Optum", "Panther")
 targetId <- 974166
 comparatorId <- 1395058
+
 exposures <- getExposures(connection = connection,
                           filterByCmResults = FALSE)
 eoi <- exposures[exposures$exposureId %in% c(targetId, comparatorId), ]
 targetName <- eoi$exposureName[eoi$exposureId == targetId]
 comparatorName <- eoi$exposureName[eoi$exposureId == comparatorId]
+balanceFolder <- "Documents/HctzCtdBalance"
 loadBal <- function(databaseId) {
-    bal <- getCovariateBalance(connection = connection,
-                               databaseId = databaseId,
-                               targetId = targetId,
-                               comparatorId = comparatorId,
-                               analysisId = 2)
+    bal <- readRDS(file.path(balanceFolder, sprintf("Balance_%s.rds", databaseId)))
+    bal <- bal[, c("beforeMatchingStdDiff", "afterMatchingStdDiff")]
+    saveRDS(bal, file.path(balanceFolder, sprintf("Balance_%s.rds", databaseId)))
+    bal$absBeforeMatchingStdDiff <- abs(bal$beforeMatchingStdDiff)
+    bal$absAfterMatchingStdDiff <- abs(bal$afterMatchingStdDiff)
+
+    # bal <- getCovariateBalance(connection = connection,
+    #                            databaseId = databaseId,
+    #                            targetId = targetId,
+    #                            comparatorId = comparatorId,
+    #                            analysisId = 2)
     bal$databaseId <- databaseId
     return(bal)
 }
