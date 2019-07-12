@@ -89,8 +89,9 @@ ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 3
 
 # Balance plots hydrochlorathiazide vs chlorthaladone --------------------------------------------------------------
 databaseIds <-  c("CCAE", "Optum", "Panther")
-targetId <- 974166
-comparatorId <- 1395058
+comparatorId <- 974166
+targetId <- 1395058
+matching <- TRUE
 
 exposures <- getExposures(connection = connection,
                           filterByCmResults = FALSE)
@@ -99,9 +100,15 @@ targetName <- eoi$exposureName[eoi$exposureId == targetId]
 comparatorName <- eoi$exposureName[eoi$exposureId == comparatorId]
 balanceFolder <- "Documents/HctzCtdBalance"
 loadBal <- function(databaseId) {
-    bal <- readRDS(file.path(balanceFolder, sprintf("Balance_%s.rds", databaseId)))
+    if (matching) {
+        fileName <- file.path(balanceFolder, sprintf("Balance_matching_%s.rds", databaseId))
+    } else {
+        fileName <- file.path(balanceFolder, sprintf("Balance_%s.rds", databaseId))
+    }
+
+    bal <- readRDS(fileName)
     bal <- bal[, c("beforeMatchingStdDiff", "afterMatchingStdDiff")]
-    saveRDS(bal, file.path(balanceFolder, sprintf("Balance_%s.rds", databaseId)))
+    saveRDS(bal, fileName)
     bal$absBeforeMatchingStdDiff <- abs(bal$beforeMatchingStdDiff)
     bal$absAfterMatchingStdDiff <- abs(bal$afterMatchingStdDiff)
 
@@ -121,9 +128,16 @@ limits <- c(min(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdD
             max(c(balance$absBeforeMatchingStdDiff, balance$absAfterMatchingStdDiff),
                 na.rm = TRUE))
 theme <- ggplot2::element_text(colour = "#000000", size = 12)
-labels <- aggregate(covariateId ~ databaseId, balance, length)
+balance$covariateCount <- 1
+labels <- aggregate(covariateCount ~ databaseId, balance, sum)
 
-labels$text <- sprintf("Number of covariates: %s", format(labels$covariateId, big.mark = ",", scientific = FALSE))
+labels$text <- sprintf("Number of covariates: %s", format(labels$covariateCount, big.mark = ",", scientific = FALSE))
+if (matching) {
+    adjLabel <- "matching"
+} else {
+    adjLabel <- "stratification"
+}
+
 plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = absAfterMatchingStdDiff)) +
     ggplot2::geom_point(color = rgb(0, 0, 0.8, alpha = 0.3), shape = 16, size = 1) +
     ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
@@ -142,7 +156,11 @@ plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = 
     ggplot2::facet_grid(~databaseId) +
     ggplot2::theme(legend.title = ggplot2::element_blank(),
                    strip.background = ggplot2::element_blank())
-fileName <- file.path("c:/temp/papers", "bal.png")
+if (matching) {
+    fileName <- file.path("c:/temp/papers", "bal_matching.png")
+} else {
+    fileName <- file.path("c:/temp/papers", "bal.png")
+}
+
 ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 300)
 
-length(unique(balance$covariateId))
