@@ -27,27 +27,27 @@
 #'
 #' @export
 doMetaAnalysis <- function(exportFolders, maExportFolder, maxCores) {
-    if (!file.exists(maExportFolder)) {
-        dir.create(maExportFolder, recursive = TRUE)
-    }
-    ParallelLogger::addDefaultFileLogger(file.path(maExportFolder, "metaAnalysisLog.txt"))
-    ParallelLogger::logInfo("Performing meta-analysis for main effects")
-    doMaEffectType(exportFolders = exportFolders,
-                   maExportFolder = maExportFolder,
-                   maxCores = maxCores,
-                   interactions = FALSE)
-    ParallelLogger::logInfo("Performing meta-analysis for interaction effects")
-    doMaEffectType(exportFolders = exportFolders,
-                   maExportFolder = maExportFolder,
-                   maxCores = maxCores,
-                   interactions = TRUE)
-    ParallelLogger::logInfo("Creating database table")
-    database <- data.frame(database_id = "Meta-analysis",
-                           database_name = "Random effects meta-analysis",
-                           description = "Random effects meta-analysis using the DerSimonian-Laird estimator.",
-                           is_meta_analysis = 1)
-    fileName <- file.path(maExportFolder, "database.csv")
-    write.csv(database, fileName, row.names = FALSE)
+  if (!file.exists(maExportFolder)) {
+    dir.create(maExportFolder, recursive = TRUE)
+  }
+  ParallelLogger::addDefaultFileLogger(file.path(maExportFolder, "metaAnalysisLog.txt"))
+  ParallelLogger::logInfo("Performing meta-analysis for main effects")
+  doMaEffectType(exportFolders = exportFolders,
+                 maExportFolder = maExportFolder,
+                 maxCores = maxCores,
+                 interactions = FALSE)
+  # ParallelLogger::logInfo("Performing meta-analysis for interaction effects")
+  # doMaEffectType(exportFolders = exportFolders,
+  #                maExportFolder = maExportFolder,
+  #                maxCores = maxCores,
+  #                interactions = TRUE)
+  ParallelLogger::logInfo("Creating database table")
+  database <- data.frame(database_id = "Meta-analysis",
+                         database_name = "Random effects meta-analysis",
+                         description = "Random effects meta-analysis using the DerSimonian-Laird estimator.",
+                         is_meta_analysis = 1)
+  fileName <- file.path(maExportFolder, "database.csv")
+  write.csv(database, fileName, row.names = FALSE)
 
 }
 
@@ -56,183 +56,183 @@ doMaEffectType <- function(exportFolders,
                            maxCores,
                            interactions) {
 
-    loadMainResults <- function(exportFolder) {
-        ParallelLogger::logInfo("Loading main results from ", exportFolder, " for meta-analysis")
-        zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
-        utils::unzip(zipfile = zipFile,
-                     files = c("cohort_method_result.csv",
-                               "negative_control_outcome.csv",
-                               "positive_control_outcome.csv"),
-                     exdir = exportFolder)
-        results <- read.csv(file.path(exportFolder, "cohort_method_result.csv"))
-        colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
-        colnames(results)[colnames(results) == "ci95lb"] <- "ci95Lb"
-        colnames(results)[colnames(results) == "ci95ub"] <- "ci95Ub"
-        ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
-        colnames(ncs) <- SqlRender::snakeCaseToCamelCase(colnames(ncs))
-        pcs <- read.csv(file.path(exportFolder, "positive_control_outcome.csv"))
-        colnames(pcs) <- SqlRender::snakeCaseToCamelCase(colnames(pcs))
-        results$trueEffectSize <- NA
-        idx <- results$outcomeId %in% ncs$outcomeId
-        results$trueEffectSize[idx] <- 1
-        idx <- results$outcomeId %in% pcs$outcomeId
-        results$trueEffectSize[idx] <- pcs$effectSize[match(results$outcomeId[idx],
-                                                            pcs$outcomeId)]
-        return(results)
-    }
-    loadInteractionResults <- function(exportFolder) {
-        ParallelLogger::logInfo("Loading interaction results from ", exportFolder, " for meta-analysis")
-        zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
-        utils::unzip(zipfile = zipFile,
-                     files = c("cm_interaction_result.csv",
-                               "negative_control_outcome.csv"),
-                     exdir = exportFolder)
-        results <- read.csv(file.path(exportFolder, "cm_interaction_result.csv"))
-        colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
-        ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
-        colnames(ncs) <- SqlRender::snakeCaseToCamelCase(colnames(ncs))
-        results$trueEffectSize <- NA
-        idx <- results$outcomeId %in% ncs$outcomeId
-        results$trueEffectSize[idx] <- 1
-        results$rr <- results$rrr
-        results$logRr <- results$logRrr
-        results$seLogRr <- results$seLogRrr
-        return(results)
-    }
-    if (interactions) {
-        allResults <- lapply(exportFolders, loadInteractionResults)
-    } else {
-        allResults <- lapply(exportFolders, loadMainResults)
-    }
-    allResults <- do.call(rbind, allResults)
-    groups <- split(allResults, paste(allResults$targetId, allResults$comparatorId, allResults$analysisId))
-    rm(allResults)
-    cluster <- ParallelLogger::makeCluster(min(maxCores, 10))
-    results <- ParallelLogger::clusterApply(cluster, groups, Legend:::computeGroupMetaAnalysis, interactions = interactions)
-    ParallelLogger::stopCluster(cluster)
-    # results <- plyr::compact(results)
-    results <- do.call(rbind, results)
-    results$trueEffectSize <- NULL
-    if (interactions) {
-        results$rrr <- results$rr
-        results$logRrr <- results$logRr
-        results$seLogRrr <- results$seLogRr
-        results$rr <- NULL
-        results$logRr <- NULL
-        results$seLogRr <- NULL
-        colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
-        fileName <-  file.path(maExportFolder, paste0("cm_interaction_result.csv"))
-        write.csv(results, fileName, row.names = FALSE)
-    } else {
-        colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
-        fileName <-  file.path(maExportFolder, paste0("cohort_method_result.csv"))
-        write.csv(results, fileName, row.names = FALSE)
-    }
+  loadMainResults <- function(exportFolder) {
+    ParallelLogger::logInfo("Loading main results from ", exportFolder, " for meta-analysis")
+    zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
+    utils::unzip(zipfile = zipFile,
+                 files = c("cohort_method_result.csv",
+                           "negative_control_outcome.csv",
+                           "positive_control_outcome.csv"),
+                 exdir = exportFolder)
+    results <- read.csv(file.path(exportFolder, "cohort_method_result.csv"))
+    colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
+    colnames(results)[colnames(results) == "ci95lb"] <- "ci95Lb"
+    colnames(results)[colnames(results) == "ci95ub"] <- "ci95Ub"
+    ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
+    colnames(ncs) <- SqlRender::snakeCaseToCamelCase(colnames(ncs))
+    pcs <- read.csv(file.path(exportFolder, "positive_control_outcome.csv"))
+    colnames(pcs) <- SqlRender::snakeCaseToCamelCase(colnames(pcs))
+    results$trueEffectSize <- NA
+    idx <- results$outcomeId %in% ncs$outcomeId
+    results$trueEffectSize[idx] <- 1
+    idx <- results$outcomeId %in% pcs$outcomeId
+    results$trueEffectSize[idx] <- pcs$effectSize[match(results$outcomeId[idx],
+                                                        pcs$outcomeId)]
+    return(results)
+  }
+  loadInteractionResults <- function(exportFolder) {
+    ParallelLogger::logInfo("Loading interaction results from ", exportFolder, " for meta-analysis")
+    zipFile <- list.files(exportFolder, "^Results.*.zip$", full.names = TRUE)[1]
+    utils::unzip(zipfile = zipFile,
+                 files = c("cm_interaction_result.csv",
+                           "negative_control_outcome.csv"),
+                 exdir = exportFolder)
+    results <- read.csv(file.path(exportFolder, "cm_interaction_result.csv"))
+    colnames(results) <- SqlRender::snakeCaseToCamelCase(colnames(results))
+    ncs <- read.csv(file.path(exportFolder, "negative_control_outcome.csv"))
+    colnames(ncs) <- SqlRender::snakeCaseToCamelCase(colnames(ncs))
+    results$trueEffectSize <- NA
+    idx <- results$outcomeId %in% ncs$outcomeId
+    results$trueEffectSize[idx] <- 1
+    results$rr <- results$rrr
+    results$logRr <- results$logRrr
+    results$seLogRr <- results$seLogRrr
+    return(results)
+  }
+  if (interactions) {
+    allResults <- lapply(exportFolders, loadInteractionResults)
+  } else {
+    allResults <- lapply(exportFolders, loadMainResults)
+  }
+  allResults <- do.call(rbind, allResults)
+  groups <- split(allResults, paste(allResults$targetId, allResults$comparatorId, allResults$analysisId))
+  rm(allResults)
+  cluster <- ParallelLogger::makeCluster(min(maxCores, 10))
+  results <- ParallelLogger::clusterApply(cluster, groups, Legend:::computeGroupMetaAnalysis, interactions = interactions)
+  ParallelLogger::stopCluster(cluster)
+  # results <- plyr::compact(results)
+  results <- do.call(rbind, results)
+  results$trueEffectSize <- NULL
+  if (interactions) {
+    results$rrr <- results$rr
+    results$logRrr <- results$logRr
+    results$seLogRrr <- results$seLogRr
+    results$rr <- NULL
+    results$logRr <- NULL
+    results$seLogRr <- NULL
+    colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
+    fileName <-  file.path(maExportFolder, paste0("cm_interaction_result.csv"))
+    write.csv(results, fileName, row.names = FALSE)
+  } else {
+    colnames(results) <- SqlRender::camelCaseToSnakeCase(colnames(results))
+    fileName <-  file.path(maExportFolder, paste0("cohort_method_result.csv"))
+    write.csv(results, fileName, row.names = FALSE)
+  }
 }
 
 computeGroupMetaAnalysis <- function(group, interactions) {
-    # group <- groups[[1]]
-    if (nrow(group) == 0) {
-        return(NULL)
-    }
-    analysisId <- group$analysisId[1]
-    targetId <- group$targetId[1]
-    comparatorId <- group$comparatorId[1]
-    ParallelLogger::logTrace("Performing meta-analysis for target ", targetId, ", comparator ", comparatorId, ", analysis ", analysisId)
-    outcomeGroups <- split(group, group$outcomeId)
-    outcomeGroupResults <- lapply(outcomeGroups, computeSingleMetaAnalysis)
-    groupResults <- do.call(rbind, outcomeGroupResults)
-    ncs <- groupResults[groupResults$trueEffectSize == 1, ]
-    validNcs <- ncs[!is.na(ncs$seLogRr), ]
-    if (nrow(validNcs) >= 5) {
-        null <- EmpiricalCalibration::fitMcmcNull(validNcs$logRr, validNcs$seLogRr)
-        calibratedP <- EmpiricalCalibration::calibrateP(null = null,
-                                                        logRr = groupResults$logRr,
-                                                        seLogRr = groupResults$seLogRr)
-        groupResults$calibratedP <- calibratedP$p
+  # group <- groups[[1]]
+  if (nrow(group) == 0) {
+    return(NULL)
+  }
+  analysisId <- group$analysisId[1]
+  targetId <- group$targetId[1]
+  comparatorId <- group$comparatorId[1]
+  ParallelLogger::logTrace("Performing meta-analysis for target ", targetId, ", comparator ", comparatorId, ", analysis ", analysisId)
+  outcomeGroups <- split(group, group$outcomeId)
+  outcomeGroupResults <- lapply(outcomeGroups, computeSingleMetaAnalysis)
+  groupResults <- do.call(rbind, outcomeGroupResults)
+  ncs <- groupResults[groupResults$trueEffectSize == 1, ]
+  validNcs <- ncs[!is.na(ncs$seLogRr), ]
+  if (nrow(validNcs) >= 5) {
+    null <- EmpiricalCalibration::fitMcmcNull(validNcs$logRr, validNcs$seLogRr)
+    calibratedP <- EmpiricalCalibration::calibrateP(null = null,
+                                                    logRr = groupResults$logRr,
+                                                    seLogRr = groupResults$seLogRr)
+    groupResults$calibratedP <- calibratedP$p
+  } else {
+    groupResults$calibratedP <- NA
+  }
+  if (!interactions) {
+    pcs <- groupResults[!is.na(groupResults$trueEffectSize) &
+                          groupResults$trueEffectSize != 1, ]
+    validPcs <- pcs[!is.na(pcs$seLogRr), ]
+    if (nrow(validPcs) > 5) {
+      model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(validNcs$logRr, validPcs$logRr),
+                                                             seLogRr = c(validNcs$seLogRr,
+                                                                         validPcs$seLogRr),
+                                                             trueLogRr = c(rep(0, nrow(validNcs)),
+                                                                           log(validPcs$trueEffectSize)),
+                                                             estimateCovarianceMatrix = FALSE)
+      calibratedCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = groupResults$logRr,
+                                                                        seLogRr = groupResults$seLogRr,
+                                                                        model = model)
+      groupResults$calibratedRr <- exp(calibratedCi$logRr)
+      groupResults$calibratedCi95Lb <- exp(calibratedCi$logLb95Rr)
+      groupResults$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
+      groupResults$calibratedLogRr <- calibratedCi$logRr
+      groupResults$calibratedSeLogRr <- calibratedCi$seLogRr
     } else {
-        groupResults$calibratedP <- NA
+      groupResults$calibratedRr <- rep(NA, nrow(groupResults))
+      groupResults$calibratedCi95Lb <- rep(NA, nrow(groupResults))
+      groupResults$calibratedCi95Ub <- rep(NA, nrow(groupResults))
+      groupResults$calibratedLogRr <- rep(NA, nrow(groupResults))
+      groupResults$calibratedSeLogRr <- rep(NA, nrow(groupResults))
     }
-    if (!interactions) {
-        pcs <- groupResults[!is.na(groupResults$trueEffectSize) &
-                                groupResults$trueEffectSize != 1, ]
-        validPcs <- pcs[!is.na(pcs$seLogRr), ]
-        if (nrow(validPcs) > 5) {
-            model <- EmpiricalCalibration::fitSystematicErrorModel(logRr = c(validNcs$logRr, validPcs$logRr),
-                                                                   seLogRr = c(validNcs$seLogRr,
-                                                                               validPcs$seLogRr),
-                                                                   trueLogRr = c(rep(0, nrow(validNcs)),
-                                                                                 log(validPcs$trueEffectSize)),
-                                                                   estimateCovarianceMatrix = FALSE)
-            calibratedCi <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = groupResults$logRr,
-                                                                              seLogRr = groupResults$seLogRr,
-                                                                              model = model)
-            groupResults$calibratedRr <- exp(calibratedCi$logRr)
-            groupResults$calibratedCi95Lb <- exp(calibratedCi$logLb95Rr)
-            groupResults$calibratedCi95Ub <- exp(calibratedCi$logUb95Rr)
-            groupResults$calibratedLogRr <- calibratedCi$logRr
-            groupResults$calibratedSeLogRr <- calibratedCi$seLogRr
-        } else {
-            groupResults$calibratedRr <- rep(NA, nrow(groupResults))
-            groupResults$calibratedCi95Lb <- rep(NA, nrow(groupResults))
-            groupResults$calibratedCi95Ub <- rep(NA, nrow(groupResults))
-            groupResults$calibratedLogRr <- rep(NA, nrow(groupResults))
-            groupResults$calibratedSeLogRr <- rep(NA, nrow(groupResults))
-        }
-    }
-    return(groupResults)
+  }
+  return(groupResults)
 }
 
 sumMinCellCount <- function(counts) {
   total <- sum(abs(counts))
   if (any(counts < 0)) {
-      total <- -total
+    total <- -total
   }
   return(total)
 }
 
 computeSingleMetaAnalysis <- function(outcomeGroup) {
-    # outcomeGroup <- outcomeGroups[[1]]
+  # outcomeGroup <- outcomeGroups[[1]]
+  maRow <- outcomeGroup[1, ]
+  outcomeGroup <- outcomeGroup[!is.na(outcomeGroup$seLogRr), ]
+  if (nrow(outcomeGroup) == 0) {
+    maRow$targetSubjects <- 0
+    maRow$comparatorSubjects <- 0
+    maRow$targetDays <- 0
+    maRow$comparatorDays <- 0
+    maRow$targetOutcomes <- 0
+    maRow$comparatorOutcomes <- 0
+    maRow$rr <- NA
+    maRow$ci95Lb <- NA
+    maRow$ci95Ub <- NA
+    maRow$p <- NA
+    maRow$logRr <- NA
+    maRow$seLogRr <- NA
+    maRow$i2 <- NA
+  } else if (nrow(outcomeGroup) == 1) {
     maRow <- outcomeGroup[1, ]
-    outcomeGroup <- outcomeGroup[!is.na(outcomeGroup$seLogRr), ]
-    if (nrow(outcomeGroup) == 0) {
-        maRow$targetSubjects <- 0
-        maRow$comparatorSubjects <- 0
-        maRow$targetDays <- 0
-        maRow$comparatorDays <- 0
-        maRow$targetOutcomes <- 0
-        maRow$comparatorOutcomes <- 0
-        maRow$rr <- NA
-        maRow$ci95Lb <- NA
-        maRow$ci95Ub <- NA
-        maRow$p <- NA
-        maRow$logRr <- NA
-        maRow$seLogRr <- NA
-        maRow$i2 <- NA
-    } else if (nrow(outcomeGroup) == 1) {
-        maRow <- outcomeGroup[1, ]
-        maRow$i2 <- 0
-    } else {
-        maRow$targetSubjects <- sumMinCellCount(outcomeGroup$targetSubjects)
-        maRow$comparatorSubjects <- sumMinCellCount(outcomeGroup$comparatorSubjects)
-        maRow$targetDays <- sum(outcomeGroup$targetDays)
-        maRow$comparatorDays <- sum(outcomeGroup$comparatorDays)
-        maRow$targetOutcomes <- sumMinCellCount(outcomeGroup$targetOutcomes)
-        maRow$comparatorOutcomes <- sumMinCellCount(outcomeGroup$comparatorOutcomes)
-        meta <- meta::metagen(TE = outcomeGroup$logRr,
-                              seTE = outcomeGroup$seLogRr,
-                              sm = "RR",
-                              hakn = FALSE)
-        s <- summary(meta)
-        maRow$i2 <- s$I2$TE
-        rnd <- s$random
-        maRow$rr <- exp(rnd$TE)
-        maRow$ci95Lb <- exp(rnd$lower)
-        maRow$ci95Ub <- exp(rnd$upper)
-        maRow$p <- rnd$p
-        maRow$logRr <- rnd$TE
-        maRow$seLogRr <- rnd$seTE
-    }
-    maRow$databaseId <- "Meta-analysis"
-    return(maRow)
+    maRow$i2 <- 0
+  } else {
+    maRow$targetSubjects <- sumMinCellCount(outcomeGroup$targetSubjects)
+    maRow$comparatorSubjects <- sumMinCellCount(outcomeGroup$comparatorSubjects)
+    maRow$targetDays <- sum(outcomeGroup$targetDays)
+    maRow$comparatorDays <- sum(outcomeGroup$comparatorDays)
+    maRow$targetOutcomes <- sumMinCellCount(outcomeGroup$targetOutcomes)
+    maRow$comparatorOutcomes <- sumMinCellCount(outcomeGroup$comparatorOutcomes)
+    meta <- meta::metagen(TE = outcomeGroup$logRr,
+                          seTE = outcomeGroup$seLogRr,
+                          sm = "RR",
+                          hakn = FALSE)
+    s <- summary(meta)
+    maRow$i2 <- s$I2$TE
+    rnd <- s$random
+    maRow$rr <- exp(rnd$TE)
+    maRow$ci95Lb <- exp(rnd$lower)
+    maRow$ci95Ub <- exp(rnd$upper)
+    maRow$p <- rnd$p
+    maRow$logRr <- rnd$TE
+    maRow$seLogRr <- rnd$seTE
+  }
+  maRow$databaseId <- "Meta-analysis"
+  return(maRow)
 }

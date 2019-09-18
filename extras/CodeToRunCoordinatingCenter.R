@@ -66,6 +66,13 @@ querySql(conn, "REINDEX INDEX idx_kaplan_meier_dist;")
 querySql(conn, "SELECT DISTINCT database_id FROM cohort_method_result;")
 querySql(conn, "SELECT DISTINCT database_id FROM cohort_method_result_staging;")
 
+# Get database size:
+sql <- "select t1.datname AS db_name,
+       pg_size_pretty(pg_database_size(t1.datname)) as db_size
+from pg_database t1
+where t1.datname <> 'rdsadmin'
+order by pg_database_size(t1.datname) desc;"
+querySql(conn, sql)
 
 querySql(conn, "SELECT COUNT(*), database_id FROM cohort_method_result GROUP BY database_id;")
 querySql(conn, "SELECT COUNT(*), database_id FROM cohort_method_result_staging GROUP BY database_id;")
@@ -94,7 +101,9 @@ querySql(conn, "SELECT COUNT(*) FROM incidence WHERE interaction_covariate_id IS
 executeSql(conn, "DELETE FROM incidence WHERE interaction_covariate_id IS NOT NULL;")
 executeSql(conn, "ALTER TABLE incidence DROP COLUMN interaction_covariate_id;")
 
-# executeSql(conn, "DELETE FROM covariate_balance WHERE database_id = 'Panther';")
+executeSql(conn, "DELETE FROM covariate_balance WHERE database_id = 'Panther';")
+
+
 # executeSql(conn, "DELETE FROM kaplan_meier_dist WHERE database_id = 'Panther';")
 # executeSql(conn, "ALTER TABLE cohort_method_analysis ALTER COLUMN definition TYPE text;")
 executeSql(conn, "ALTER TABLE covariate_staging ALTER COLUMN covariate_name TYPE text;")
@@ -187,8 +196,8 @@ for (i in 1:length(exportFolders)) {
 }
 
 # Reupload one table ------------------------------------------
-tableName <- "kaplan_meier_dist.csv"
-# tableName <- "positive_control_outcome.csv"
+# tableName <- "kaplan_meier_dist.csv"
+tableName <- "covariate_balance.csv"
 # exportFolders <- c("R:/Legend/exports/Hypertension/Optum",
 #                    "R:/Legend/exports/Hypertension/Ccae_part1",
 #                    "R:/Legend/exports/Hypertension/Ccae_part2",
@@ -199,34 +208,39 @@ tableName <- "kaplan_meier_dist.csv"
 #                    "R:/Legend/exports/Hypertension/Imsg",
 #                    "R:/Legend/exports/Hypertension/Cumc",
 #                    "R:/Legend/exports/Hypertension/NHIS_NSC")
-exportFolders <- c("R:/Legend/exports/Hypertension/Optum",
-                   "R:/Legend/exports/Hypertension/Ccae_part1",
-                   "R:/Legend/exports/Hypertension/Ccae_part2",
-                   "R:/Legend/exports/Hypertension/Ccae_part3",
-                   "R:/Legend/exports/Hypertension/Mdcr")
+exportFolders <- c("R:/Legend/exports/Hypertension/Optum")
+
 
 for (i in 1:length(exportFolders)) {
-    # for (i in 2:4) {
-    # i = 1
     exportFolder <- exportFolders[i]
+
     writeLines(paste("Extracting", tableName, "in", exportFolder))
     csvFiles <- list.files(exportFolder, ".csv$", full.names = TRUE)
     unlink(csvFiles)
     zipFile <- list.files(exportFolder, ".zip$", full.names = TRUE)[1]
     utils::unzip(zipfile = zipFile, files = tableName, exdir = exportFolder)
-}
 
-for (i in 2:length(exportFolders)) {
-# for (i in 2:4) {
-    exportFolder <- exportFolders[i]
-    writeLines(paste("Uploading", tableName, "in", exportFolder))
     deletePriorData <- TRUE
     if (grepl("_part[^1]", exportFolder)) {
-        deletePriorData <- FALSE
+      deletePriorData <- FALSE
     }
+    writeLines(paste("Uploading data from ", exportFolder, "to", tableName))
     uploadResultsToDatabase(connectionDetails = connectionDetails,
                             exportFolder = exportFolder,
                             createTables = FALSE,
                             staging = FALSE,
-                            deletePriorData = deletePriorData)
+                            deletePriorData = deletePriorData,
+                            skipBigTables = FALSE)
+
+    writeLines(paste("Cleaning up CSV files in  ", exportFolder))
+    csvFiles <- list.files(exportFolder, ".csv$", full.names = TRUE)
+    unlink(csvFiles)
 }
+
+
+exportFolder <- "s:/temp/"
+file <- "covariate_balance.csv"
+createTables = FALSE
+staging = FALSE
+deletePriorData = FALSE
+skipBigTables = FALSE

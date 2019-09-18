@@ -132,6 +132,13 @@ uploadResultsToDatabase <- function(connectionDetails,
         return(dropped)
     }
 
+    dropInteractionCovariateId <- function(data) {
+      if (any(names(data) == "interaction_covariate_id")) {
+        data <- data[is.na(data$interaction_covariate_id), -which(names(data) == "interaction_covariate_id")]
+      }
+      return(data)
+    }
+
     for (i in 1:length(files)) {
         file <- files[i]
         tableName <- gsub(".csv$", "", file)
@@ -145,11 +152,13 @@ uploadResultsToDatabase <- function(connectionDetails,
         fileCon <- file(file.path(exportFolder, file), "r")
         data <- read.csv(fileCon, nrows = batchSize)
         columnNames <- colnames(data)
+        data <- dropInteractionCovariateId(data)
         data <- infinityToNa(data)
         first <- createTables
+        done <- FALSE
         insertedCount <- 0
         dropped <- NULL
-        while (nrow(data) != 0) {
+        while (!done) {
             if (!createTables && deletePriorData) {
                 ParallelLogger::logInfo("- Deleting existing data with same keys")
                 dropped <- deleteExistingData(data = data,
@@ -167,6 +176,8 @@ uploadResultsToDatabase <- function(connectionDetails,
             insertedCount <- insertedCount + nrow(data)
             ParallelLogger::logInfo(paste("- Inserted ", insertedCount, "rows"))
             data <- read.csv(fileCon, nrows = batchSize, header = FALSE, col.names = columnNames)
+            done <- (nrow(data) == 0)
+            data <- dropInteractionCovariateId(data)
             data <- infinityToNa(data)
             first <- FALSE
         }
