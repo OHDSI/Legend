@@ -21,13 +21,13 @@ source("extras/LegendMedCentral/DataPulls.R")
 
 
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
-                                             server = paste(Sys.getenv("legendServer"),
-                                                            Sys.getenv("legendDatabase"),
+                                             server = paste(Sys.getenv("shinydbServer"),
+                                                            Sys.getenv("shinydbDatabase"),
                                                             sep = "/"),
-                                             port = Sys.getenv("legendPort"),
-                                             user = Sys.getenv("legendUser"),
-                                             password = Sys.getenv("legendPw"),
-                                             schema = Sys.getenv("legendSchema"))
+                                             port = Sys.getenv("shinydbPort"),
+                                             user = Sys.getenv("shinydbUser"),
+                                             password = Sys.getenv("shinydbPw"),
+                                             schema = Sys.getenv("shinydbSchema"))
 connection <- connect(connectionDetails)
 
 # PS plots hydrochlorathiazide vs chlorthaladone --------------------------------------------------------------
@@ -163,4 +163,10 @@ if (matching) {
 }
 
 ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 300)
+
+# Dose sensitivity analysis
+
+targetId <- 1395058 #Chlorthalidone
+comparatorId <- 974166 #Hydrochlorothiazide
+
 
