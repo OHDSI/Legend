@@ -151,8 +151,8 @@ plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = 
                         ggplot2::aes(label = text),
                         data = labels,
                         size = 3.5) +
-    ggplot2::scale_x_continuous("Before stratification", limits = limits) +
-    ggplot2::scale_y_continuous("After stratification", limits = limits) +
+    ggplot2::scale_x_continuous(paste("Before", adjLabel), limits = limits) +
+    ggplot2::scale_y_continuous(paste("After", adjLabel), limits = limits) +
     ggplot2::facet_grid(~databaseId) +
     ggplot2::theme(legend.title = ggplot2::element_blank(),
                    strip.background = ggplot2::element_blank())
