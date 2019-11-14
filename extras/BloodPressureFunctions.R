@@ -94,6 +94,7 @@ WHERE concept_id IN (3004249, 3012888)"
 
 plotBalance <- function(row, indicationFolder, bpFolder) {
     # row <- tcs[1, ]
+    ParallelLogger::logInfo(paste("Plotting balance for", row$targetName, "and", row$comparatorName))
     bpFolder <- file.path(indicationFolder, "bp")
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
@@ -206,6 +207,7 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
 
 refitPropensityModel <- function(row, indicationFolder, bpFolder) {
     # row <- tcs[1, ]
+    ParallelLogger::logInfo(paste("Refitting propensity model for", row$targetName, "and", row$comparatorName))
     bpFolder <- file.path(indicationFolder, "bp")
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
@@ -292,7 +294,7 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
                                                                       startingVariance = 0.01,
                                                                       seed = 123,
                                                                       threads = 10),
-                                     stopOnError = TRUE,
+                                     stopOnError = FALSE,
                                      excludeCovariateIds = subgroupCovariateIds,
                                      maxCohortSizeForFitting = 1e+05)
         saveRDS(ps, file.path(bpFolder, outcomeModelReference$sharedPsFile))
@@ -314,47 +316,51 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
     } else {
         strataPop <- readRDS(file.path(bpFolder, outcomeModelReference$strataFile))
     }
+    if (nrow(strataPop) != 0) {
+        if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
+            # Overall balance:
+            bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(bpFolder, sprintf("BalanceTopAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+        }
 
-    # if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
-    if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
-        # Overall balance:
+        cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
+                                                    covariateId = subset$conceptId,
+                                                    covariateValue = subset$valueAsNumber))
+        subsetRef <- unique(subset[, c("conceptId", "conceptName")])
+        cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
+                                                      covariateName = subsetRef$conceptName))
         bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-        CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
-        CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(bpFolder, sprintf("BalanceTopAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+        resultRow <- row[, c("targetId", "targetName" ,"comparatorId", "comparatorName")]
+        resultRow <- merge(resultRow, bal)
+        ff::close.ffdf(cmData$covariates)
+        ff::close.ffdf(cmData$covariateRef)
+        return(resultRow)
+    } else {
+        ff::close.ffdf(cmData$covariates)
+        ff::close.ffdf(cmData$covariateRef)
+        return(NULL)
     }
-    ff::close.ffdf(cmData$covariates)
-    ff::close.ffdf(cmData$covariateRef)
-    cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
-                                                covariateId = subset$conceptId,
-                                                covariateValue = subset$valueAsNumber))
-    subsetRef <- unique(subset[, c("conceptId", "conceptName")])
-    cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
-                                                  covariateName = subsetRef$conceptName))
-    bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-    resultRow <- row[, c("targetId", "targetName" ,"comparatorId", "comparatorName")]
-    resultRow <- merge(resultRow, bal)
-    return(resultRow)
+
 }
 
-computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
+computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
     # row <- tcs[1,]
+    ParallelLogger::logInfo(paste("Computing adjusted HR for", row$targetName, "and", row$comparatorName))
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
     bps <- bps[bps$valueAsNumber > 25, ]
-    outcomeModelReference1 <- readRDS(file.path(indicationFolder,
-                                                "cmOutput",
-                                                "outcomeModelReference1.rds"))
-    outcomeModelReference2 <- readRDS(file.path(indicationFolder,
-                                                "cmOutput",
-                                                "outcomeModelReference2.rds"))
-    outcomeModelReference3 <- readRDS(file.path(indicationFolder,
-                                                "cmOutput",
-                                                "outcomeModelReference3.rds"))
-    outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
-
-    # outcomeModelReference <- readRDS(file.path(indicationFolder,
-    #                                            "cmOutput",
-    #                                            "outcomeModelReference1.rds"))
+    # outcomeModelReference1 <- readRDS(file.path(indicationFolder,
+    #                                             "cmOutput",
+    #                                             "outcomeModelReference1.rds"))
+    # outcomeModelReference2 <- readRDS(file.path(indicationFolder,
+    #                                             "cmOutput",
+    #                                             "outcomeModelReference2.rds"))
+    # outcomeModelReference3 <- readRDS(file.path(indicationFolder,
+    #                                             "cmOutput",
+    #                                             "outcomeModelReference3.rds"))
+    # outcomeModelReference <- rbind(outcomeModelReference1, outcomeModelReference2, outcomeModelReference3)
+    outcomeModelReference <- readRDS(file.path(bpFolder, "outcomeModelReference.rds"))
     onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
                                                        outcomeModelReference$analysisId == 3, ]
@@ -379,7 +385,7 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
                                                             removeSubjectsWithPriorOutcome = TRUE,
                                                             riskWindowStart = 1,
                                                             riskWindowEnd = 0,
-                                                            addExposureDaysToEnd = TRUE,
+                                                            endAnchor = "cohort end",
                                                             minDaysAtRisk = 1,
                                                             censorAtNewRiskWindow = TRUE)
             # strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
@@ -442,6 +448,10 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder) {
     ctEstimates$ci95ub <- 1/ctEstimates$ci95lb
     ctEstimates$ci95lb <- temp
 
+    if (all(is.na(tcEstimates$seLogRr))) {
+        warning("All estimates are NA. Skipping calibration")
+        return()
+    }
     calibrate <- function(estimates) {
         controlEstimates <- estimates[!is.na(estimates$targetEffectSize), ]
         controlEstimates <- controlEstimates[!is.na(controlEstimates$seLogRr), ]
