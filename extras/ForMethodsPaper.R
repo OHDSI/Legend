@@ -189,9 +189,7 @@ legendEstimates$lbLegend <- legendEstimates$calibratedCi95Lb
 legendEstimates$ubLegend <- legendEstimates$calibratedCi95Ub
 combined <- merge(rctEstimates, legendEstimates[, c("targetId", "comparatorId", "outcomeId", "hrLegend", "lbLegend", "ubLegend", "i2")])
 combined$someOverlapDm <- combined$lbLegend <= combined$ubDm & combined$ubLegend >= combined$lbDm
-combined$someOverlapNm <- combined$lbLegend <= combined$ubNm & combined$ubLegend >= combined$lbNm
 combined$completeOverlapDm <- combined$lbLegend >= combined$lbDm & combined$ubLegend <= combined$ubDm
-combined$completeOverlapNm <- combined$lbLegend >= combined$lbNm & combined$ubLegend <= combined$ubNm
 oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
     s1 <- (log(ub1) - log(lb1))/(2*1.96)
     s2 <- (log(ub2) - log(lb2))/(2*1.96)
@@ -201,31 +199,15 @@ oddsTest <- function(lb1,hr1,ub1,lb2,hr2,ub2) {
     return(dat)
 }
 combined$pDifferenceDm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbDm, combined$hrDm, combined$ubDm)
-combined$pDifferenceNm <- oddsTest(combined$lbLegend, combined$hrLegend, combined$ubLegend, combined$lbNm, combined$hrNm, combined$ubNm)
 
-
-# combined$ConcordanceDm[combined$someOverlapDm] <- "Partial"
-# combined$ConcordanceDm[combined$completeOverlapDm] <- "Full"
-# combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "None"
-# combined$ConcordanceNm[combined$someOverlapNm] <- "Partial"
-# combined$ConcordanceNm[combined$completeOverlapNm] <- "Full"
-# combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "None"
 combined$ConcordanceDm[combined$someOverlapDm] <- "Agreement"
 combined$ConcordanceDm[combined$completeOverlapDm] <- "Agreement"
 combined$ConcordanceDm[combined$pDifferenceDm < 0.05] <- "No agreement"
-combined$ConcordanceNm[combined$someOverlapNm] <- "Agreement"
-combined$ConcordanceNm[combined$completeOverlapNm] <- "Agreement"
-combined$ConcordanceNm[combined$pDifferenceNm < 0.05] <- "No agreement"
 
 writeLines(paste("Number of comparisons:", 2*nrow(combined)))
-writeLines(paste("Complete overlap DM:", sum(combined$ConcordanceDm == "Full"), "(", 100*sum(combined$ConcordanceDm == "Full")/nrow(combined), "%)"))
-writeLines(paste("Partial overlap DM:", sum(combined$ConcordanceDm == "Partial"), "(", 100*sum(combined$ConcordanceDm == "Partial")/nrow(combined), "%)"))
-writeLines(paste("No overlap DM:", sum(combined$ConcordanceDm == "None"), "(", 100*sum(combined$ConcordanceDm == "None")/nrow(combined), "%)"))
-
-writeLines(paste("Complete overlap NM:", sum(combined$ConcordanceNm == "Full"), "(", 100*sum(combined$ConcordanceNm == "Full")/nrow(combined), "%)"))
-writeLines(paste("Partial overlap NM:", sum(combined$ConcordanceNm == "Partial"), "(", 100*sum(combined$ConcordanceNm == "Partial")/nrow(combined), "%)"))
-writeLines(paste("No overlap NM:", sum(combined$ConcordanceNm == "None"), "(", 100*sum(combined$ConcordanceNm == "None")/nrow(combined), "%)"))
-
+# writeLines(paste("Complete overlap DM:", sum(combined$ConcordanceDm == "Full"), "(", 100*sum(combined$ConcordanceDm == "Full")/nrow(combined), "%)"))
+writeLines(paste("Partial overlap DM:", sum(combined$ConcordanceDm == "Agreement"), "(", 100*sum(combined$ConcordanceDm == "Agreement")/nrow(combined), "%)"))
+writeLines(paste("No overlap DM:", sum(combined$ConcordanceDm == "No agreement"), "(", 100*sum(combined$ConcordanceDm == "No agreement")/nrow(combined), "%)"))
 
 createPlotForOutcome <- function(outcome, combined) {
     vizData <- rbind(data.frame(Target = combined$targetName,
@@ -235,21 +217,10 @@ createPlotForOutcome <- function(outcome, combined) {
                                 hr = combined$hrDm,
                                 lb = combined$lbDm,
                                 ub = combined$ubDm,
-                                completeOverlap = combined$completeOverlapDm,
-                                someOverlap = combined$someOverlapDm,
-                                pDifference = combined$pDifferenceDm,
+                                completeOverlap = NA,
+                                someOverlap = NA,
+                                pDifference = NA,
                                 stringsAsFactors = FALSE),
-                     # data.frame(Target = combined$targetName,
-                     #            Comparator = combined$comparatorName,
-                     #            outcome = combined$outcomeName,
-                     #            Source = "Network meta-analysis",
-                     #            hr = combined$hrNm,
-                     #            lb = combined$lbNm,
-                     #            ub = combined$ubNm,
-                     #            completeOverlap = combined$completeOverlapNm,
-                     #            someOverlap = combined$someOverlapNm,
-                     #            pDifference = combined$pDifferenceNm,
-                     #            stringsAsFactors = FALSE),
                      data.frame(Target = combined$targetName,
                                 Comparator = combined$comparatorName,
                                 outcome = combined$outcomeName,
@@ -257,21 +228,16 @@ createPlotForOutcome <- function(outcome, combined) {
                                 hr = combined$hrLegend,
                                 lb = combined$lbLegend,
                                 ub = combined$ubLegend,
-                                completeOverlap = NA,
-                                someOverlap = NA,
-                                pDifference = NA,
+                                completeOverlap = combined$completeOverlapDm,
+                                someOverlap = combined$someOverlapDm,
+                                pDifference = combined$pDifferenceDm,
                                 stringsAsFactors = FALSE))
     vizData <- vizData[vizData$outcome == outcome, ]
-    # vizData$Source <- factor(vizData$Source, levels = c("Network meta-analysis", "Direct meta-analysis", "LEGEND meta-analysis"))
-    vizData$Source <- factor(vizData$Source, levels = c("Randomized clinical trials meta-analysis", "LEGEND real-world evidence meta-analysis"))
+    vizData$Source <- factor(vizData$Source, levels = c("LEGEND real-world evidence meta-analysis", "Randomized clinical trials meta-analysis"))
     vizData$Concordance <- "Reference"
-    # vizData$Concordance[vizData$someOverlap] <- "Partial overlap of confidence intervals"
-    # vizData$Concordance[vizData$completeOverlap] <- "Full overlap of confidence intervals"
-    # vizData$Concordance[vizData$pDifference < 0.05] <- "Statistically significant difference (p < 0.05)"
     vizData$Concordance[vizData$someOverlap] <- "Estimates in agreement"
     vizData$Concordance[vizData$completeOverlap] <- "Estimates in agreement"
     vizData$Concordance[vizData$pDifference < 0.05] <- "Statistically significant difference (p < 0.05)"
-    # vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Full overlap of confidence intervals", "Partial overlap of confidence intervals",  "Statistically significant difference (p < 0.05)"))
     vizData$Concordance <- factor(vizData$Concordance, levels = c("Reference", "Estimates in agreement",  "Statistically significant difference (p < 0.05)"))
     vizData$show <- 1
     breaks <- c(0.25, 0.5, 1, 2, 4)
