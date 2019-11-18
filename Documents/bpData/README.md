@@ -68,4 +68,6 @@ Most relevant values:
 - ci95ub is the lower bound of the 95% confidence interval of the hazard ratio
 - p is the two-sideed p-value against the null hypothesis of no effect
 
+### BalancePsStratification.csv, BalanceAdjustBpPsStratification.csv, HrsData_all_PsStratification.csv
 
+Same as above, but using PS stratification instead of matching.

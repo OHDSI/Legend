@@ -92,31 +92,36 @@ WHERE concept_id IN (3004249, 3012888)"
     saveRDS(bps, file.path(bpFolder, "bps.rds"))
 }
 
-plotBalance <- function(row, indicationFolder, bpFolder) {
+plotBalance <- function(row, indicationFolder, bpFolder, analysisId) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Plotting balance for", row$targetName, "and", row$comparatorName))
     bpFolder <- file.path(indicationFolder, "bp")
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
     bps <- bps[bps$valueAsNumber > 25, ]
-    outcomeModelReference <- readRDS(file.path(indicationFolder,
-                                               "cmOutput",
-                                               "outcomeModelReference1.rds"))
+    # outcomeModelReference <- readRDS(file.path(indicationFolder,
+    #                                            "cmOutput",
+    #                                            "outcomeModelReference1.rds"))
+    outcomeModelReference <- readRDS(file.path(bpFolder, "outcomeModelReference.rds"))
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 3, ]
+                                                       outcomeModelReference$analysisId == analysisId, ]
     outcomeModelReference <- outcomeModelReference[1, ]
     cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                            "cmOutput",
                                                            outcomeModelReference$cohortMethodDataFolder),
                                                  skipCovariates = TRUE)
     sharedPs <- readRDS(file.path(indicationFolder, "cmOutput", outcomeModelReference$sharedPsFile))
-    # strataPop <- CohortMethod::stratifyByPs(sharedPs, numberOfStrata = 10)
-    strataPop <- CohortMethod::matchOnPs(sharedPs, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
+    if (analysisId == 1) {
+        strataPop <- CohortMethod::stratifyByPs(sharedPs, numberOfStrata = 10)
+    } else if (analysisId == 3) {
+        strataPop <- CohortMethod::matchOnPs(sharedPs, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
+    } else {
+        stop("Unknown analysis ID ", analysisId)
+    }
     if (nrow(strataPop) == 0) {
         return(NULL)
     }
-
     resultRow <- row[, c("targetId", "targetName" ,"comparatorId", "comparatorName")]
     resultRow$targetSubjects <- sum(strataPop$treatment == 1)
     resultRow$comparatorSubjects <- sum(strataPop$treatment == 0)
@@ -140,7 +145,7 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
     m$conceptName[m$conceptName == "BP systolic"] <- "Systolic"
 
     # Save for Marc:
-    fileName <- file.path(bpFolder, sprintf("BpData_%s_%s.rds", as.character(row$targetName), as.character(row$comparatorName)))
+    fileName <- file.path(bpFolder, sprintf("BpData_%s_%s_%s.rds", as.character(row$targetName), as.character(row$comparatorName), analysisId))
     saveRDS(m, fileName)
 
     # before <- data.frame()
@@ -205,20 +210,21 @@ plotBalance <- function(row, indicationFolder, bpFolder) {
     return(resultRow)
 }
 
-refitPropensityModel <- function(row, indicationFolder, bpFolder) {
+refitPropensityModel <- function(row, indicationFolder, bpFolder, analysisId) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Refitting propensity model for", row$targetName, "and", row$comparatorName))
     bpFolder <- file.path(indicationFolder, "bp")
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
     bps <- bps[bps$valueAsNumber > 25, ]
-    outcomeModelReference <- readRDS(file.path(indicationFolder,
-                                               "cmOutput",
-                                               "outcomeModelReference1.rds"))
+    # outcomeModelReference <- readRDS(file.path(indicationFolder,
+    #                                            "cmOutput",
+    #                                            "outcomeModelReference1.rds"))
+    outcomeModelReference <- readRDS(file.path(bpFolder, "outcomeModelReference.rds"))
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 3, ]
-    outcomeModelReference <- outcomeModelReference[1, ]
+                                                       outcomeModelReference$analysisId == analysisId, ]
+    outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ][1, ]
 
     if (!file.exists(file.path(bpFolder, outcomeModelReference$cohortMethodDataFolder))) {
         # Create new CohortMethodData object, restricting to people with BP data, and adding BP as splines
@@ -307,17 +313,22 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
                                                         removeSubjectsWithPriorOutcome = TRUE,
                                                         riskWindowStart = 1,
                                                         riskWindowEnd = 0,
-                                                        addExposureDaysToEnd = TRUE,
+                                                        endAnchor = "cohort end",
                                                         minDaysAtRisk = 1,
                                                         censorAtNewRiskWindow = TRUE)
-        # strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
-        strataPop <- CohortMethod::matchOnPs(studyPop, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
+        if (analysisId == 1) {
+            strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+        } else if (analysisId == 3) {
+            strataPop <- CohortMethod::matchOnPs(studyPop, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
+        } else {
+            stop("Unknown analysis ID ", analysisId)
+        }
         saveRDS(strataPop, file.path(bpFolder, outcomeModelReference$strataFile))
     } else {
         strataPop <- readRDS(file.path(bpFolder, outcomeModelReference$strataFile))
     }
     if (nrow(strataPop) != 0) {
-        if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))) {
+        if (!file.exists(file.path(bpFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))) {
             # Overall balance:
             bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
             CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
@@ -344,7 +355,7 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder) {
 
 }
 
-computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
+computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, analysisId) {
     # row <- tcs[1,]
     ParallelLogger::logInfo(paste("Computing adjusted HR for", row$targetName, "and", row$comparatorName))
     bps <- readRDS(file.path(bpFolder, "bps.rds"))
@@ -363,8 +374,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
     outcomeModelReference <- readRDS(file.path(bpFolder, "outcomeModelReference.rds"))
     onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                                        outcomeModelReference$comparatorId == row$comparatorId &
-                                                       outcomeModelReference$analysisId == 3, ]
-    analysisFolder <- file.path(bpFolder, "Analysis_3")
+                                                       outcomeModelReference$analysisId == analysisId, ]
+    analysisFolder <- file.path(bpFolder, sprintf("Analysis_%s", analysisId))
     if (!file.exists(analysisFolder)) {
         dir.create(analysisFolder)
     }
@@ -397,8 +408,6 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
         }
     }
     plyr::l_ply(1:nrow(onTreatment), computeHr, .progress = "text")
-
-
     originalSummary <- CohortMethod::summarizeAnalyses(onTreatment, file.path(indicationFolder, "cmOutput"))
     originalSummary$type <- "Original"
     bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, bpFolder)
@@ -490,7 +499,7 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
     vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
 
     # Save for Marc:
-    fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s.rds", row$targetName, row$comparatorName))
+    fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s_%s.rds", row$targetName, row$comparatorName, analysisId))
     saveRDS(vizData, fileName)
 
     plotHrs <- function(vizData, fileName) {
@@ -526,7 +535,7 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId) {
         ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 10, dpi = 400)
         # ggplot2::ggsave(filename = fileName, plot = plot, width = 6.5, height = 10, dpi = 400)
     }
-    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$targetName, row$comparatorName)))
+    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(bpFolder, sprintf("Hrs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))
 
-    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(bpFolder, sprintf("Hrs_%s_%s.png", row$comparatorName, row$targetName)))
+    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(bpFolder, sprintf("Hrs_%s_%s_%s.png", row$comparatorName, row$targetName, analysisId)))
 }
