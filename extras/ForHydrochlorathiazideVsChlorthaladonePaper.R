@@ -91,7 +91,7 @@ ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 3
 databaseIds <-  c("CCAE", "Optum", "Panther")
 comparatorId <- 974166
 targetId <- 1395058
-matching <- TRUE
+matching <- FALSE
 
 exposures <- getExposures(connection = connection,
                           filterByCmResults = FALSE)
@@ -157,9 +157,9 @@ plot <- ggplot2::ggplot(balance, ggplot2::aes(x = absBeforeMatchingStdDiff, y = 
     ggplot2::theme(legend.title = ggplot2::element_blank(),
                    strip.background = ggplot2::element_blank())
 if (matching) {
-    fileName <- file.path("c:/temp/papers", "bal_matching.png")
+    fileName <- file.path("c:/temp/papers", "bal_matching.pdf")
 } else {
-    fileName <- file.path("c:/temp/papers", "bal.png")
+    fileName <- file.path("c:/temp/papers", "bal.pdf")
 }
 
 ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 3, dpi = 300)
