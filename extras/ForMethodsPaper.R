@@ -402,6 +402,47 @@ mean(agree)
 length(agree)
 sum(agree)
 
+# Some simulations to understand expected value:
+mu <- mean(estimates$logRr)
+sigma <- sd(estimates$logRr)
+
+simulate <- function(i) {
+    logRr <- rnorm(2, 3*mu, sigma)
+    rate <- c(runif(1, 0.0001, 0.01), 0, 0)
+    rate[2] <- exp(logRr[1]) * rate[1]
+    rate[3] <- exp(logRr[2]) * rate[2]
+    time <- runif(3, 1000, 10000)
+    outcomes <- rpois(3, time * rate)
+
+    testAb <- rateratio.test::rateratio.test(x = c(outcomes[1],
+                                                   outcomes[2]),
+                                             n = c(time[1],
+                                                   time[2]))
+    sigAb <- testAb$conf.int[1] > 1
+    testBc <- rateratio.test::rateratio.test(x = c(outcomes[2],
+                                                   outcomes[3]),
+                                             n = c(time[2],
+                                                   time[3]))
+    sigBc <- testBc$conf.int[1] > 1
+
+    testAc <- rateratio.test::rateratio.test(x = c(outcomes[1],
+                                                   outcomes[3]),
+                                             n = c(time[1],
+                                                   time[3]))
+    sigAc <- testAc$conf.int[1] > 1
+    if (sigAb && sigBc) {
+        if (sigAc)
+            return(2)
+        else
+            return(1)
+    } else {
+        return(0)
+    }
+}
+x <- sapply(1:10000, simulate)
+x <- x[x != 0]
+mean(x == 2)
+
 # Between-database heterogeneity
 library(meta)
 library(ggplot2)
