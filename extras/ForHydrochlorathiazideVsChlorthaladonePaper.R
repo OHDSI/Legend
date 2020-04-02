@@ -32,8 +32,8 @@ connection <- connect(connectionDetails)
 
 # PS plots hydrochlorathiazide vs chlorthaladone --------------------------------------------------------------
 databaseIds <-  c("CCAE", "Optum", "Panther")
-targetId <- 1395058
-comparatorId <- 974166
+targetId <- 1395058 # Chlorthalidone
+comparatorId <- 974166 # Hydrochlorathiazide
 exposures <- getExposures(connection = connection,
                           filterByCmResults = FALSE)
 eoi <- exposures[exposures$exposureId %in% c(targetId, comparatorId), ]
