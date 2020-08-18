@@ -1,6 +1,6 @@
 Results from a sensitivity analysis in PanTher using blood pressure data to show balance.
 
-The script used to generate these is [here](../extras/AdjustForBloodPressure.R).
+The script used to generate these is [here](../../extras/AdjustForBloodPressure.R).
 
 Description of files below. Note that all analyses are done assymetrical. So if there is data for target A and comparator B, there will not be data for target B and comparator A.
 
