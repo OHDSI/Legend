@@ -539,3 +539,171 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, an
 
     plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(bpFolder, sprintf("Hrs_%s_%s_%s.png", row$comparatorName, row$targetName, analysisId)))
 }
+
+
+computeUnadjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, analysisId) {
+    # row <- tcs[1,]
+    ParallelLogger::logInfo(paste("Computing unadjusted HR for", row$targetName, "and", row$comparatorName))
+    outcomeModelReference <- readRDS(file.path(bpFolder, "outcomeModelReference.rds"))
+    onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
+                                             outcomeModelReference$comparatorId == row$comparatorId &
+                                             outcomeModelReference$analysisId == analysisId, ]
+    analysisFolder <- file.path(bpFolder, sprintf("Analysis_%s", analysisId + 4))
+    if (!file.exists(analysisFolder)) {
+        dir.create(analysisFolder)
+    }
+    cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder, "cmOutput", onTreatment$cohortMethodDataFolder[1]))
+
+    computeHr <- function(i) {
+        #i = 1
+        omFile <- file.path(bpFolder, gsub(sprintf("Analysis_%s", analysisId), sprintf("Analysis_%s", analysisId + 4), onTreatment$outcomeModelFile[i]))
+        if (!file.exists(omFile)) {
+            studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
+                                                            outcomeId = onTreatment$outcomeId[i],
+                                                            removeDuplicateSubjects = "keep first",
+                                                            removeSubjectsWithPriorOutcome = TRUE,
+                                                            riskWindowStart = 1,
+                                                            riskWindowEnd = 0,
+                                                            endAnchor = "cohort end",
+                                                            minDaysAtRisk = 1,
+                                                            censorAtNewRiskWindow = TRUE)
+            outcomeModel <- CohortMethod::fitOutcomeModel(population = studyPop,
+                                                          stratified = FALSE,
+                                                          modelType = "cox")
+            saveRDS(outcomeModel, omFile)
+        }
+    }
+    plyr::l_ply(1:nrow(onTreatment), computeHr, .progress = "text")
+    originalSummary <- CohortMethod::summarizeAnalyses(onTreatment, file.path(indicationFolder, "cmOutput"))
+    originalSummary$type <- "Original"
+    onTreatment$analysisId <- onTreatment$analysisId + 4
+    onTreatment$outcomeModelFile <- gsub(sprintf("Analysis_%s", analysisId), sprintf("Analysis_%s", analysisId + 4), onTreatment$outcomeModelFile)
+    unadjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, bpFolder)
+    unadjustedSummary$type <- "Unadjusted"
+    estimates <- rbind(originalSummary, unadjustedSummary)
+
+    # Calibration ------------------------------------------
+    pathToCsv <- system.file("settings", "OutcomesOfInterest.csv", package = "Legend")
+    outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
+    outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == indicationId, ]
+    pathToCsv <- file.path(indicationFolder, "signalInjectionSummary.csv")
+    siSummary <- read.csv(pathToCsv)
+    siSummary <- siSummary[siSummary$newOutcomeId %in% estimates$outcomeId, ]
+    pcs <- data.frame(outcomeId = siSummary$newOutcomeId, targetEffectSize = siSummary$trueEffectSize)
+    pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
+    negativeControls <- read.csv(pathToCsv)
+    negativeControls <- negativeControls[negativeControls$indicationId == indicationId, ]
+
+    estimates <- merge(estimates,
+                       data.frame(outcomeId = siSummary$newOutcomeId,
+                                  targetEffectSize = siSummary$targetEffectSize),
+                       all.x = TRUE)
+    estimates$targetEffectSize[estimates$outcomeId %in% negativeControls$cohortId] <- 1
+
+    tcEstimates <- estimates[estimates$outcomeId %in% outcomesOfInterest$cohortId |
+                                 estimates$outcomeId %in% negativeControls$cohortId |
+                                 estimates$outcomeId  %in% siSummary$newOutcomeId[siSummary$exposureId == row$targetId], ]
+
+    ctEstimates <- estimates[estimates$outcomeId %in% outcomesOfInterest$cohortId |
+                                 estimates$outcomeId %in% negativeControls$cohortId |
+                                 estimates$outcomeId  %in% siSummary$newOutcomeId[siSummary$exposureId == row$comparatorId], ]
+    temp <- ctEstimates$targetId
+    ctEstimates$targetId <- ctEstimates$comparatorId
+    ctEstimates$comparatorId <- temp
+    temp <- ctEstimates$target
+    ctEstimates$target <- ctEstimates$comparator
+    ctEstimates$comparator <- temp
+    temp <- ctEstimates$targetDays
+    ctEstimates$targetDays <- ctEstimates$comparatorDays
+    ctEstimates$comparatorDays <- temp
+    temp <- ctEstimates$eventsTarget
+    ctEstimates$eventsTarget <- ctEstimates$eventsComparator
+    ctEstimates$eventsComparator <- temp
+    ctEstimates$logRr <- -ctEstimates$logRr
+    ctEstimates$rr <- 1/ctEstimates$r
+    temp <- 1/ctEstimates$ci95ub
+    ctEstimates$ci95ub <- 1/ctEstimates$ci95lb
+    ctEstimates$ci95lb <- temp
+
+    if (all(is.na(tcEstimates$seLogRr))) {
+        warning("All estimates are NA. Skipping calibration")
+        return()
+    }
+    calibrate <- function(estimates) {
+        controlEstimates <- estimates[!is.na(estimates$targetEffectSize), ]
+        controlEstimates <- controlEstimates[!is.na(controlEstimates$seLogRr), ]
+        errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
+                                                                    seLogRr = controlEstimates$seLogRr,
+                                                                    trueLogRr = log(controlEstimates$targetEffectSize),
+                                                                    estimateCovarianceMatrix = FALSE)
+        # EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
+        #                                               seLogRr = controlEstimates$seLogRr,
+        #                                               trueLogRr = log(controlEstimates$targetEffectSize))
+        cal <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = estimates$logRr,
+                                                                 seLogRr = estimates$seLogRr,
+                                                                 model = errorModel)
+        calibrated <- estimates
+        calibrated$rr <- exp(cal$logRr)
+        calibrated$ci95lb <- exp(cal$logLb95Rr)
+        calibrated$ci95ub <- exp(cal$logUb95Rr)
+        calibrated$logLb95Rr <- NULL
+        calibrated$logUb95Rr <- NULL
+        calibrated$outcomeId <- estimates$outcomeId
+        calibrated$type <- estimates$type
+        calibrated$estimate <- "Calibrated"
+        estimates$estimate <- "Uncalibrated"
+        estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
+    }
+    estimates <- rbind(calibrate(tcEstimates[tcEstimates$type == "Original", ]),
+                       calibrate(tcEstimates[tcEstimates$type == "Unadjusted", ]),
+                       calibrate(ctEstimates[tcEstimates$type == "Original", ]),
+                       calibrate(ctEstimates[tcEstimates$type == "Unadjusted", ]))
+
+    vizData <- merge(estimates, data.frame(outcomeId = outcomesOfInterest$cohortId,
+                                           outcomeName = outcomesOfInterest$name))
+    vizData <- vizData[!is.na(vizData$seLogRr), ]
+    outcomeNames <- unique(vizData$outcomeName)
+    outcomeNames <- outcomeNames[order(outcomeNames, decreasing = TRUE)]
+    vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
+
+    # Save for George:
+    fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId + 4))
+    write.csv(vizData, fileName, row.names = FALSE)
+
+    plotHrs <- function(vizData, fileName) {
+        breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 8, 10)
+        odd <- seq(1, length(outcomeNames), by = 2)
+        bars <- data.frame(xmin = 0.01,
+                           xmax = 100,
+                           ymin = odd - 0.5,
+                           ymax = odd + 0.5,
+                           type = "Original",
+                           rr = 1,
+                           y = 1)
+        vizData$estimate <- factor(vizData$estimate, levels = c("Uncalibrated", "Calibrated"))
+        plot <- ggplot2::ggplot(vizData, ggplot2::aes(x = rr, y = y, color = type, shape = type, xmin = ci95lb, xmax = ci95ub)) +
+            ggplot2::geom_rect(ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "#EEEEEE", colour = "#EEEEEE", size = 0, data = bars) +
+            ggplot2::geom_vline(xintercept = breaks, colour = "#AAAAAA", lty = 1, size = 0.25) +
+            ggplot2::geom_vline(xintercept = 1, size = 0.5) +
+            ggplot2::geom_errorbarh(alpha = 0.65, size = 0.6, height = 0.3) +
+            ggplot2::geom_point(alpha = 0.65, size = 2) +
+            ggplot2::scale_y_continuous(breaks = 1:length(outcomeNames), labels = outcomeNames) +
+            ggplot2::coord_cartesian(xlim = c(0.1, 10)) +
+            ggplot2::scale_x_log10(breaks = breaks, labels = breaks) +
+            ggplot2::scale_color_manual(values = c(rgb(0.8, 0, 0, alpha = 0.65), rgb(0, 0, 0.8, alpha = 0.65))) +
+            ggplot2::xlab("Hazard Ratio") +
+            ggplot2::facet_grid(~estimate) +
+            ggplot2::theme(axis.title.y = ggplot2::element_blank(),
+                           legend.title = ggplot2::element_blank(),
+                           panel.grid.minor = ggplot2::element_blank(),
+                           panel.background = ggplot2::element_blank(),
+                           panel.grid.major = ggplot2::element_blank(),
+                           axis.ticks = ggplot2::element_blank(),
+                           strip.background = ggplot2::element_blank())
+        ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 10, dpi = 400)
+        # ggplot2::ggsave(filename = fileName, plot = plot, width = 6.5, height = 10, dpi = 400)
+    }
+    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(bpFolder, sprintf("Hrs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId + 4)))
+
+    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(bpFolder, sprintf("Hrs_%s_%s_%s.png", row$comparatorName, row$targetName, analysisId + 4)))
+}

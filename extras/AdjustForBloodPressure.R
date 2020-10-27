@@ -91,3 +91,9 @@ hrs$comparatorType[hrs$comparatorId %in% combinations$cohortDefinitionId] <- "Co
 write.csv(hrs, file.path(bpFolder, "HrsData_all.csv"), row.names = FALSE)
 
 row <- tcs[tcs$targetId == 974166 & tcs$comparatorId == 1395058, ]
+
+
+# Recompute hazard ratios using no propensity models --------------------------------------------
+# For Hydrochlorothiazide and Chlorthalidone only:
+computeUnadjustedHrs(row = tcs[1,], indicationFolder = indicationFolder, bpFolder = bpFolder, indicationId = indicationId, analysisId = analysisId)
+
