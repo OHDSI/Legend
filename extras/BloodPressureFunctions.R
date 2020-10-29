@@ -110,7 +110,7 @@ plotBalance <- function(row, indicationFolder, bpFolder, analysisId) {
     cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                            "cmOutput",
                                                            outcomeModelReference$cohortMethodDataFolder),
-                                                 skipCovariates = TRUE)
+                                                 skipCovariates = FALSE)
     sharedPs <- readRDS(file.path(indicationFolder, "cmOutput", outcomeModelReference$sharedPsFile))
     if (analysisId == 1) {
         strataPop <- CohortMethod::stratifyByPs(sharedPs, numberOfStrata = 10)
@@ -147,6 +147,11 @@ plotBalance <- function(row, indicationFolder, bpFolder, analysisId) {
     # Save for Marc:
     fileName <- file.path(bpFolder, sprintf("BpData_%s_%s_%s.rds", as.character(row$targetName), as.character(row$comparatorName), analysisId))
     saveRDS(m, fileName)
+
+    # Save for George:
+    balance <- CohortMethod::computeCovariateBalance(population = strataPop, cohortMethodData = cmData)
+    balanceFile <- file.path(bpFolder, sprintf("Balance_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+    write.csv(balance, balanceFile, row.names = FALSE)
 
     # before <- data.frame()
     # after <- data.frame()
@@ -205,8 +210,7 @@ plotBalance <- function(row, indicationFolder, bpFolder, analysisId) {
                                                   covariateName = subsetRef$conceptName))
     bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
     resultRow <- merge(resultRow, bal)
-    # balanceFile <- file.path(bpFolder, sprintf("Balance_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
-    # write.csv(bal, balanceFile, row.names = FALSE)
+
     return(resultRow)
 }
 
@@ -333,6 +337,9 @@ refitPropensityModel <- function(row, indicationFolder, bpFolder, analysisId) {
             bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
             CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(bpFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
             CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(bpFolder, sprintf("BalanceTopAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+
+            balanceFile <- file.path(bpFolder, sprintf("BalanceAdjustBp_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            write.csv(bal, balanceFile, row.names = FALSE)
         }
 
         cmData$covariates <- ff::as.ffdf(data.frame(rowId = subset$rowId,
@@ -488,8 +495,8 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, an
     }
     estimates <- rbind(calibrate(tcEstimates[tcEstimates$type == "Original", ]),
                        calibrate(tcEstimates[tcEstimates$type == "Adjusting for\nblood pressure", ]),
-                       calibrate(ctEstimates[tcEstimates$type == "Original", ]),
-                       calibrate(ctEstimates[tcEstimates$type == "Adjusting for\nblood pressure", ]))
+                       calibrate(ctEstimates[ctEstimates$type == "Original", ]),
+                       calibrate(ctEstimates[ctEstimates$type == "Adjusting for\nblood pressure", ]))
 
     vizData <- merge(estimates, data.frame(outcomeId = outcomesOfInterest$cohortId,
                                            outcomeName = outcomesOfInterest$name))
@@ -501,6 +508,10 @@ computeAdjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, an
     # Save for Marc:
     fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s_%s.rds", row$targetName, row$comparatorName, analysisId))
     saveRDS(vizData, fileName)
+
+    # Save for George:
+    fileName <- file.path(bpFolder, sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
+    write.csv(estimates, fileName, row.names = FALSE)
 
     plotHrs <- function(vizData, fileName) {
         breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 8, 10)
@@ -656,8 +667,8 @@ computeUnadjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, 
     }
     estimates <- rbind(calibrate(tcEstimates[tcEstimates$type == "Original", ]),
                        calibrate(tcEstimates[tcEstimates$type == "Unadjusted", ]),
-                       calibrate(ctEstimates[tcEstimates$type == "Original", ]),
-                       calibrate(ctEstimates[tcEstimates$type == "Unadjusted", ]))
+                       calibrate(ctEstimates[ctEstimates$type == "Original", ]),
+                       calibrate(ctEstimates[ctEstimates$type == "Unadjusted", ]))
 
     vizData <- merge(estimates, data.frame(outcomeId = outcomesOfInterest$cohortId,
                                            outcomeName = outcomesOfInterest$name))
@@ -667,8 +678,8 @@ computeUnadjustedHrs <- function(row, indicationFolder, bpFolder, indicationId, 
     vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
 
     # Save for George:
-    fileName <- file.path(bpFolder, sprintf("HrsData_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId + 4))
-    write.csv(vizData, fileName, row.names = FALSE)
+    fileName <- file.path(bpFolder, sprintf("HrsDataNoAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId + 4))
+    write.csv(estimates, fileName, row.names = FALSE)
 
     plotHrs <- function(vizData, fileName) {
         breaks <- c(0.1, 0.25, 0.5, 1, 2, 4, 8, 10)
