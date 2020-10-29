@@ -155,3 +155,6 @@ balOriginal$type <- "Original"
 fileName <- file.path(bpFolder, "BalanceAdjustBp.csv")
 balBpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 balBpAdj$type <- "Adjusting for\nblood pressure"
+balOriginal <- balOriginal[, colnames(balBpAdj)]
+bal <- rbind(balOriginal, balBpAdj)
+write.csv(bal, fileName <- file.path(bpFolder, "BpBalanceLspsPaper.csv"))
