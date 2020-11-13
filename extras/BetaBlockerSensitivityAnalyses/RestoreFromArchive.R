@@ -20,7 +20,7 @@ restoreFile(s3File = paste(s3Folder, "cmOutput", "outcomeModelReference1.rds", s
             localFolder = localFolder)
 restoreFile(s3File = paste(s3Folder, "cmOutput", "outcomeModelReference2.rds", sep = "/"),
             localFolder = localFolder)
-restoreFile(s3File = paste(s3Folder, "cmOutput", "outcomeModelReference3.rds", sep = "/"),
+restoreFile(s3File = paste(s3Folder, "cmOutput", "outcomeModelReference4.rds", sep = "/"),
             localFolder = localFolder)
 restoreFile(s3File = paste(s3Folder, "pairedExposureSummaryFilteredBySize.csv", sep = "/"),
             localFolder = localFolder)

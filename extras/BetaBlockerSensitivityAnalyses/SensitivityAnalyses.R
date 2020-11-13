@@ -1,13 +1,15 @@
 source("extras/BetaBlockerSensitivityAnalyses/Functions.R")
 
+options(fftempdir = "d:/fftemp")
+
 # PanTher settings ------------------------------------------
-sourceFolder <- "D:/Legend/panther/Hypertension/"
-targetFolder <- "D:/Legend/pantherBb/Hypertension/"
+sourceFolder <- "D:/Legend/panther/Hypertension"
+targetFolder <- "D:/Legend/pantherBb/Hypertension"
 fileName <- "D:/Legend/BbSaResults_PanTher.csv"
 
 # Run sensitivity analysis --------------------------------------
-if (!file.exists(targetCmFolder)) {
-    dir.create(targetCmFolder, recursive = TRUE)
+if (!file.exists(targetFolder)) {
+    dir.create(targetFolder, recursive = TRUE)
 }
 
 subsetOmr(sourceFolder, targetFolder)
