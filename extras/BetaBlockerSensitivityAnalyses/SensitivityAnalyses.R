@@ -20,4 +20,6 @@ runCohortMethod(targetFolder)
 
 calibrateResults(sourceFolder, targetFolder)
 
+compareNewToOldEstimates(sourceFolder, targetFolder, fileName)
+
 createPrettyTable(sourceFolder, targetFolder, fileName)

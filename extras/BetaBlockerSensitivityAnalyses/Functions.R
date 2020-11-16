@@ -181,7 +181,9 @@ runCohortMethod <- function(targetFolder) {
 }
 
 calibrateResults <- function(sourceFolder, targetFolder) {
-    tcEstimates <- readRDS(file.path(targetFolder, "analysisSummary.rds"))
+    tcEstimates12 <- readRDS(file.path(targetFolder, "analysisSummary12.rds"))
+    tcEstimates4 <- readRDS(file.path(targetFolder, "analysisSummary4.rds"))
+    tcEstimates <- rbind(tcEstimates12, tcEstimates4)
 
     pathToCsv <- "inst/settings/OutcomesOfInterest.csv"
     outcomesOfInterest <- read.csv(pathToCsv, stringsAsFactors = FALSE)
@@ -189,85 +191,127 @@ calibrateResults <- function(sourceFolder, targetFolder) {
     pathToCsv <- file.path(sourceFolder, "signalInjectionSummary.csv")
     siSummary <- read.csv(pathToCsv)
     siSummary <- siSummary[siSummary$newOutcomeId %in% estimates$outcomeId, ]
-    pcs <- data.frame(outcomeId = siSummary$newOutcomeId, trueEffectSize = siSummary$trueEffectSize)
+    pcs <- data.frame(outcomeId = siSummary$newOutcomeId,
+                      trueEffectSize = siSummary$trueEffectSize,
+                      targetEffectSize = siSummary$targetEffectSize)
     pathToCsv <- system.file("settings", "NegativeControls.csv", package = "Legend")
     negativeControls <- read.csv(pathToCsv)
     negativeControls <- negativeControls[negativeControls$indicationId == "Hypertension", ]
 
-    ctEstimates <- tcEstimates
-    temp <- ctEstimates$targetId
-    ctEstimates$targetId <- ctEstimates$comparatorId
-    ctEstimates$comparatorId <- temp
-    temp <- ctEstimates$target
-    ctEstimates$target <- ctEstimates$comparator
-    ctEstimates$comparator <- temp
-    temp <- ctEstimates$targetDays
-    ctEstimates$targetDays <- ctEstimates$comparatorDays
-    ctEstimates$comparatorDays <- temp
-    temp <- ctEstimates$eventsTarget
-    ctEstimates$eventsTarget <- ctEstimates$eventsComparator
-    ctEstimates$eventsComparator <- temp
-    ctEstimates$logRr <- -ctEstimates$logRr
-    ctEstimates$rr <- 1/ctEstimates$r
-    temp <- 1/ctEstimates$ci95ub
-    ctEstimates$ci95ub <- 1/ctEstimates$ci95lb
-    ctEstimates$ci95lb <- temp
     tcPcEstimates <- merge(tcEstimates, pcs)
-    ctPcEstimates <- merge(ctEstimates, pcs)
-    tcEstimates$trueEffectSize[tcEstimates$outcomeId  %in% negativeControls$cohortId] <- 1
-    ctEstimates$trueEffectSize[ctEstimates$outcomeId  %in% negativeControls$cohortId] <- 1
+    tcEstimates$trueEffectSize[tcEstimates$outcomeId %in% negativeControls$cohortId] <- 1
+    tcEstimates$targetEffectSize[tcEstimates$outcomeId %in% negativeControls$cohortId] <- 1
+
     tcEstimates <- rbind(tcEstimates[tcEstimates$outcomeId %in% outcomesOfInterest$cohortId |
                                          tcEstimates$outcomeId %in% negativeControls$cohortId, ],
                          tcPcEstimates)
-    ctEstimates <- rbind(ctEstimates[ctEstimates$outcomeId %in% outcomesOfInterest$cohortId |
-                                         ctEstimates$outcomeId %in% negativeControls$cohortId, ],
-                         ctPcEstimates)
-    estimates <- rbind(tcEstimates, ctEstimates)
 
+    # ctEstimates <- tcEstimates
+    # temp <- ctEstimates$targetId
+    # ctEstimates$targetId <- ctEstimates$comparatorId
+    # ctEstimates$comparatorId <- temp
+    # temp <- ctEstimates$target
+    # ctEstimates$target <- ctEstimates$comparator
+    # ctEstimates$comparator <- temp
+    # temp <- ctEstimates$targetDays
+    # ctEstimates$targetDays <- ctEstimates$comparatorDays
+    # ctEstimates$comparatorDays <- temp
+    # temp <- ctEstimates$eventsTarget
+    # ctEstimates$eventsTarget <- ctEstimates$eventsComparator
+    # ctEstimates$eventsComparator <- temp
+    # ctEstimates$logRr <- -ctEstimates$logRr
+    # ctEstimates$rr <- 1/ctEstimates$r
+    # temp <- 1/ctEstimates$ci95ub
+    # ctEstimates$ci95ub <- 1/ctEstimates$ci95lb
+    # ctEstimates$ci95lb <- temp
+    # tcPcEstimates <- merge(tcEstimates, pcs)
+    # ctPcEstimates <- merge(ctEstimates, pcs)
+    # tcEstimates$trueEffectSize[tcEstimates$outcomeId  %in% negativeControls$cohortId] <- 1
+    # ctEstimates$trueEffectSize[ctEstimates$outcomeId  %in% negativeControls$cohortId] <- 1
+    # tcEstimates <- rbind(tcEstimates[tcEstimates$outcomeId %in% outcomesOfInterest$cohortId |
+    #                                      tcEstimates$outcomeId %in% negativeControls$cohortId, ],
+    #                      tcPcEstimates)
+    # ctEstimates <- rbind(ctEstimates[ctEstimates$outcomeId %in% outcomesOfInterest$cohortId |
+    #                                      ctEstimates$outcomeId %in% negativeControls$cohortId, ],
+    #                      ctPcEstimates)
+    # estimates <- rbind(tcEstimates, ctEstimates)
+    estimates <- tcEstimates
 
     if (all(is.na(estimates$seLogRr))) {
         warning("All estimates are NA. Skipping calibration")
         return()
     }
-    # estimates <- split(estimates, paste(estimates$targetId, estimates$comparatorId))[[4]]
-    calibrate <- function(estimates) {
-        controlEstimates <- estimates[!is.na(estimates$trueEffectSize), ]
+    # subset <- split(estimates, paste(estimates$targetId, estimates$comparatorId))[[3]]
+    # subset <- estimates[estimates$targetId == 1314002 & estimates$comparatorId == 1318853, ]
+    # subset <- tcEstimates12[tcEstimates12$targetId == 1314002 & tcEstimates12$comparatorId == 1318853, ]
+    calibrate <- function(subset) {
+        controlEstimates <- subset[!is.na(subset$trueEffectSize), ]
         controlEstimates <- controlEstimates[!is.na(controlEstimates$seLogRr), ]
+        if (nrow(controlEstimates) > 0) {
+            errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
+                                                                        seLogRr = controlEstimates$seLogRr,
+                                                                        trueLogRr = log(controlEstimates$trueEffectSize),
+                                                                        estimateCovarianceMatrix = FALSE)
+            # EmpiricalCalibration::plotCiCalibrationEffect(logRr = controlEstimates$logRr,
+            #                                               seLogRr = controlEstimates$seLogRr,
+            #                                               trueLogRr = log(controlEstimates$targetEffectSize),)
+            cal <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = subset$logRr,
+                                                                     seLogRr = subset$seLogRr,
+                                                                     model = errorModel)
+            subset$calibratedRr <- exp(cal$logRr)
+            subset$calibratedCi95Lb <- exp(cal$logLb95Rr)
+            subset$calibratedCi95Ub <- exp(cal$logUb95Rr)
+            subset$calibratedLogRr <- cal$logRr
+            subset$calibratedSeLogRr <- cal$seLogRr
+        } else {
+            subset$calibratedRr <- NA
+            subset$calibratedCi95Lb <- NA
+            subset$calibratedCi95Ub <- NA
+            subset$calibratedLogRr <- NA
+            subset$calibratedSeLogRr <- NA
+        }
         negativeControlEstimates <- controlEstimates[controlEstimates$trueEffectSize == 1, ]
-
-        null <- EmpiricalCalibration::fitMcmcNull(logRr = negativeControlEstimates$logRr,
-                                                  seLogRr = negativeControlEstimates$seLogRr)
-
-        # EmpiricalCalibration::plotCalibrationEffect(logRrNegatives = negativeControlEstimates$logRr,
-        #                                             seLogRrNegatives = negativeControlEstimates$seLogRr,
-        #                                             null = null,
-        #                                             showCis = TRUE)
-
-        calP <- EmpiricalCalibration::calibrateP(logRr = estimates$logRr,
-                                                 seLogRr = estimates$seLogRr,
-                                                 null = null)
-        errorModel <- EmpiricalCalibration::fitSystematicErrorModel(logRr = controlEstimates$logRr,
-                                                                    seLogRr = controlEstimates$seLogRr,
-                                                                    trueLogRr = log(controlEstimates$trueEffectSize),
-                                                                    estimateCovarianceMatrix = FALSE)
-        cal <- EmpiricalCalibration::calibrateConfidenceInterval(logRr = estimates$logRr,
-                                                                 seLogRr = estimates$seLogRr,
-                                                                 model = errorModel)
-
-        calibrated <- estimates
-        calibrated$rr <- exp(cal$logRr)
-        calibrated$ci95lb <- exp(cal$logLb95Rr)
-        calibrated$ci95ub <- exp(cal$logUb95Rr)
-        calibrated$logLb95Rr <- NULL
-        calibrated$logUb95Rr <- NULL
-        calibrated$p <- calP$p
-        calibrated$estimate <- "Calibrated"
-        estimates$estimate <- "Uncalibrated"
-        estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
+        if (nrow(controlEstimates) > 0) {
+            null <- EmpiricalCalibration::fitMcmcNull(logRr = negativeControlEstimates$logRr,
+                                                      seLogRr = negativeControlEstimates$seLogRr)
+            # EmpiricalCalibration::plotCalibrationEffect(logRrNegatives = negativeControlEstimates$logRr,
+            #                                             seLogRrNegatives = negativeControlEstimates$seLogRr,
+            #                                             null = null,
+            #                                             showCis = TRUE)
+            calP <- EmpiricalCalibration::calibrateP(logRr = subset$logRr,
+                                                     seLogRr = subset$seLogRr,
+                                                     null = null)
+            subset$calibratedP <- calP$p
+        } else {
+            subset$calibratedP <- NA
+        }
+        return(subset)
     }
-    calibratedEstimates <- plyr::llply(split(estimates, paste(estimates$targetId, estimates$comparatorId)), calibrate, .progress = "text")
+    cluster <- ParallelLogger::makeCluster(5)
+    calibratedEstimates <- ParallelLogger::clusterApply(cluster, split(estimates, paste(estimates$targetId, estimates$comparatorId)), calibrate)
+    ParallelLogger::stopCluster(cluster)
     calibratedEstimates <- do.call(rbind, calibratedEstimates)
     saveRDS(calibratedEstimates, file.path(targetFolder, "calibratedEstimates.rds"))
+}
+
+compareNewToOldEstimates <- function(sourceFolder, targetFolder, fileName) {
+ newEstimates <- readRDS(file.path(targetFolder, "calibratedEstimates.rds"))
+ oldEstimates <- readr::read_csv(file.path(sourceFolder, "export", "cohort_method_result.csv"))
+ colnames(oldEstimates) <- SqlRender::snakeCaseToCamelCase(colnames(oldEstimates))
+ estimates <- merge(oldEstimates,
+                    data.frame(analysisId = newEstimates$analysisId,
+                               targetId = newEstimates$targetId,
+                               comparatorId = newEstimates$comparatorId,
+                               outcomeId = newEstimates$outcomeId,
+                               newLogRr = newEstimates$logRr,
+                               newSeLogRr = newEstimates$seLogRr,
+                               newCalibratedLogRr = newEstimates$calibratedLogRr,
+                               newCalibratedSeLogRr = newEstimates$calibratedSeLogRr))
+ plotEstimates <- estimates[!is.na(estimates$newSeLogRr) & abs(estimates$logRr) < 10 & abs(estimates$newLogRr) < 10, ]
+ plot(plotEstimates$logRr, plotEstimates$newLogRr)
+
+ plotEstimates <- estimates[!is.na(estimates$newCalibratedSeLogRr) & abs(estimates$calibratedLogRr) < 10 & abs(estimates$newCalibratedLogRr) < 10, ]
+ plot(plotEstimates$calibratedLogRr, plotEstimates$newCalibratedLogRr)
 }
 
 createPrettyTable <- function(sourceFolder, targetFolder, fileName) {

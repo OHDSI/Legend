@@ -23,6 +23,9 @@ source("extras/LspsAnalyses/Functions.R")
 
 indicationFolder <- file.path(outputFolder, indicationId)
 lspsFolder <- file.path(indicationFolder, "lsps")
+if (!file.exists(lspsFolder)) {
+    dir.create(lspsFolder)
+}
 
 analysisId <- 3 # Matching, on-treatment
 
