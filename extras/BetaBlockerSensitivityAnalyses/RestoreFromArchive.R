@@ -40,5 +40,61 @@ for (cmDataFolder in cmDataFolders) {
                   localFolder = file.path(localFolder, "cmOutput", cmDataFolder))
 }
 
-ArchiveR::listFiles("mschuemi/LegendHypertension/optum/Hypertension")
+# Restore CCAE files ----------------------------------------------
+
+s3Folder <- "mschuemi/LegendHypertension/ccae_part%s/Hypertension"
+localFolder <- "D:/Legend/ccae/Hypertension/"
+if (!file.exists(file.path(localFolder, "cmOutput"))) {
+    dir.create(file.path(localFolder, "cmOutput"), recursive = TRUE)
+}
+if (!file.exists(file.path(localFolder, "export"))) {
+    dir.create(file.path(localFolder, "export"), recursive = TRUE)
+}
+restoreAndMerge <- function(path) {
+    tempFiles <- c()
+    for (i in 1:3) {
+        tempFiles[i] <- tempfile()
+        restoreFile(s3File = paste(sprintf(s3Folder, i), path, sep = "/"),
+                localFile = tempFiles[i])
+    }
+    if (grepl(".rds$", path)) {
+        objects <- lapply(tempFiles, readRDS)
+        objects <- do.call(rbind, objects)
+        saveRDS(objects, file.path(localFolder, path))
+    } else if (grepl(".csv$", path)) {
+        objects <- lapply(tempFiles, readr::read_csv)
+        objects <- do.call(rbind, objects)
+        readr::write_csv(objects, file.path(localFolder, path))
+    }
+    unlink(tempFiles, recursive = TRUE)
+}
+
+restoreAndMerge("cmOutput/outcomeModelReference1.rds")
+restoreAndMerge("cmOutput/outcomeModelReference2.rds")
+restoreAndMerge("cmOutput/outcomeModelReference4.rds")
+restoreAndMerge("pairedExposureSummaryFilteredBySize.csv")
+restoreAndMerge("signalInjectionSummary.csv")
+
+tempFolder <- tempdir()
+subsetOmr(localFolder, tempFolder)
+toGenerate <- readRDS(file.path(tempFolder, "toGenerate.rds"))
+unlink(tempFolder, recursive = TRUE)
+cmDataFolders <- unique(toGenerate$cohortMethodDataFolder[toGenerate$part %in% c(1, 2)])
+
+restored <- c()
+for (i in 1:3){
+    cmDataFolder = cmDataFolders[1]
+    for (cmDataFolder in cmDataFolders) {
+        remoteFiles <- ArchiveR::listFiles(paste(sprintf(s3Folder, i), "cmOutput", cmDataFolder, sep = "/"), maxFiles = 1)
+        if (nrow(remoteFiles) > 0) {
+            writeLines(paste("Restoring", cmDataFolder))
+            restoreFolder(s3Folder = paste(sprintf(s3Folder, i), "cmOutput", cmDataFolder, sep = "/"),
+                          localFolder = file.path(localFolder, "cmOutput", cmDataFolder))
+            restored <- c(restored, cmDataFolder)
+        }
+    }
+}
+all(cmDataFolders %in% restored)
+
+
 

@@ -12,6 +12,10 @@ sourceFolder <- "D:/Legend/optum/Hypertension"
 targetFolder <- "D:/Legend/optumBb/Hypertension"
 fileName <- "D:/Legend/BbSaResults_Optum.csv"
 
+# Ccae settings ------------------------------------------
+sourceFolder <- "D:/Legend/ccae/Hypertension"
+targetFolder <- "D:/Legend/ccaeBb/Hypertension"
+fileName <- "D:/Legend/BbSaResults_Ccae.csv"
 
 # Run sensitivity analysis --------------------------------------
 if (!file.exists(targetFolder)) {
