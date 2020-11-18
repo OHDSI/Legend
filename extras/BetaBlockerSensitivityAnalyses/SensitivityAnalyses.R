@@ -7,6 +7,12 @@ sourceFolder <- "D:/Legend/panther/Hypertension"
 targetFolder <- "D:/Legend/pantherBb/Hypertension"
 fileName <- "D:/Legend/BbSaResults_PanTher.csv"
 
+# Optum settings ------------------------------------------
+sourceFolder <- "D:/Legend/optum/Hypertension"
+targetFolder <- "D:/Legend/optumBb/Hypertension"
+fileName <- "D:/Legend/BbSaResults_Optum.csv"
+
+
 # Run sensitivity analysis --------------------------------------
 if (!file.exists(targetFolder)) {
     dir.create(targetFolder, recursive = TRUE)

@@ -25,7 +25,7 @@ subsetOmr <- function(sourceFolder, targetFolder) {
 
 restrictCmDatas <- function(sourceFolder, targetFolder) {
     toGenerate <- readRDS(file.path(targetFolder, "toGenerate.rds"))
-    cmDataFolders<- unique(toGenerate$cohortMethodDataFolder[toGenerate$part %in% c(1, 2)])
+    cmDataFolders <- unique(toGenerate$cohortMethodDataFolder[toGenerate$part %in% c(1, 2)])
 
     # toDelete <- list.files(targetFolder, "CmData_", include.dirs = TRUE, full.names = TRUE, recursive = TRUE)
     # toDelete <- toDelete[!basename(toDelete) %in% cmDataFolders]
@@ -190,7 +190,7 @@ calibrateResults <- function(sourceFolder, targetFolder) {
     outcomesOfInterest <- outcomesOfInterest[outcomesOfInterest$indicationId == "Hypertension", ]
     pathToCsv <- file.path(sourceFolder, "signalInjectionSummary.csv")
     siSummary <- read.csv(pathToCsv)
-    siSummary <- siSummary[siSummary$newOutcomeId %in% estimates$outcomeId, ]
+    siSummary <- siSummary[siSummary$newOutcomeId %in% tcEstimates$outcomeId, ]
     pcs <- data.frame(outcomeId = siSummary$newOutcomeId,
                       trueEffectSize = siSummary$trueEffectSize,
                       targetEffectSize = siSummary$targetEffectSize)

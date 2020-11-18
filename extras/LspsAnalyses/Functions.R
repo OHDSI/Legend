@@ -237,6 +237,9 @@ refitPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) 
 fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Fitting manual propensity model for", row$targetName, "and", row$comparatorName))
+    bps <- readRDS(file.path(lspsFolder, "bps.rds"))
+    bps <- bps[bps$valueAsNumber < 250, ]
+    bps <- bps[bps$valueAsNumber > 25, ]
     manualFolder <- file.path(lspsFolder, "manual")
     if (!file.exists(manualFolder)) {
         dir.create(manualFolder)
@@ -427,26 +430,23 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
     }
 }
 
-computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, indicationId, analysisId) {
+computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, newPsFolder = lspsFolder, indicationId, analysisId, type = "Adjusting for\nblood pressure") {
     # row <- tcs[1,]
     ParallelLogger::logInfo(paste("Computing adjusted HR for", row$targetName, "and", row$comparatorName))
-    bps <- readRDS(file.path(lspsFolder, "bps.rds"))
-    bps <- bps[bps$valueAsNumber < 250, ]
-    bps <- bps[bps$valueAsNumber > 25, ]
     outcomeModelReference <- readRDS(file.path(lspsFolder, "outcomeModelReference.rds"))
     onTreatment <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
                                              outcomeModelReference$comparatorId == row$comparatorId &
                                              outcomeModelReference$analysisId == analysisId, ]
-    analysisFolder <- file.path(lspsFolder, sprintf("Analysis_%s", analysisId))
+    analysisFolder <- file.path(newPsFolder, sprintf("Analysis_%s", analysisId))
     if (!file.exists(analysisFolder)) {
         dir.create(analysisFolder)
     }
-    ps <- readRDS(file.path(lspsFolder, onTreatment$sharedPsFile[1]))
-    cmData <- CohortMethod::loadCohortMethodData(file.path(lspsFolder, onTreatment$cohortMethodDataFolder[1]))
+    ps <- readRDS(file.path(newPsFolder, onTreatment$sharedPsFile[1]))
+    cmData <- CohortMethod::loadCohortMethodData(file.path(newPsFolder, onTreatment$cohortMethodDataFolder[1]))
 
     computeHr <- function(i) {
         # i = 1
-        omFile <- file.path(lspsFolder, onTreatment$outcomeModelFile[i])
+        omFile <- file.path(newPsFolder, onTreatment$outcomeModelFile[i])
         if (!file.exists(omFile)) {
             studyPop <- CohortMethod::createStudyPopulation(population = ps,
                                                             cohortMethodData = cmData,
@@ -468,8 +468,8 @@ computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, indicationId, 
     plyr::l_ply(1:nrow(onTreatment), computeHr, .progress = "text")
     originalSummary <- CohortMethod::summarizeAnalyses(onTreatment, file.path(indicationFolder, "cmOutput"))
     originalSummary$type <- "Original"
-    bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, lspsFolder)
-    bpAdjustedSummary$type <- "Adjusting for\nblood pressure"
+    bpAdjustedSummary <- CohortMethod::summarizeAnalyses(onTreatment, newPsFolder)
+    bpAdjustedSummary$type <- type
     estimates <- rbind(originalSummary, bpAdjustedSummary)
 
     # Calibration ------------------------------------------
@@ -542,9 +542,9 @@ computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, indicationId, 
         estimates <- rbind(estimates[, colnames(calibrated)], calibrated)
     }
     estimates <- rbind(calibrate(tcEstimates[tcEstimates$type == "Original", ]),
-                       calibrate(tcEstimates[tcEstimates$type == "Adjusting for\nblood pressure", ]),
+                       calibrate(tcEstimates[tcEstimates$type == type, ]),
                        calibrate(ctEstimates[ctEstimates$type == "Original", ]),
-                       calibrate(ctEstimates[ctEstimates$type == "Adjusting for\nblood pressure", ]))
+                       calibrate(ctEstimates[ctEstimates$type == type, ]))
 
     vizData <- merge(estimates, data.frame(outcomeId = outcomesOfInterest$cohortId,
                                            outcomeName = outcomesOfInterest$name))
@@ -553,7 +553,7 @@ computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, indicationId, 
     outcomeNames <- outcomeNames[order(outcomeNames, decreasing = TRUE)]
     vizData$y <- match(vizData$outcomeName, outcomeNames) - 0.1 + 0.2*(vizData$type == "Original")
 
-    fileName <- file.path(lspsFolder, sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
+    fileName <- file.path(newPsFolder, sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
     write.csv(estimates, fileName, row.names = FALSE)
 
     plotHrs <- function(vizData, fileName) {
@@ -588,8 +588,8 @@ computeAdjustedHrs <- function(row, indicationFolder, lspsFolder, indicationId, 
                            strip.background = ggplot2::element_blank())
         ggplot2::ggsave(filename = fileName, plot = plot, width = 8, height = 10, dpi = 400)
     }
-    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(lspsFolder, sprintf("Hrs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))
-    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(lspsFolder, sprintf("Hrs_%s_%s_%s.png", row$comparatorName, row$targetName, analysisId)))
+    plotHrs(vizData[vizData$targetId == row$targetId, ], file.path(newPsFolder, sprintf("Hrs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))
+    plotHrs(vizData[vizData$targetId == row$comparatorId, ], file.path(newPsFolder, sprintf("Hrs_%s_%s_%s.png", row$comparatorName, row$targetName, analysisId)))
 }
 
 

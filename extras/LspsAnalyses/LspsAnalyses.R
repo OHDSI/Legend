@@ -88,15 +88,16 @@ write.csv(hrs, file.path(lspsFolder, "HrsData_all.csv"), row.names = FALSE)
 computeUnadjustedHrs(row = tcs[1,], indicationFolder = indicationFolder, lspsFolder = lspsFolder, indicationId = indicationId, analysisId = analysisId)
 
 # Create propensity models using manually selected covariates --------------------------------
-cluster <- ParallelLogger::makeCluster(1)
-balance <- ParallelLogger::clusterApply(cluster, split(tcs, 1:nrow(tcs)), fitManualPropensityModel, indicationFolder = indicationFolder, lspsFolder = lspsFolder, analysisId = analysisId)
-ParallelLogger::stopCluster(cluster)
-balance <- do.call("rbind", balance)
-write.csv(balance, file.path(lspsFolder, "BalanceAdjustBp.csv"), row.names = FALSE)
-
+fitManualPropensityModel(row = tcs[1,], indicationFolder = indicationFolder, lspsFolder = lspsFolder, analysisId = analysisId)
 
 # Recompute hazard ratios using manual propensity models --------------------------------------------
-computeUnadjustedHrs(row = tcs[1,], indicationFolder = indicationFolder, lspsFolder = lspsFolder, indicationId = indicationId, analysisId = analysisId)
+computeAdjustedHrs(row = tcs[1,],
+                   indicationFolder = indicationFolder,
+                   lspsFolder = lspsFolder,
+                   newPsFolder = file.path(lspsFolder, "manual"),
+                   indicationId = indicationId,
+                   analysisId = analysisId,
+                   type = "Manually selected\ncovariates")
 
 
 
