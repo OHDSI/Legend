@@ -92,7 +92,7 @@ WHERE concept_id IN (3004249, 3012888)"
     saveRDS(bps, file.path(lspsFolder, "bps.rds"))
 }
 
-refitPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) {
+refitPropensityModelUsingBp <- function(row, indicationFolder, lspsFolder, analysisId) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Refitting propensity model for", row$targetName, "and", row$comparatorName))
     bps <- readRDS(file.path(lspsFolder, "bps.rds"))
@@ -208,10 +208,10 @@ refitPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) 
         if (!file.exists(file.path(lspsFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))) {
             # Overall balance:
             bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(lspsFolder, sprintf("BalanceAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
-            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(lspsFolder, sprintf("BalanceTopAfterStrataUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(lspsFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(lspsFolder, sprintf("BalanceTopAfterMatchingUsingBp_%s_%s.png", row$targetName, row$comparatorName)))
 
-            balanceFile <- file.path(lspsFolder, sprintf("BalanceAdjustBp_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            balanceFile <- file.path(lspsFolder, sprintf("BalanceAfterMatchingUsingBp_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
             write.csv(bal, balanceFile, row.names = FALSE)
         }
 
@@ -222,15 +222,19 @@ refitPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) 
         cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
                                                       covariateName = subsetRef$conceptName))
         bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-        resultRow <- row[, c("targetId", "targetName" ,"comparatorId", "comparatorName")]
-        resultRow <- merge(resultRow, bal)
+        # bal <- CohortMethod::computeCovariateBalance(subsetStrataPop, cmData)
+        balanceFile <- file.path(manualFolder, sprintf("BpBalanceAfterMatchingUsingBpPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+        write.csv(bal, balanceFile, row.names = FALSE)
+
+        # resultRow <- row[, c("targetId", "targetName" ,"comparatorId", "comparatorName")]
+        # resultRow <- merge(resultRow, bal)
         ff::close.ffdf(cmData$covariates)
         ff::close.ffdf(cmData$covariateRef)
-        return(resultRow)
+        # return(resultRow)
     } else {
         ff::close.ffdf(cmData$covariates)
         ff::close.ffdf(cmData$covariateRef)
-        return(NULL)
+        # return(NULL)
     }
 }
 

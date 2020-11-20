@@ -60,35 +60,30 @@ outcomeModelReference <- outcomeModelReference[outcomeModelReference$analysisId 
 saveRDS(outcomeModelReference, file.path(lspsFolder, "outcomeModelReference.rds"))
 
 # Add blood pressure to covariates and refit propensity models --------------------------------
-cluster <- ParallelLogger::makeCluster(1)
-balance <- ParallelLogger::clusterApply(cluster, split(tcs, 1:nrow(tcs)), refitPropensityModel, indicationFolder = indicationFolder, lspsFolder = lspsFolder, analysisId = analysisId)
-ParallelLogger::stopCluster(cluster)
-balance <- do.call("rbind", balance)
-write.csv(balance, file.path(lspsFolder, "BalanceAdjustBp.csv"), row.names = FALSE)
+refitPropensityModelUsingBp(row = tcs[1, ],
+                            indicationFolder = indicationFolder,
+                            lspsFolder = lspsFolder,
+                            analysisId = analysisId)
 
 # Recompute hazard ratios using BP-adjusted propensity models ------------------------------------------
-cluster <- ParallelLogger::makeCluster(10)
-dummy <- ParallelLogger::clusterApply(cluster, split(tcs, 1:nrow(tcs)), computeAdjustedHrs, indicationFolder = indicationFolder, lspsFolder = lspsFolder, indicationId = indicationId, analysisId = analysisId)
-ParallelLogger::stopCluster(cluster)
-
-fileNames <- file.path(lspsFolder, sprintf("HrsData_%s_%s_%s.rds", tcs$targetName, tcs$comparatorName, analysisId))
-length(fileNames)
-fileNames <- fileNames[file.exists(fileNames)]
-length(fileNames)
-hrs <- lapply(fileNames, function(fileName) readRDS(fileName))
-hrs <- do.call("rbind", hrs)
-hrs <- merge(hrs, tcs[, c("targetId", "targetName", "comparatorId", "comparatorName")])
-hrs$targetType <- "Single"
-hrs$targetType[hrs$targetId %in% combinations$cohortDefinitionId] <- "Combination"
-hrs$comparatorType <- "Single"
-hrs$comparatorType[hrs$comparatorId %in% combinations$cohortDefinitionId] <- "Combination"
-write.csv(hrs, file.path(lspsFolder, "HrsData_all.csv"), row.names = FALSE)
+computeAdjustedHrs(row = tcs[1, ],
+                   indicationFolder = indicationFolder,
+                   lspsFolder = lspsFolder,
+                   indicationId = indicationId,
+                   analysisId = analysisId)
 
 # Recompute hazard ratios using no propensity models --------------------------------------------
-computeUnadjustedHrs(row = tcs[1,], indicationFolder = indicationFolder, lspsFolder = lspsFolder, indicationId = indicationId, analysisId = analysisId)
+computeUnadjustedHrs(row = tcs[1,],
+                     indicationFolder = indicationFolder,
+                     lspsFolder = lspsFolder,
+                     indicationId = indicationId,
+                     analysisId = analysisId)
 
 # Create propensity models using manually selected covariates --------------------------------
-fitManualPropensityModel(row = tcs[1,], indicationFolder = indicationFolder, lspsFolder = lspsFolder, analysisId = analysisId)
+fitManualPropensityModel(row = tcs[1,],
+                         indicationFolder = indicationFolder,
+                         lspsFolder = lspsFolder,
+                         analysisId = analysisId)
 
 # Recompute hazard ratios using manual propensity models --------------------------------------------
 computeAdjustedHrs(row = tcs[1,],
@@ -99,16 +94,16 @@ computeAdjustedHrs(row = tcs[1,],
                    analysisId = analysisId,
                    type = "Manually selected\ncovariates")
 
-
-
-
 # Combine across analyses and cleanup --------------------------------------------------------------
 fileName <- file.path(lspsFolder, sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
 estimatesBpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 fileName <- file.path(lspsFolder, sprintf("HrsDataNoAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId + 4))
 estimatesNoAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 estimatesNoAdj <- estimatesNoAdj[estimatesNoAdj$type != "Original", ]
-estimates <- rbind(estimatesBpAdj, estimatesNoAdj)
+fileName <- file.path(lspsFolder, "manual", sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
+estimatesManualAdj <- read.csv(fileName, stringsAsFactors = FALSE)
+estimatesManualAdj <- estimatesManualAdj[estimatesManualAdj$type != "Original", ]
+estimates <- rbind(estimatesBpAdj, estimatesNoAdj, estimatesManualAdj)
 estimates$y <- NULL
 estimates <- estimates[estimates$targetId == tcs[1, "targetId"], ]
 write.csv(estimates, fileName <- file.path(lspsFolder, "HrsForLspsPaper.csv"))
@@ -130,9 +125,12 @@ for (type in unique(estimates$type)) {
 fileName <- file.path(lspsFolder, "Balance.csv")
 balOriginal <- read.csv(fileName, stringsAsFactors = FALSE)
 balOriginal$type <- "Original"
-fileName <- file.path(lspsFolder, "BalanceAdjustBp.csv")
+fileName <- file.path(lspsFolder, "BalanceAfterMatchingUsingBp_Hydrochlorothiazide_Lisinopril.csv")
 balBpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 balBpAdj$type <- "Adjusting for\nblood pressure"
+fileName <- file.path(lspsFolder, "manual", "BpBalanceAfterMatchingUsingManualPs_Hydrochlorothiazide_Lisinopril.csv")
+balManualAdj <- read.csv(fileName, stringsAsFactors = FALSE)
+balManualAdj$type <- "Manually selected\ncovariates"
 balOriginal <- balOriginal[, colnames(balBpAdj)]
-bal <- rbind(balOriginal, balBpAdj)
+bal <- rbind(balOriginal, balBpAdj, balManualAdj)
 write.csv(bal, fileName <- file.path(lspsFolder, "BpBalanceLspsPaper.csv"))
