@@ -353,3 +353,65 @@ createPrettyTable <- function(sourceFolder, targetFolder, fileName) {
                                             comparatorName = exposureNames$exposureName))
     readr::write_csv(calibratedEstimates, fileName)
 }
+
+addBpToCmDatas <- function(sourceFolder, targetFolder) {
+    bpFolder <- file.path(sourceFolder, "bp")
+    bps <- readRDS(file.path(bpFolder, "bps.rds"))
+    bps <- bps[bps$valueAsNumber < 250, ]
+    bps <- bps[bps$valueAsNumber > 25, ]
+
+    toGenerate <- readRDS(file.path(targetFolder, "toGenerate.rds"))
+    cmDataFolders <- unique(toGenerate$cohortMethodDataFolder[toGenerate$part %in% c(1, 2)])
+
+    cmDataFolder = cmDataFolders[1]
+    for (cmDataFolder in cmDataFolders) {
+        outputFile <- file.path(targetFolder, "cmOutput", cmDataFolder)
+        if (!file.exists(outputFile)) {
+            writeLines(paste("Adding blood pressure covariates to ", cmDataFolder, "."))
+            cmData <- CohortMethod::loadCohortMethodData(file.path(sourceFolder, "cmOutput", cmDataFolder))
+            if (nrow(cmData$covariates) < 3) {
+                stop("No covariates found")
+            }
+            subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
+            # Convert to splines:
+            newCovars <- data.frame()
+            newCovarRef <- data.frame()
+            for (conceptId in unique(subset$conceptId)) {
+                # conceptId <- 3012888
+                measurement <- subset[subset$conceptId == conceptId, ]
+                designMatrix <- splines::bs(measurement$valueAsNumber, 5)
+                sparse <- lapply(1:5, function(x) data.frame(rowId = measurement$rowId,
+                                                             covariateId = conceptId * 10 + x,
+                                                             covariateValue = designMatrix[, x]))
+
+                sparse <- do.call("rbind", sparse)
+                newCovars <- rbind(newCovars, sparse)
+                ref <- data.frame(covariateId = conceptId * 10 + 1:5,
+                                  covariateName = paste(measurement$conceptName[1], 1:5),
+                                  analysisId = conceptId,
+                                  conceptId = conceptId)
+                newCovarRef <- rbind(newCovarRef, ref)
+            }
+            covariates <- cmData$covariates
+            covariates <- covariates[ffbase::`%in%`(covariates$rowId, subset$rowId), ]
+            covariates <- ffbase::ffdfappend(covariates, newCovars)
+            covariateRef <- cmData$covariateRef
+            covariateRef <- ffbase::ffdfappend(covariateRef, newCovarRef)
+            newCmData <- cmData
+            newCmData$cohorts <- newCmData$cohorts[newCmData$cohorts$rowId %in% subset$rowId, ]
+            attrition <- attr(newCmData$cohorts, "metaData")$attrition
+            attrition <- rbind(attrition,
+                               data.frame(description = "Having BP data",
+                                          targetPersons =  sum(newCmData$cohort$treatment == 1),
+                                          comparatorPersons =  sum(newCmData$cohort$treatment == 0),
+                                          targetExposures =  sum(newCmData$cohort$treatment == 1),
+                                          comparatorExposures =  sum(newCmData$cohort$treatment == 0)))
+            attr(newCmData$cohorts, "metaData")$attrition <- attrition
+            newCmData$outcomes <- newCmData$outcomes[newCmData$outcomes$rowId %in% subset$rowId, ]
+            newCmData$covariates <- covariates
+            newCmData$covariateRef <- covariateRef
+            newCmData$metaData$populationSize <- nrow(newCmData$cohorts)
+            CohortMethod::saveCohortMethodData(newCmData, outputFile, compress = TRUE)
+        }
+    }
+}
