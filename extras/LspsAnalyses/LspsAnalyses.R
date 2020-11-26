@@ -83,6 +83,7 @@ computeUnadjustedHrs(row = tcs[1,],
 fitManualPropensityModel(row = tcs[1,],
                          indicationFolder = indicationFolder,
                          lspsFolder = lspsFolder,
+                         newPsFolder = file.path(lspsFolder, "manual"),
                          analysisId = analysisId)
 
 # Recompute hazard ratios using manual propensity models --------------------------------------------
@@ -94,6 +95,23 @@ computeAdjustedHrs(row = tcs[1,],
                    analysisId = analysisId,
                    type = "Manually selected\ncovariates")
 
+# Create propensity models using manually selected covariates + blood pressure ----------------------
+fitManualPropensityModel(row = tcs[1,],
+                         indicationFolder = indicationFolder,
+                         lspsFolder = lspsFolder,
+                         newPsFolder = file.path(lspsFolder, "manualPlusBp"),
+                         analysisId = analysisId,
+                         addBloodPressure = TRUE)
+
+# Recompute hazard ratios using manual propensity models + blood pressure ---------------------------
+computeAdjustedHrs(row = tcs[1,],
+                   indicationFolder = indicationFolder,
+                   lspsFolder = lspsFolder,
+                   newPsFolder = file.path(lspsFolder, "manualPlusBp"),
+                   indicationId = indicationId,
+                   analysisId = analysisId,
+                   type = "Manually selected\ncovariates + BP")
+
 # Combine across analyses and cleanup --------------------------------------------------------------
 fileName <- file.path(lspsFolder, sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
 estimatesBpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
@@ -103,7 +121,11 @@ estimatesNoAdj <- estimatesNoAdj[estimatesNoAdj$type != "Original", ]
 fileName <- file.path(lspsFolder, "manual", sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
 estimatesManualAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 estimatesManualAdj <- estimatesManualAdj[estimatesManualAdj$type != "Original", ]
-estimates <- rbind(estimatesBpAdj, estimatesNoAdj, estimatesManualAdj)
+fileName <- file.path(lspsFolder, "manualPlusBp", sprintf("HrsDataBpAdj_%s_%s_%s.csv", row$targetName, row$comparatorName, analysisId))
+estimatesManualPlusbpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
+estimatesManualPlusbpAdj <- estimatesManualPlusbpAdj[estimatesManualPlusbpAdj$type != "Original", ]
+
+estimates <- rbind(estimatesBpAdj, estimatesNoAdj, estimatesManualAdj, estimatesManualPlusbpAdj)
 estimates$y <- NULL
 estimates <- estimates[estimates$targetId == tcs[1, "targetId"], ]
 write.csv(estimates, fileName <- file.path(lspsFolder, "HrsForLspsPaper.csv"))
@@ -131,6 +153,10 @@ balBpAdj$type <- "Adjusting for\nblood pressure"
 fileName <- file.path(lspsFolder, "manual", "BpBalanceAfterMatchingUsingManualPs_Hydrochlorothiazide_Lisinopril.csv")
 balManualAdj <- read.csv(fileName, stringsAsFactors = FALSE)
 balManualAdj$type <- "Manually selected\ncovariates"
+fileName <- file.path(lspsFolder, "manualPlusBp", "BpBalanceAfterMatchingUsingManualPs_Hydrochlorothiazide_Lisinopril.csv")
+balManualPlusBpAdj <- read.csv(fileName, stringsAsFactors = FALSE)
+balManualPlusBpAdj$type <- "Manually selected\ncovariates + BP"
+
 balOriginal <- balOriginal[, colnames(balBpAdj)]
-bal <- rbind(balOriginal, balBpAdj, balManualAdj)
+bal <- rbind(balOriginal, balBpAdj, balManualAdj, balManualPlusBpAdj)
 write.csv(bal, fileName <- file.path(lspsFolder, "BpBalanceLspsPaper.csv"))

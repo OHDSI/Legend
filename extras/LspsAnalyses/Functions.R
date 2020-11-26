@@ -238,15 +238,14 @@ refitPropensityModelUsingBp <- function(row, indicationFolder, lspsFolder, analy
     }
 }
 
-fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysisId) {
+fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFolder = file.path(lspsFolder, "manual"), analysisId, addBloodPressure = FALSE) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Fitting manual propensity model for", row$targetName, "and", row$comparatorName))
     bps <- readRDS(file.path(lspsFolder, "bps.rds"))
     bps <- bps[bps$valueAsNumber < 250, ]
     bps <- bps[bps$valueAsNumber > 25, ]
-    manualFolder <- file.path(lspsFolder, "manual")
-    if (!file.exists(manualFolder)) {
-        dir.create(manualFolder)
+    if (!file.exists(newPsFolder)) {
+        dir.create(newPsFolder)
     }
     outcomeModelReference <- readRDS(file.path(lspsFolder, "outcomeModelReference.rds"))
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
@@ -254,10 +253,11 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
                                                        outcomeModelReference$analysisId == analysisId, ]
     outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ][1, ]
 
-    if (!file.exists(file.path(manualFolder, outcomeModelReference$cohortMethodDataFolder))) {
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder))) {
         cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                                "cmOutput",
                                                                outcomeModelReference$cohortMethodDataFolder))
+        cohorts <- cmData$cohorts
         # covariateRef <- readRDS("c:/temp/covariateRef.rds")
         # covariateRef[grepl("plegia", covariateRef$covariateName, ignore.case = TRUE), c("covariateId", "covariateName")]
 
@@ -303,7 +303,7 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
         strokeRowIds <- cmData$covariates$rowId[ffbase::`%in%`(cmData$covariates$covariateId, strokeCovariateIds)]
         strokeRowIds <- ff::as.ram(unique(strokeRowIds))
         strokeCovariate <- data.frame(rowId = strokeRowIds,
-                                       covariateId = rep(9998, length(strokeRowIds)),
+                                      covariateId = rep(9998, length(strokeRowIds)),
                                       covariateValue = rep(1, length(strokeRowIds)))
         if (nrow(smokingCovariate) > 0) {
             covariates <- ffbase::ffdfappend(covariates, smokingCovariate)
@@ -319,23 +319,48 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
                                                       analysisId = c(999, 999),
                                                       conceptId = c(0, 0)))
 
+        if (addBloodPressure) {
+            subset <- bps[bps$rowId %in% cohorts$rowId, ]
+            # Convert to splines:
+            newCovars <- data.frame()
+            newCovarRef <- data.frame()
+            for (conceptId in unique(subset$conceptId)) {
+                measurement <- subset[subset$conceptId == conceptId, ]
+                designMatrix <- splines::bs(measurement$valueAsNumber, 5)
+                sparse <- lapply(1:5, function(x) data.frame(rowId = measurement$rowId,
+                                                             covariateId = conceptId * 10 + x,
+                                                             covariateValue = designMatrix[, x]))
 
+                sparse <- do.call("rbind", sparse)
+                newCovars <- rbind(newCovars, sparse)
+                ref <- data.frame(covariateId = conceptId * 10 + 1:5,
+                                  covariateName = paste(measurement$conceptName[1], 1:5),
+                                  analysisId = conceptId,
+                                  conceptId = conceptId)
+                newCovarRef <- rbind(newCovarRef, ref)
+            }
+            covariates <- covariates[ffbase::`%in%`(covariates$rowId, subset$rowId), ]
+            covariates <- ffbase::ffdfappend(covariates, newCovars)
+            covariateRef <- ffbase::ffdfappend(covariateRef, newCovarRef)
+            cohorts <- cohorts[cohorts$rowId %in% subset$rowId, ]
+        }
 
         newCmData <- cmData
+        newCmData$cohorts <- cohorts
         newCmData$covariates <- covariates
         newCmData$covariateRef <- covariateRef
         newCmData$analysisRef <- ff::clone(cmData$analysisRef)
         CohortMethod::saveCohortMethodData(cohortMethodData = newCmData,
-                                           file = file.path(manualFolder, outcomeModelReference$cohortMethodDataFolder),
+                                           file = file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder),
                                            compress = TRUE)
         rm(cmData)
         cmData <- newCmData
     } else {
-        cmData <- CohortMethod::loadCohortMethodData(file.path(manualFolder, outcomeModelReference$cohortMethodDataFolder))
+        cmData <- CohortMethod::loadCohortMethodData(file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder))
         subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
     }
 
-    if (!file.exists(file.path(manualFolder, outcomeModelReference$sharedPsFile))) {
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$sharedPsFile))) {
         # Fit propensity model:
         studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
                                                         removeDuplicateSubjects = "keep first",
@@ -357,20 +382,20 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
                                                                       threads = 10),
                                      stopOnError = FALSE,
                                      maxCohortSizeForFitting = 1e+05)
-        saveRDS(ps, file.path(manualFolder, outcomeModelReference$sharedPsFile))
+        saveRDS(ps, file.path(newPsFolder, outcomeModelReference$sharedPsFile))
 
         model <- CohortMethod::getPsModel(ps, cmData)
-        readr::write_csv(model, file.path(manualFolder, sprintf("PsModelManual_%s_%s.png", row$targetName, row$comparatorName)))
+        readr::write_csv(model, file.path(newPsFolder, sprintf("PsModelManual_%s_%s.png", row$targetName, row$comparatorName)))
 
         CohortMethod::plotPs(data = ps,
                              targetLabel = row$targetName,
                              comparatorLabel = row$comparatorName,
                              showEquiposeLabel = TRUE,
-                             fileName = file.path(manualFolder, sprintf("PsManual_%s_%s.png", row$targetName, row$comparatorName)))
+                             fileName = file.path(newPsFolder, sprintf("PsManual_%s_%s.png", row$targetName, row$comparatorName)))
     } else {
-        ps <- readRDS(file.path(manualFolder, outcomeModelReference$sharedPsFile))
+        ps <- readRDS(file.path(newPsFolder, outcomeModelReference$sharedPsFile))
     }
-    if (!file.exists(file.path(manualFolder, outcomeModelReference$strataFile))) {
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$strataFile))) {
         studyPop <- CohortMethod::createStudyPopulation(population = ps,
                                                         removeDuplicateSubjects = "keep first",
                                                         removeSubjectsWithPriorOutcome = TRUE,
@@ -386,27 +411,27 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
         } else {
             stop("Unknown analysis ID ", analysisId)
         }
-        saveRDS(strataPop, file.path(manualFolder, outcomeModelReference$strataFile))
+        saveRDS(strataPop, file.path(newPsFolder, outcomeModelReference$strataFile))
     } else {
-        strataPop <- readRDS(file.path(manualFolder, outcomeModelReference$strataFile))
+        strataPop <- readRDS(file.path(newPsFolder, outcomeModelReference$strataFile))
     }
     if (nrow(strataPop) != 0) {
-        if (!file.exists(file.path(manualFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))) {
+        if (!file.exists(file.path(newPsFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))) {
             # Overall balance:
             bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
-            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(manualFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
-            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(manualFolder, sprintf("BalanceTopAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(newPsFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(newPsFolder, sprintf("BalanceTopAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
 
-            balanceFile <- file.path(manualFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            balanceFile <- file.path(newPsFolder, sprintf("BalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
             write.csv(bal, balanceFile, row.names = FALSE)
 
             cmDataAll <-  CohortMethod::loadCohortMethodData(file.path(indicationFolder,
                                                                        "cmOutput",
                                                                        outcomeModelReference$cohortMethodDataFolder))
             bal <- CohortMethod::computeCovariateBalance(strataPop, cmDataAll)
-            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(manualFolder, sprintf("AllBalanceAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
-            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(manualFolder, sprintf("AllBalanceTopAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
-            balanceFile <- file.path(manualFolder, sprintf("AllBalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(newPsFolder, sprintf("AllBalanceAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(newPsFolder, sprintf("AllBalanceTopAfterMatchingUsingManualPs_%s_%s.png", row$targetName, row$comparatorName)))
+            balanceFile <- file.path(newPsFolder, sprintf("AllBalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
             write.csv(bal, balanceFile, row.names = FALSE)
         }
 
@@ -424,7 +449,7 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, analysis
         cmData$covariateRef <- ff::as.ffdf(data.frame(covariateId = subsetRef$conceptId,
                                                       covariateName = subsetRef$conceptName))
         bal <- CohortMethod::computeCovariateBalance(subsetStrataPop, cmData)
-        balanceFile <- file.path(manualFolder, sprintf("BpBalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+        balanceFile <- file.path(newPsFolder, sprintf("BpBalanceAfterMatchingUsingManualPs_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
         write.csv(bal, balanceFile, row.names = FALSE)
         ff::close.ffdf(cmData$covariates)
         ff::close.ffdf(cmData$covariateRef)
