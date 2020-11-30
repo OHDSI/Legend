@@ -160,3 +160,56 @@ balManualPlusBpAdj$type <- "Manually selected\ncovariates + BP"
 balOriginal <- balOriginal[, colnames(balBpAdj)]
 bal <- rbind(balOriginal, balBpAdj, balManualAdj, balManualPlusBpAdj)
 write.csv(bal, fileName <- file.path(lspsFolder, "BpBalanceLspsPaper.csv"))
+
+# Compute expected systematic error ---------------------------------------
+estimates <- read.csv("C:/Users/MSCHUEMI/Desktop/LSPS/HrsForLspsPaper.csv")
+
+computeEse <- function(subset) {
+    print(subset$type[1])
+    ncs <- subset[!is.na(subset$targetEffectSize) & subset$targetEffectSize == 1 & subset$estimate == "Uncalibrated", ]
+    null <- EmpiricalCalibration::fitMcmcNull(ncs$logRr, ncs$seLogRr)
+    expectedSystematicError <- EmpiricalCalibration::computeExpectedSystematicError(null)
+    return(dplyr::tibble(type = subset$type[1],
+                         mu = null[1],
+                         sd = 1/sqrt(null[2]),
+                         ese = expectedSystematicError$expectedSystematicError,
+                         eseLb = expectedSystematicError$lb95ci,
+                         eseUb = expectedSystematicError$lb95ub))
+}
+
+eses <- lapply(split(estimates, estimates$type), computeEse)
+eses <- dplyr::bind_rows(eses)
+eses
+library(ggplot2)
+eses$type[eses$type == "Original"] <- "LSPS"
+eses$type[eses$type == "Adjusting for\nblood pressure"] <- "LSPS + BP"
+ggplot(eses, aes(y = type, x = ese, xmin = eseLb, xmax = eseUb)) +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_point() +
+    geom_errorbarh() +
+    scale_x_continuous("Expected systematic error", limits = c(0, max(eses$eseUb))) +
+    scale_y_discrete("")
+ggsave("C:/Users/MSCHUEMI/Desktop/LSPS/ESE.png", width = 4, height = 3)
+
+hois <- read.csv("inst/settings/OutcomesOfInterest.csv")
+hois <- hois[hois$indicationId == "Hypertension", ]
+hois <- data.frame(outcomeId = hois$cohortId,
+                   outcomeName = hois$name)
+estimates <- merge(estimates, hois)
+
+hoi <- estimates[estimates$outcomeName == "Stroke" & estimates$estimate == "Uncalibrated", ]
+hoi <- estimates[estimates$outcomeName == "Acute myocardial infarction" & estimates$estimate == "Uncalibrated", ]
+hoi <- estimates[estimates$outcomeName == "Hospitalization with heart failure" & estimates$estimate == "Uncalibrated", ]
+hoi <- estimates[estimates$outcomeName == "Transient ischemic attack" & estimates$estimate == "Uncalibrated", ]
+
+hoi$type[hoi$type == "Original"] <- "LSPS"
+hoi$type[hoi$type == "Adjusting for\nblood pressure"] <- "LSPS + BP"
+
+ggplot(hoi, aes(y = type, x = rr, xmin = ci95lb, xmax = ci95ub)) +
+    geom_vline(xintercept = 1, linetype = "dashed") +
+    geom_point() +
+    geom_errorbarh() +
+    scale_x_continuous("Hazard Ratio") +
+    scale_y_discrete("") +
+    ggtitle(hoi$outcomeName[1])
+ggsave("C:/Users/MSCHUEMI/Desktop/LSPS/HR.png", width = 4, height = 3)
