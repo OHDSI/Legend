@@ -238,7 +238,135 @@ refitPropensityModelUsingBp <- function(row, indicationFolder, lspsFolder, analy
     }
 }
 
-fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFolder = file.path(lspsFolder, "manual"), analysisId, addBloodPressure = FALSE) {
+refitPropensityModelWithoutT2dm <- function(row, indicationFolder, lspsFolder, newPsFolder = file.path(lspsFolder, "noT2dm"), analysisId, connectionDetails, cdmDatabaseSchema) {
+    # row <- tcs[1, ]
+    ParallelLogger::logInfo(paste("Refitting propensity model for", row$targetName, "and", row$comparatorName))
+    outcomeModelReference <- readRDS(file.path(lspsFolder, "outcomeModelReference.rds"))
+    outcomeModelReference <- outcomeModelReference[outcomeModelReference$targetId == row$targetId &
+                                                       outcomeModelReference$comparatorId == row$comparatorId &
+                                                       outcomeModelReference$analysisId == analysisId, ]
+    outcomeModelReference <- outcomeModelReference[outcomeModelReference$strataFile != "", ][1, ]
+
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder))) {
+        # Create new CohortMethodData object, droping T2DM diagnosis codes and treatments
+        cmData <- CohortMethod::loadCohortMethodData(file.path(indicationFolder,
+                                                               "cmOutput",
+                                                               outcomeModelReference$cohortMethodDataFolder))
+
+        sql <- "SELECT descendant_concept_id AS concept_id
+        FROM @cdm_database_schema.concept_ancestor
+        WHERE ancestor_concept_id = @concept_id
+
+        UNION ALL
+
+        SELECT ancestor_concept_id AS concept_id
+        FROM @cdm_database_schema.concept_ancestor
+        WHERE descendant_concept_id = @concept_id;"
+        connection <- DatabaseConnector::connect(connectionDetails)
+        diabetesConceptIds <- DatabaseConnector::renderTranslateQuerySql(connection, sql, cdm_database_schema = cdmDatabaseSchema, concept_id = 201820)
+        diabetesDrugsConceptIds <- DatabaseConnector::renderTranslateQuerySql(connection, sql, cdm_database_schema = cdmDatabaseSchema, concept_id = 21600712)
+        conceptsToExclude <- c(diabetesConceptIds[, 1], diabetesDrugsConceptIds[, 1])
+        DatabaseConnector::disconnect(connection)
+
+        covariateRef <- cmData$covariateRef
+        covariateIdsToInclude <- covariateRef$covariateId[!ffbase::`%in%`(covariateRef$conceptId, conceptsToExclude), ]
+        newCmData <- cmData
+        newCmData$covariates <- cmData$covariates[ffbase::`%in%`(cmData$covariates$covariateId, covariateIdsToInclude), ]
+        newCmData$covariateRef <- cmData$covariateRef[ffbase::`%in%`(cmData$covariateRef$covariateId, covariateIdsToInclude), ]
+        newCmData$analysisRef <- ff::clone(cmData$analysisRef)
+        CohortMethod::saveCohortMethodData(cohortMethodData = newCmData,
+                                           file = file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder),
+                                           compress = TRUE)
+        rm(cmData)
+        cmData <- newCmData
+    } else {
+        cmData <- CohortMethod::loadCohortMethodData(file.path(newPsFolder, outcomeModelReference$cohortMethodDataFolder))
+        subset <- bps[bps$rowId %in% cmData$cohorts$rowId, ]
+    }
+
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$sharedPsFile))) {
+        # Fit propensity model:
+        studyPop <- CohortMethod::createStudyPopulation(cohortMethodData = cmData,
+                                                        removeDuplicateSubjects = "keep first",
+                                                        removeSubjectsWithPriorOutcome = TRUE,
+                                                        riskWindowStart = 1,
+                                                        riskWindowEnd = 0,
+                                                        addExposureDaysToEnd = TRUE,
+                                                        minDaysAtRisk = 1,
+                                                        censorAtNewRiskWindow = TRUE)
+        ps <- CohortMethod::createPs(population = studyPop,
+                                     cohortMethodData = cmData,
+                                     control = Cyclops::createControl(noiseLevel = "quiet",
+                                                                      cvType = "auto",
+                                                                      tolerance = 2e-07,
+                                                                      cvRepetitions = 1,
+                                                                      fold = 10,
+                                                                      startingVariance = 0.01,
+                                                                      seed = 123,
+                                                                      threads = 10),
+                                     stopOnError = FALSE,
+                                     maxCohortSizeForFitting = 1e+05)
+        saveRDS(ps, file.path(newPsFolder, outcomeModelReference$sharedPsFile))
+
+        model <- CohortMethod::getPsModel(ps, cmData)
+        readr::write_csv(model, file.path(newPsFolder, sprintf("PsModel_%s_%s.png", row$targetName, row$comparatorName)))
+
+        CohortMethod::plotPs(data = ps,
+                             targetLabel = row$targetName,
+                             comparatorLabel = row$comparatorName,
+                             showEquiposeLabel = TRUE,
+                             fileName = file.path(newPsFolder, sprintf("Ps_%s_%s.png", row$targetName, row$comparatorName)))
+    } else {
+        ps <- readRDS(file.path(newPsFolder, outcomeModelReference$sharedPsFile))
+    }
+    if (!file.exists(file.path(newPsFolder, outcomeModelReference$strataFile))) {
+        studyPop <- CohortMethod::createStudyPopulation(population = ps,
+                                                        removeDuplicateSubjects = "keep first",
+                                                        removeSubjectsWithPriorOutcome = TRUE,
+                                                        riskWindowStart = 1,
+                                                        riskWindowEnd = 0,
+                                                        endAnchor = "cohort end",
+                                                        minDaysAtRisk = 1,
+                                                        censorAtNewRiskWindow = TRUE)
+        if (analysisId == 1) {
+            strataPop <- CohortMethod::stratifyByPs(studyPop, numberOfStrata = 10, baseSelection = "all")
+        } else if (analysisId == 3) {
+            strataPop <- CohortMethod::matchOnPs(studyPop, caliper = 0.2, caliperScale = "standardized logit", maxRatio = 100)
+        } else {
+            stop("Unknown analysis ID ", analysisId)
+        }
+        saveRDS(strataPop, file.path(newPsFolder, outcomeModelReference$strataFile))
+    } else {
+        strataPop <- readRDS(file.path(newPsFolder, outcomeModelReference$strataFile))
+    }
+    if (nrow(strataPop) != 0) {
+        if (!file.exists(file.path(newPsFolder, sprintf("BalanceAfterMatching_%s_%s_%s.png", row$targetName, row$comparatorName, analysisId)))) {
+            # Overall balance:
+            bal <- CohortMethod::computeCovariateBalance(strataPop, cmData)
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(newPsFolder, sprintf("BalanceAfterMatching_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(newPsFolder, sprintf("BalanceTopAfterMatching_%s_%s.png", row$targetName, row$comparatorName)))
+
+            balanceFile <- file.path(newPsFolder, sprintf("BalanceAfterMatchings_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            write.csv(bal, balanceFile, row.names = FALSE)
+
+            cmDataAll <-  CohortMethod::loadCohortMethodData(file.path(indicationFolder,
+                                                                       "cmOutput",
+                                                                       outcomeModelReference$cohortMethodDataFolder))
+            bal <- CohortMethod::computeCovariateBalance(strataPop, cmDataAll)
+            CohortMethod::plotCovariateBalanceScatterPlot(bal, fileName = file.path(newPsFolder, sprintf("AllBalanceAfterMatching_%s_%s.png", row$targetName, row$comparatorName)))
+            CohortMethod::plotCovariateBalanceOfTopVariables(bal, fileName = file.path(newPsFolder, sprintf("AllBalanceTopAfterMatching_%s_%s.png", row$targetName, row$comparatorName)))
+            balanceFile <- file.path(newPsFolder, sprintf("AllBalanceAfterMatching_%s_%s.csv", as.character(row$targetName), as.character(row$comparatorName)))
+            write.csv(bal, balanceFile, row.names = FALSE)
+        }
+        ff::close.ffdf(cmData$covariates)
+        ff::close.ffdf(cmData$covariateRef)
+    } else {
+        ff::close.ffdf(cmData$covariates)
+        ff::close.ffdf(cmData$covariateRef)
+    }
+}
+
+fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFolder = file.path(lspsFolder, "manual"), analysisId, addBloodPressure = FALSE, removeT2dm = FALSE) {
     # row <- tcs[1, ]
     ParallelLogger::logInfo(paste("Fitting manual propensity model for", row$targetName, "and", row$comparatorName))
     bps <- readRDS(file.path(lspsFolder, "bps.rds"))
@@ -258,19 +386,20 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFol
                                                                "cmOutput",
                                                                outcomeModelReference$cohortMethodDataFolder))
         cohorts <- cmData$cohorts
-        # covariateRef <- readRDS("c:/temp/covariateRef.rds")
-        # covariateRef[grepl("plegia", covariateRef$covariateName, ignore.case = TRUE), c("covariateId", "covariateName")]
+        covariateRef <- readRDS("c:/temp/covariateRef.rds")
+        covariateRef[covariateRef$covariateId == 4058137802, ]
+        covariateRef[grepl("diabetes", covariateRef$covariateName, ignore.case = TRUE), c("covariateId", "covariateName")]
 
         selectedCovariateIds <- c(0:20*1000 + 3, #Age groups
                                   8532001, # Female,
                                   2000:2020*1000 + 6, # Index year
-                                  44054006210, # T2DM
-                                  53741008210, # CAD
-                                  22298006210, # MI
-                                  390798007210, # Asthma
-                                  84114007210, # Heart failure
-                                  709044004210, # Chronic kidney disease
-                                  49436004210, # Atrial fibrillation,
+                                  201826210, # T2DM
+                                  317576210, # CAD
+                                  4329847210, # MI
+                                  317009210, # Asthma
+                                  316139210, # Heart failure
+                                  46271022210, # Chronic kidney disease
+                                  313217210, # Atrial fibrillation,
                                   1901, # Charlson index - Romano adaptation
                                   21600985410, # Platelet aggregation inhibitors excl. heparin
                                   1310149410, # Warfarin
@@ -284,13 +413,16 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFol
                                   21600712410, # Anti-glycemic agent
                                   4245997802, # BMI
                                   13645005210, # COPD
-                                  235856003210, # Liver disease
+                                  4212540210, # Liver disease
                                   4159131210, # Dyslipidemia
-                                  368009210, # Valvular heart disease
+                                  4281749210, # Valvular heart disease
                                   4239381210, # Drug abuse
                                   443392210, # Cancer
-                                  43972721) # HIV infection
+                                  439727210) # HIV infection
 
+        if (removeT2dm) {
+            selectedCovariateIds <- selectedCovariateIds[!selectedCovariateIds %in% c(201826210, 21600712410)]
+        }
         covariates <- cmData$covariates[ffbase::`%in%`(cmData$covariates$covariateId, selectedCovariateIds), ]
 
         smokingCovariateIds <- c(4058137802, 4282779802, 4216174802, 4132133802, 21494888702, 40486518802) # Smoking
