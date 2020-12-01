@@ -181,7 +181,7 @@ eses <- lapply(split(estimates, estimates$type), computeEse)
 eses <- dplyr::bind_rows(eses)
 eses
 library(ggplot2)
-eses$type[eses$type == "Original"] <- "LSPS"
+eses$type[eses$type == "Original"] <- "All covariates"
 eses$type[eses$type == "Adjusting for\nblood pressure"] <- "LSPS + BP"
 ggplot(eses, aes(y = type, x = ese, xmin = eseLb, xmax = eseUb)) +
     geom_vline(xintercept = 0, linetype = "dashed") +
@@ -197,12 +197,12 @@ hois <- data.frame(outcomeId = hois$cohortId,
                    outcomeName = hois$name)
 estimates <- merge(estimates, hois)
 
-hoi <- estimates[estimates$outcomeName == "Stroke" & estimates$estimate == "Uncalibrated", ]
+# hoi <- estimates[estimates$outcomeName == "Stroke" & estimates$estimate == "Uncalibrated", ]
 hoi <- estimates[estimates$outcomeName == "Acute myocardial infarction" & estimates$estimate == "Uncalibrated", ]
-hoi <- estimates[estimates$outcomeName == "Hospitalization with heart failure" & estimates$estimate == "Uncalibrated", ]
-hoi <- estimates[estimates$outcomeName == "Transient ischemic attack" & estimates$estimate == "Uncalibrated", ]
+# hoi <- estimates[estimates$outcomeName == "Hospitalization with heart failure" & estimates$estimate == "Uncalibrated", ]
+hoi <- estimates[estimates$outcomeName == "Chronic kidney disease" & estimates$estimate == "Uncalibrated", ]
 
-hoi$type[hoi$type == "Original"] <- "LSPS"
+hoi$type[hoi$type == "Original"] <- "All covariates"
 hoi$type[hoi$type == "Adjusting for\nblood pressure"] <- "LSPS + BP"
 
 ggplot(hoi, aes(y = type, x = rr, xmin = ci95lb, xmax = ci95ub)) +
