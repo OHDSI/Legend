@@ -412,7 +412,7 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFol
                                   21602537410, # Progestogens
                                   21600712410, # Anti-glycemic agent
                                   4245997802, # BMI
-                                  13645005210, # COPD
+                                  255573210, # COPD
                                   4212540210, # Liver disease
                                   4159131210, # Dyslipidemia
                                   4281749210, # Valvular heart disease
@@ -431,7 +431,7 @@ fitManualPropensityModel <- function(row, indicationFolder, lspsFolder, newPsFol
         smokingCovariate <- data.frame(rowId = smokingRowIds,
                                        covariateId = rep(9999, length(smokingRowIds)),
                                        covariateValue = rep(1, length(smokingRowIds)))
-        strokeCovariateIds <- c(230692004210, 195189003210, 195190007210, 288723005210) # Stroke
+        strokeCovariateIds <- c(4110192210, 4108356210, 4043731210, 374060210) # Stroke
         strokeRowIds <- cmData$covariates$rowId[ffbase::`%in%`(cmData$covariates$covariateId, strokeCovariateIds)]
         strokeRowIds <- ff::as.ram(unique(strokeRowIds))
         strokeCovariate <- data.frame(rowId = strokeRowIds,
